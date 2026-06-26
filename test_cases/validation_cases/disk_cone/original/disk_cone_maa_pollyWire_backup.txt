@@ -1,0 +1,156 @@
+--------------------------------------------------------------------------------
+ 
+                   ---|  Input File |---
+ 
+&RunTitle
+   title = 'Discon  70 ... 200MHz'
+/
+
+&Frequency_MHz
+   fmin  = 145.0
+   fmax  = 145.0
+   nFreq = 1
+/
+
+&Ground
+   Ground_Plane = real
+   epsilon = 14.0
+   sigma = 0.005
+/
+
+&OPTIONS
+   NBASISPERLAMBDA = 45
+   output_currents = T
+/
+
+&node_input
+   zHeight = 0.0
+   nNodes = 17
+   units = meters
+
+ node_list(1) = N1, 0.0, 0.0, 0.0
+ node_list(2) = N2, 0.0, 0.0, 0.1
+ node_list(3) = N5, -0.4525, 0.4525, 0.1
+ node_list(4) = N6, 0.4525, -0.4525, 0.1
+ node_list(5) = N7, 0.4525, 0.4525, 0.1
+ node_list(6) = N8, -0.4525, -0.4525, 0.1
+ node_list(7) = N9, 0.5, 0.53033, -1.0
+ node_list(8) = N10, -0.4, -0.53033, -1.0
+ node_list(9) = N11, 0.64, 0.0, 0.1
+ node_list(10) = N12, -0.64, 0.0, 0.1
+ node_list(11) = N13, 0.0, -0.64, 0.1
+ node_list(12) = N14, 0.0, 0.64, 0.1
+ node_list(13) = N15, 0.65, 0.0, -1.0
+ node_list(14) = N16, -0.6, 0.0, -1.0
+ node_list(15) = N17, 0.0, 0.65, -1.0
+ node_list(16) = N18, 0.0, -0.65, -1.0
+ node_list(17) = A, 0.0, 0.0, 0.05
+/
+
+&wire_primitive
+   tag   = W1,
+   nNodes = 3,
+   nodeTags = N1 A N2
+   radius     = 0.005
+/
+
+&wire_primitive
+   tag   = W2,
+   nNodes = 3,
+   nodeTags = N5 N2 N6
+   radius     = 0.005
+/
+
+&wire_primitive
+   tag   = W3,
+   nNodes = 3,
+   nodeTags = N13 N2 N14
+   radius     = 0.005
+/
+
+&wire_primitive
+   tag   = W4,
+   nNodes = 3,
+   nodeTags = N12 N2 N11
+   radius     = 0.005
+/
+
+&wire_primitive
+   tag   = W5,
+   nNodes = 3,
+   nodeTags = N8 N2 N7
+   radius     = 0.005
+/
+
+&excitation_input
+   wireTag = W1
+   nodeTag = A
+   voltage = 1.0
+   phase_deg = 0.0
+/
+
+ 
+                      ---| End Of Copied Input Data |---
+--------------------------------------------------------------------------------
+ 
+ 
+ 
+ &OPTIONS
+ NBASISPERLAMBDA =          45,
+ OUTPUT_CURRENTS = T
+ /
+
+================================================================================
+  NeoMom v0                                      2026-06-15  15:06:33
+================================================================================
+  Run   :  Discon  70 ... 200MHz
+  File  :  disk_cone_maa_pollyWire_backup.nml
+================================================================================
+  FREQUENCY & MESH
+  ------------------------------------------------------------------------------
+  Frequency              :    145.0000  MHz
+  Wavelength             :    2.067534  m
+  Segments               :     116
+  Basis functions        :     115
+  Segment length         :   0.04595  m   (lambda /   45.0)
+  Antenna size           :    1.0333  lambda   (kD =   6.4924)
+================================================================================
+  GROUND
+  ------------------------------------------------------------------------------
+  Type                   :  REAL
+    Epsilon_r            :   14.0000
+    Sigma                : 5.0000E-03  S/m
+    Height above ground  :    0.0000  m
+================================================================================
+  PORT  1 of  1    W1 / A                                Z0_ref =   50.00  Ohm
+  ------------------------------------------------------------------------------
+  Zin                    :     3.302  +j   -573.772  Ohm
+  |Zin| / angle          :   573.782  Ohm  /    -89.67  deg
+  Gamma                  :  0.99901                  angle =    -9.96  deg
+  SWR                    :  2009.210
+  P_in                   : 5.0148E-06  W     (     0.005  mW)
+================================================================================
+  P_accepted             : 5.0148E-06  W
+================================================================================
+  PATTERN
+  ------------------------------------------------------------------------------
+  Theta  :   0.0 to   90.0 deg   step   5.0 deg  (   19 pts)
+  Phi    :   0.0 to  360.0 deg   step   5.0 deg  (   73 pts)   nAng =    1387
+  ------------------------------------------------------------------------------
+  Peak G_total           :  -1.682 dBi   at  theta =   55.00 deg   phi =  340.00 deg
+  Peak G_theta           :  -1.682 dBi   at  theta =   55.00 deg   phi =  340.00 deg
+  Peak G_phi             : -59.968 dBi   at  theta =    5.00 deg   phi =  230.00 deg
+================================================================================
+  POWER BALANCE  (REAL)
+  ------------------------------------------------------------------------------
+  P_radiated             : 1.1070E-06  W
+  P_accepted             : 5.0148E-06  W
+  Radiation efficiency   :   0.2208              ( 22.1%)
+================================================================================
+  OUTPUT FILES
+  ------------------------------------------------------------------------------
+  Text summary           :  disk_cone_maa_pollyWire_backup.txt
+  Pattern CSV            :  disk_cone_maa_pollyWire_backup.csv
+  Current file           :  disk_cone_maa_pollyWire_backup.cur
+================================================================================
+

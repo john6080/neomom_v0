@@ -1,0 +1,91 @@
+&RunTitle
+   title = 'J-antenna 144 MHz'
+/
+
+&Frequency_MHz
+   fmin  = 145.0
+   fmax  = 145.0
+   nFreq = 1
+/
+
+&Ground
+   Ground_Plane = real
+   epsilon = 14.0
+   sigma = 0.005
+/
+
+&OPTIONS
+   NBASISPERLAMBDA = 40
+/
+
+&node_input
+   zHeight = 7.0
+   nNodes = 8
+   units = meters
+
+ node_list(1) = N1, 0.0, 0.0, 0.59
+ node_list(2) = N2, 0.0, 0.0, 1.58
+ node_list(3) = N3, 0.0, 0.0, 0.12
+ node_list(4) = N4, 0.0, 0.0, 0.088
+ node_list(5) = N5, 0.0, 0.01, 0.088
+ node_list(6) = N6, 0.0, 0.01, 0.12
+ node_list(7) = N7, 0.0, 0.01, 0.595
+ node_list(8) = A, 0.0, 0.005, 0.12
+/
+
+&wire_primitive
+   tag   = W1,
+   nNodes = 2,
+   nodeTags = N1 N2
+   radius     = 0.003
+/
+
+&wire_primitive
+   tag   = W2,
+   nNodes = 2,
+   nodeTags = N1 N3
+   radius     = 0.003
+/
+
+&wire_primitive
+   tag   = W3,
+   nNodes = 2,
+   nodeTags = N3 N4
+   radius     = 0.003
+/
+
+&wire_primitive
+   tag   = W4,
+   nNodes = 2,
+   nodeTags = N4 N5
+   radius     = 0.003
+/
+
+&wire_primitive
+   tag   = W5,
+   nNodes = 2,
+   nodeTags = N5 N6
+   radius     = 0.003
+/
+
+&wire_primitive
+   tag   = W6,
+   nNodes = 2,
+   nodeTags = N6 N7
+   radius     = 0.003
+/
+
+&wire_primitive
+   tag   = W7,
+   nNodes = 3,
+   nodeTags = N3 A N6
+   radius     = 0.003
+/
+
+&excitation_input
+   wireTag = W7
+   nodeTag = A
+   voltage = 1.0
+   phase_deg = 0.0
+/
+

@@ -1,0 +1,127 @@
+ 
+                   ---|  Input File |---
+ 
+&RunTitle
+   title = 'Disk 8 Spoke 8 wire'
+/
+
+&Frequency_MHz
+   fmin  = 145.0
+   fmax  = 145.0
+   nFreq = 1
+/
+
+&Ground
+   Ground_Plane = free_space
+   epsilon = 14.0
+   sigma = 0.005
+/
+
+&OPTIONS
+   NBASISPERLAMBDA = 80
+   output_currents    = T
+/
+
+&node_input
+   zHeight = 0.0
+   nNodes = 17
+   units = meters
+
+ node_list(1) = N1, 0.0, 0.0, 0.0
+ node_list(2) = N2, 0.0, 0.0, 0.1
+ node_list(3) = N5, -0.4525, 0.4525, 0.1
+ node_list(4) = N6, 0.4525, -0.4525, 0.1
+ node_list(5) = N7, 0.4525, 0.4525, 0.1
+ node_list(6) = N8, -0.4525, -0.4525, 0.1
+ node_list(7) = N9, 0.5, 0.53033, -1.0
+ node_list(8) = N10, -0.4, -0.53033, -1.0
+ node_list(9) = N11, 0.64, 0.0, 0.1
+ node_list(10) = N12, -0.64, 0.0, 0.1
+ node_list(11) = N13, 0.0, -0.64, 0.1
+ node_list(12) = N14, 0.0, 0.64, 0.1
+ node_list(13) = N15, 0.65, 0.0, -1.0
+ node_list(14) = N16, -0.6, 0.0, -1.0
+ node_list(15) = N17, 0.0, 0.65, -1.0
+ node_list(16) = N18, 0.0, -0.65, -1.0
+ node_list(17) = A, 0.0, 0.0, 0.05
+/
+
+&wire_primitive
+   tag   = W1,
+   nNodes = 3,
+   nodeTags = N1 A N2
+   radius     = 0.005
+/
+
+&wire_primitive
+   tag   = W2,
+   nNodes = 2,
+   nodeTags = N2 N5
+   radius     = 0.005
+/
+
+&wire_primitive
+   tag   = W3,
+   nNodes = 2,
+   nodeTags = N2 N6
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = W4,
+   nNodes = 2,
+   nodeTags = N2 N13
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = W5,
+   nNodes = 2,
+   nodeTags = N2 N14
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = W6,
+   nNodes = 2,
+   nodeTags = N2 N12
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = W7,
+   nNodes = 2,
+   nodeTags = N2 N11
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = W8,
+   nNodes = 2,
+   nodeTags = N2 N8
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = W9,
+   nNodes = 2,
+   nodeTags = N2 N7
+   radius     = 0.001
+/
+
+&excitation_input
+   wireTag = W1
+   nodeTag = A
+   voltage = 1.0
+   phase_deg = 0.0
+/
+
+ 
+                      ---| End Of Copied Input Data |---
+ 
+ 
+ 
+ &OPTIONS
+ NBASISPERLAMBDA = 80,
+ OUTPUT_CURRENTS = T
+ /

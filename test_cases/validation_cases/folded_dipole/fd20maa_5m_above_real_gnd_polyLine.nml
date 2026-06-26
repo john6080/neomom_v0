@@ -1,0 +1,46 @@
+&RunTitle
+   title = 'folded dipole 20m'
+/
+
+&Frequency_MHz
+   fmin  = 14.05
+   fmax  = 14.05
+   nFreq = 1
+/
+
+&Ground
+   Ground_Plane = real
+   epsilon = 14.0
+   sigma = 0.005
+/
+
+&OPTIONS
+   NBASISPERLAMBDA = 40
+/
+
+&node_input
+   zHeight = 5.0
+   nNodes = 5
+   units = meters
+
+ node_list(1) = N1, 0.0, -5.025, -0.1
+ node_list(2) = N2, 0.0, 5.025, -0.1
+ node_list(3) = N3, 0.0, 5.025, 0.1
+ node_list(4) = N4, 0.0, -5.025, 0.1
+ node_list(5) = A, 0.0, 0.0, -0.1
+/
+
+&wire_primitive
+   tag   = W1,
+   nNodes = 6,
+   nodeTags = N1 N4 N3 N2 A N1
+   radius     = 0.0015
+/
+
+&excitation_input
+   wireTag = W1
+   nodeTag = A
+   voltage = 1.0
+   phase_deg = 0.0
+/
+

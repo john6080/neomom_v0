@@ -1,0 +1,154 @@
+--------------------------------------------------------------------------------
+ 
+                   ---|  Input File |---
+ 
+&RunTitle
+   title = 'Wide Band 6el 6m'
+/
+
+&Frequency_MHz
+   fmin  = 50.5
+   fmax  = 50.5
+   nFreq = 1
+/
+
+&Ground
+   Ground_Plane = free_space
+   epsilon = 1.0
+   sigma = 0.0
+/
+
+&OPTIONS
+   NBASISPERLAMBDA = 40
+/
+
+&node_input
+   zHeight = 0.0
+   nNodes = 13
+   units = meters
+
+ node_list(1) = N1, 0.0, -1.425, 0.0
+ node_list(2) = N2, 0.0, 1.425, 0.0
+ node_list(3) = N3, -1.023, -1.48, 0.0
+ node_list(4) = N4, -1.023, 1.48, 0.0
+ node_list(5) = N5, 0.56, -1.372, 0.0
+ node_list(6) = N6, 0.56, 1.372, 0.0
+ node_list(7) = N7, 1.683, -1.327, 0.0
+ node_list(8) = N8, 1.683, 1.327, 0.0
+ node_list(9) = N9, 2.959, -1.332, 0.0
+ node_list(10) = N10, 2.959, 1.332, 0.0
+ node_list(11) = N11, 4.172, -1.277, 0.0
+ node_list(12) = N12, 4.172, 1.277, 0.0
+ node_list(13) = A, 0.0, 0.0, 0.0
+/
+
+&wire_primitive
+   tag   = W1,
+   nNodes = 3,
+   nodeTags = N1 A N2
+   radius     = 0.007
+/
+
+&wire_primitive
+   tag   = W2,
+   nNodes = 2,
+   nodeTags = N3 N4
+   radius     = 0.007
+/
+
+&wire_primitive
+   tag   = W3,
+   nNodes = 2,
+   nodeTags = N5 N6
+   radius     = 0.007
+/
+
+&wire_primitive
+   tag   = W4,
+   nNodes = 2,
+   nodeTags = N7 N8
+   radius     = 0.007
+/
+
+&wire_primitive
+   tag   = W5,
+   nNodes = 2,
+   nodeTags = N9 N10
+   radius     = 0.007
+/
+
+&wire_primitive
+   tag   = W6,
+   nNodes = 2,
+   nodeTags = N11 N12
+   radius     = 0.007
+/
+
+&excitation_input
+   wireTag = W1
+   nodeTag = A
+   voltage = 1.0
+   phase_deg = 0.0
+/
+
+ 
+                      ---| End Of Copied Input Data |---
+--------------------------------------------------------------------------------
+ 
+ 
+ 
+ &OPTIONS
+ NBASISPERLAMBDA =          40,
+ OUTPUT_CURRENTS = F
+ /
+
+================================================================================
+  NeoMom v0                                      2026-06-18  15:45:09
+================================================================================
+  Run   :  Wide Band 6el 6m
+  File  :  Yagi_6_el.nml
+================================================================================
+  FREQUENCY & MESH
+  ------------------------------------------------------------------------------
+  Frequency              :     50.5000  MHz
+  Wavelength             :    5.936484  m
+  Segments               :     112
+  Basis functions        :     106
+  Segment length         :   0.14841  m   (lambda /   40.0)
+  Antenna size           :    1.0072  lambda   (kD =   6.3283)
+================================================================================
+  GROUND
+  ------------------------------------------------------------------------------
+  Type                   :  FREE_SPACE
+================================================================================
+  PORT  1 of  1    W1 / A                                Z0_ref =   50.00  Ohm
+  ------------------------------------------------------------------------------
+  Zin                    :    34.499  +j     -2.708  Ohm
+  |Zin| / angle          :    34.605  Ohm  /     -4.49  deg
+  Gamma                  :  0.18613                  angle =  -168.26  deg
+  SWR                    :     1.457
+  P_in                   : 1.4404E-02  W     (    14.404  mW)
+================================================================================
+  P_accepted             : 1.4404E-02  W
+================================================================================
+  PATTERN
+  ------------------------------------------------------------------------------
+  Theta  :   0.0 to  180.0 deg   step   5.0 deg  (   37 pts)
+  Phi    :   0.0 to  360.0 deg   step   5.0 deg  (   73 pts)   nAng =    2701
+  ------------------------------------------------------------------------------
+  Peak G_total           :  11.026 dBi   at  theta =   90.00 deg   phi =    0.00 deg
+  Peak G_theta           :  -2.171 dBi   at  theta =  180.00 deg   phi =  270.00 deg
+  Peak G_phi             :  11.026 dBi   at  theta =   90.00 deg   phi =    0.00 deg
+================================================================================
+  POWER BALANCE  (FREE_SPACE)
+  ------------------------------------------------------------------------------
+  P_radiated             : 1.4400E-02  W
+  P_accepted             : 1.4404E-02  W
+  Ratio P_rad/P_in       :   0.9997              PASS  (< 1% error)
+================================================================================
+  OUTPUT FILES
+  ------------------------------------------------------------------------------
+  Text summary           :  Yagi_6_el.txt
+  Pattern CSV            :  Yagi_6_el.csv
+================================================================================
+

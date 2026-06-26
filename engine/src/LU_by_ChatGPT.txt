@@ -1,0 +1,219 @@
+module lu_complex_sp_m
+
+   use iso_fortran_env, only : real32
+   implicit none
+
+   private
+
+   public :: lu_factor_complex_sp
+   public :: lu_solve_complex_sp
+
+contains
+
+!=======================================================================
+!  LU factorization with partial pivoting
+!
+!  On entry:
+!      A(n,n) = matrix to factor
+!
+!  On exit:
+!      A = combined L and U factors
+!      ipiv = pivot vector
+!      info = 0      success
+!           = k>0    singular pivot at row k
+!
+!=======================================================================
+
+subroutine lu_factor_complex_sp(A, ipiv, info)
+
+   complex(real32), intent(inout) :: A(:,:)
+   integer,         intent(out)   :: ipiv(:)
+   integer,         intent(out)   :: info
+
+   integer :: n
+   integer :: k
+   integer :: i
+   integer :: p
+
+   real(real32) :: maxval
+   complex(real32) :: temp
+
+   n = size(A,1)
+
+   if (size(A,2) /= n) then
+      info = -1
+      return
+   endif
+
+   if (size(ipiv) /= n) then
+      info = -2
+      return
+   endif
+
+   info = 0
+
+   do k = 1, n
+
+      !
+      ! Find pivot row
+      !
+      p = k
+      maxval = abs(A(k,k))
+
+      do i = k+1, n
+         if (abs(A(i,k)) > maxval) then
+            maxval = abs(A(i,k))
+            p = i
+         endif
+      enddo
+
+      ipiv(k) = p
+
+      !
+      ! Singular?
+      !
+      if (maxval == 0.0_real32) then
+         info = k
+         return
+      endif
+
+      !
+      ! Row interchange
+      !
+      if (p /= k) then
+         do i = 1, n
+            temp   = A(k,i)
+            A(k,i) = A(p,i)
+            A(p,i) = temp
+         enddo
+      endif
+
+      !
+      ! Elimination
+      !
+      do i = k+1, n
+
+         A(i,k) = A(i,k) / A(k,k)
+
+         A(i,k+1:n) = A(i,k+1:n) - A(i,k)*A(k,k+1:n)
+
+      enddo
+
+   enddo
+
+end subroutine lu_factor_complex_sp
+
+!=======================================================================
+!  Solve A*x = b using LU factors
+!
+!  Inputs:
+!      LU     = factored matrix from lu_factor_complex_sp
+!      ipiv   = pivot vector
+!      b      = RHS
+!
+!  Output:
+!      x      = solution
+!
+!=======================================================================
+
+subroutine lu_solve_complex_sp(LU, ipiv, b, x)
+
+   complex(real32), intent(in)  :: LU(:,:)
+   integer,         intent(in)  :: ipiv(:)
+   complex(real32), intent(in)  :: b(:)
+   complex(real32), intent(out) :: x(:)
+
+   integer :: n
+   integer :: i
+   integer :: j
+   integer :: p
+
+   complex(real32), allocatable :: y(:)
+
+   n = size(LU,1)
+
+   allocate(y(n))
+
+   !
+   ! Apply pivots to RHS
+   !
+   y = b
+
+   do i = 1, n
+      p = ipiv(i)
+
+      if (p /= i) then
+         x(1) = y(i)
+         y(i) = y(p)
+         y(p) = x(1)
+      endif
+   enddo
+
+   !
+   ! Forward solve: L*y = P*b
+   !
+   do i = 1, n
+
+      do j = 1, i-1
+         y(i) = y(i) - LU(i,j)*y(j)
+      enddo
+
+   enddo
+
+   !
+   ! Back solve: U*x = y
+   !
+   x = y
+
+   do i = n, 1, -1
+
+      do j = i+1, n
+         x(i) = x(i) - LU(i,j)*x(j)
+      enddo
+
+      x(i) = x(i) / LU(i,i)
+
+   enddo
+
+   deallocate(y)
+
+end subroutine lu_solve_complex_sp
+
+end module lu_complex_sp_m
+
+EXAMPLE USAGE
+
+program test_lu
+
+   use iso_fortran_env, only : real32
+   use lu_complex_sp_m
+
+   implicit none
+
+   complex(real32) :: A(3,3)
+   complex(real32) :: b(3)
+   complex(real32) :: x(3)
+
+   integer :: ipiv(3)
+   integer :: info
+
+   A(1,:) = [(2.0,1.0),(1.0,0.0),(0.0,0.0)]
+   A(2,:) = [(1.0,0.0),(3.0,0.0),(1.0,0.0)]
+   A(3,:) = [(0.0,0.0),(1.0,0.0),(2.0,-1.0)]
+
+   b = [(1.0,0.0),(2.0,0.0),(3.0,0.0)]
+
+   call lu_factor_complex_sp(A,ipiv,info)
+
+   if (info /= 0) then
+      print *, 'Factorization failed, info=',info
+      stop
+   endif
+
+   call lu_solve_complex_sp(A,ipiv,b,x)
+
+   print *
+   print *, 'Solution:'
+   print *, x
+
+end program test_lu

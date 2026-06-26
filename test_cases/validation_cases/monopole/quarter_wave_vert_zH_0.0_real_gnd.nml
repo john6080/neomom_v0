@@ -1,0 +1,43 @@
+&RunTitle
+   title = 'Quarter wave monopole 7.3 MHz'
+/
+
+&Frequency_MHz
+   fmin  = 7.3
+   fmax  = 7.3
+   nFreq = 1
+/
+
+&Ground
+   Ground_Plane = real
+   epsilon = 14.0
+   sigma = 0.005
+/
+
+&OPTIONS
+   NBASISPERLAMBDA = 40
+/
+
+&node_input
+   zHeight = 0.0
+   nNodes = 2
+   units = meters
+
+ node_list(1) = A, 0.0, 0.0, 0.0
+ node_list(2) = B, 0.0, 0.0, 10.0
+/
+
+&wire_primitive
+   tag   = W1,
+   nNodes = 2,
+   nodeTags = A B
+   radius     = 0.001
+/
+
+&excitation_input
+   wireTag = W1
+   nodeTag = A
+   voltage = 1.0
+   phase_deg = 0.0
+/
+

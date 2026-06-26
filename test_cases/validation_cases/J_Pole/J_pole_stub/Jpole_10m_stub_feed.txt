@@ -1,0 +1,125 @@
+--------------------------------------------------------------------------------
+ 
+                   ---|  Input File |---
+ 
+&RunTitle
+   title = 'J Pole Stub feed'
+/
+
+&Frequency_MHz
+   fmin  = 146.0
+   fmax  = 146.0
+   nFreq = 1
+/
+
+&Ground
+   Ground_Plane = real
+   epsilon = 14.0
+   sigma = 0.005
+/
+
+&OPTIONS
+   NBASISPERLAMBDA = 40
+   OUTPUT_CURRENTS = T
+/
+
+&node_input
+   zHeight = 10.0
+   nNodes = 7
+   units = meters
+
+ node_list(1) = R0, 0.0, 0.0, 0.0
+ node_list(2) = RTOP, 0.0, 0.0, 0.825  ! 1.0274
+ node_list(3) = S0, 0.0254, 0.0, 0.0
+ node_list(4) = STOP, 0.0254, 0.0, 0.5137
+ node_list(5) = RF, 0.0, 0.0, 0.175
+ node_list(6) = SF, 0.0254, 0.0, 0.175
+ node_list(7) = C, 0.0127, 0.0, 0.175
+/
+
+&wire_primitive
+   tag   = W1,
+   nNodes = 6,
+   nodeTags = RTOP RF R0 S0 SF STOP
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = W2,
+   nNodes = 3,
+   nodeTags = RF C SF
+   radius     = 0.001
+/
+
+&excitation_input
+   wireTag = W2
+   nodeTag = C
+   voltage = 1.0
+   phase_deg = 0.0
+/
+
+ 
+                      ---| End Of Copied Input Data |---
+--------------------------------------------------------------------------------
+ 
+ 
+ 
+ &OPTIONS
+ NBASISPERLAMBDA =          40,
+ OUTPUT_CURRENTS = T
+ /
+
+================================================================================
+  NeoMom v0                                      2026-06-20  16:53:36
+================================================================================
+  Run   :  J Pole Stub feed
+  File  :  ../models/validation_cases/J_Pole/J_pole_as_port/Jpole_10m_stub_feed.nml
+================================================================================
+  FREQUENCY & MESH
+  ------------------------------------------------------------------------------
+  Frequency              :    146.0000  MHz
+  Wavelength             :    2.053373  m
+  Segments               :      36
+  Basis functions        :      36
+  Segment length         :   0.05133  m   (lambda /   40.0)
+  Antenna size           :   10.5437  lambda   (kD =  66.2477)
+================================================================================
+  GROUND
+  ------------------------------------------------------------------------------
+  Type                   :  REAL
+    Epsilon_r            :   14.0000
+    Sigma                : 5.0000E-03  S/m
+    Height above ground  :   10.0000  m
+================================================================================
+  PORT  1 of  1    W2 / C                                Z0_ref =   50.00  Ohm
+  ------------------------------------------------------------------------------
+  Zin                    :    47.715  +j     -2.140  Ohm
+  |Zin| / angle          :    47.763  Ohm  /     -2.57  deg
+  Gamma                  :  0.03203                  angle =  -135.62  deg
+  SWR                    :     1.066
+  P_in                   : 1.0458E-02  W     (    10.458  mW)
+================================================================================
+  P_accepted             : 1.0458E-02  W
+================================================================================
+  PATTERN
+  ------------------------------------------------------------------------------
+  Theta  :   0.0 to   90.0 deg   step   1.0 deg  (   91 pts)
+  Phi    :   0.0 to  360.0 deg   step   1.0 deg  (  361 pts)   nAng =   32851
+  ------------------------------------------------------------------------------
+  Peak G_total           :   6.510 dBi   at  theta =   87.00 deg   phi =    0.00 deg
+  Peak G_theta           :   6.510 dBi   at  theta =   87.00 deg   phi =    0.00 deg
+  Peak G_phi             : -17.652 dBi   at  theta =   87.00 deg   phi =  269.00 deg
+================================================================================
+  POWER BALANCE  (REAL)
+  ------------------------------------------------------------------------------
+  P_radiated             : 5.9646E-03  W
+  P_accepted             : 1.0458E-02  W
+  Radiation efficiency   :   0.5703              ( 57.0%)
+================================================================================
+  OUTPUT FILES
+  ------------------------------------------------------------------------------
+  Text summary           :  ../models/validation_cases/J_Pole/J_pole_as_port/Jpole_10m_stub_feed.txt
+  Pattern CSV            :  ../models/validation_cases/J_Pole/J_pole_as_port/Jpole_10m_stub_feed.csv
+  Current file           :  ../models/validation_cases/J_Pole/J_pole_as_port/Jpole_10m_stub_feed.cur
+================================================================================
+

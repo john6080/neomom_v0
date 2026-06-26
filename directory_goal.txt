@@ -1,0 +1,182 @@
+Project with three parts: 
+ 
+	two GUI's using python and pyinstaller, one engine using fortran ifx / gfortran.
+	
+Components:
+
+	neomom_input, Python exe
+	neomom, fortran engine, ifx/gfortran
+	neomom_plot, Python exe
+
+Develop on Ubuntu and Windows
+
+	Ubuntu:  vs code for GUI's and engine ifx/gfortran
+
+	Windows: vscode for GUI's, Visual Studio for fortran ifx engine.
+
+Goal:  
+
+	One directory structure suitable for long term.  
+	Ability to upload to Git Hub.
+	one place for Windows and Linux distributable packages for ziping.
+	
+Present directory tree using tree -L 3
+
+/AntennaModeling_neoMoM$ tree -L 3
+.
+├── build
+│   ├── input_gui
+│   │   ├── build
+│   │   └── dist
+│   └── plot_gui
+│       ├── build
+│       └── dist
+├── directory_goal.txt
+├── docs
+│   ├── Claude_documentation
+│   │   └── Claude_AI_Converstations.docx
+│   └── OverView_documents
+│       ├── Figures_for_Example.docx
+│       ├── NEOMOM_example.docx
+│       ├── NEOMOM_example.pdf
+│       ├── neoMoM_overview_June_17.docx
+│       ├── neoMoM_overview_June_17.pdf
+│       ├── neoMoM_Overview_June_22.docx
+│       ├── neoMoM_Overview_June_22.pdf
+│       └── neomom will be judged by ham.docx
+├── engine
+│   ├── linux
+│   │   ├── makefile
+│   │   ├── makefile (copy)
+│   │   ├── makefile_gfortran
+│   │   ├── makefile_ifx
+│   │   ├── makefile_June_24
+│   │   └── vendor_stubs
+│   ├── src
+│   │   ├── Angle_Cut_m_v10.3.f90
+│   │   ├── Antenna_system_m.f90
+│   │   ├── Basic_Header_m.f90
+│   │   ├── basis_builder_m.f90
+│   │   ├── connectivity_m.f90
+│   │   ├── excitation_m.f90
+│   │   ├── Fresnel_Reflection_m.f90
+│   │   ├── LU_by_ChatGPT.txt
+│   │   ├── MAIN_NEO_WIRE_MOM.f90
+│   │   ├── matrix_module.f90
+│   │   ├── mesh_m.f90
+│   │   ├── nodes_wires_segments_m.f90
+│   │   ├── pattern_v2_m.f90
+│   │   ├── Quadrature_V2_m.f90
+│   │   ├── Units_File_Frequency_m.f90
+│   │   ├── Vector_and_Utility_m.f90
+│   │   └── zfill_m.f90
+│   ├── windows
+│   └── windows_to_linux.md
+├── input_gui
+│   ├── linux
+│   │   ├── input_neomom - Copy.spec
+│   │   └── neomom_input.spec
+│   ├── requirements_input_project.txt
+│   ├── src
+│   │   ├── constants.py
+│   │   ├── maa_parser.py
+│   │   ├── neomom_input.py
+│   │   ├── neomom_model.py
+│   │   ├── nml_io.py
+│   │   ├── nml_to_maa.py
+│   │   └── nml_to_nec.py
+│   └── windows
+├── neomom.sln
+├── packages
+│   ├── linux
+│   │   ├── models
+│   │   ├── neomom
+│   │   ├── neomom_input
+│   │   └── neomom_plot
+│   ├── neomom_linux.zip
+│   ├── neoMoM_overview_June_17.pdf
+│   ├── neomom_windows.zip
+│   └── windows
+│       ├── models
+│       ├── neomom.exe
+│       ├── neomom_input.exe
+│       └── neomom_plot.exe
+├── plot_gui
+│   ├── buildpy.bat
+│   ├── linux
+│   │   ├── neomom_plot_good.spec
+│   │   └── neomom_plot.spec
+│   ├── plot_requirements.txt
+│   ├── requirements_good.txt
+│   ├── src
+│   │   ├── data_reader.py
+│   │   ├── display_config.py
+│   │   ├── neomom_plot.py
+│   │   ├── pattern_math.py
+│   │   ├── plot_3d.py
+│   │   └── plot_panel.py
+│   └── windows
+├── README.md
+└── test_cases
+    ├── 80m_dipole
+    │   ├── 80m_dipole_ground_study.csv
+    │   ├── 80m_dipole_ground_study.nml
+    │   └── 80m_dipole_ground_study.txt
+    ├── delta_loop
+    │   ├── Delta_Loop_40m_at_10m.csv
+    │   ├── Delta_Loop_40m_at_10m.nml
+    │   ├── Delta_Loop_40m_at_10m.txt
+    │   ├── Delta_Loop_40m.csv
+    │   ├── Delta_Loop_40m.nml
+    │   └── Delta_Loop_40m.txt
+    ├── dipoles
+    │   ├── Center_fed_40m_dipole.csv
+    │   ├── Center_fed_40m_dipole.cur
+    │   ├── Center_fed_40m_dipole.nml
+    │   └── Center_fed_40m_dipole.txt
+    ├── disk_cone
+    │   ├── disk_8_spoke_4_wire.csv
+    │   ├── disk_8_spoke_4_wire.nml
+    │   ├── disk_8_spoke_4_wire.txt
+    │   ├── disk_8_spoke_8_wire.csv
+    │   ├── disk_8_spoke_8_wire.nml
+    │   ├── disk_8_spoke_8_wire.txt
+    │   ├── disk_cone_maa.csv
+    │   ├── disk_cone_maa.nml
+    │   ├── disk_cone_maa_original.csv
+    │   ├── disk_cone_maa_original.nml
+    │   ├── disk_cone_maa_original.txt
+    │   ├── disk_cone_maa_pollyWire_backup.nml
+    │   ├── disk_cone_maa_pollyWire.csv
+    │   ├── disk_cone_maa_pollyWire.txt
+    │   └── disk_cone_maa.txt
+    ├── maa_files
+    │   ├── Aperiodic
+    │   ├── Feeders
+    │   ├── HF beams
+    │   ├── HF multibands
+    │   ├── HF simple
+    │   ├── Match
+    │   ├── Phased
+    │   ├── Radiation of feeder
+    │   ├── Receive
+    │   ├── Short
+    │   ├── Stacks
+    │   ├── VHF
+    │   └── VHF beams
+    ├── maa_files.zip
+    ├── run_validations.bat
+    ├── run_validations.ps1
+    ├── validation_cases
+    │   ├── delta_loop
+    │   ├── dipole
+    │   ├── disk
+    │   ├── disk_cone
+    │   ├── efhw
+    │   ├── folded_dipole
+    │   ├── J_Pole
+    │   ├── monopole
+    │   └── yagi
+    └── wire_cube
+        └── wire_cube.nec
+

@@ -1,0 +1,60 @@
+&RunTitle
+   title = 'J Pole From Chat GPT'
+/
+
+&Frequency_MHz
+   fmin  = 145.0
+   fmax  = 145.0
+   nFreq = 1
+/
+
+&Ground
+   Ground_Plane = real
+   epsilon = 14.0
+   sigma = 0.005
+/
+
+&OPTIONS
+   NBASISPERLAMBDA = 40
+/
+
+&node_input
+   zHeight = 10.0
+   nNodes = 5
+   units = meters
+
+ node_list(1) = A, 0.0, 0.0, 0.0
+ node_list(2) = B, 0.0, 0.0, 1.535
+ node_list(3) = C, 0.05, 0.0, 0.0
+ node_list(4) = D, 0.05, 0.0, 0.511
+ node_list(5) = F, 0.05, 0.0, 0.25
+/
+
+&wire_primitive
+   tag   = W1,
+   nNodes = 2,
+   nodeTags = A B
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = W2,
+   nNodes = 3,
+   nodeTags = C F D
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = W3,
+   nNodes = 2,
+   nodeTags = A C
+   radius     = 0.001
+/
+
+&excitation_input
+   wireTag = W2
+   nodeTag = F
+   voltage = 1.0
+   phase_deg = 0.0
+/
+

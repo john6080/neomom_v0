@@ -1,0 +1,29 @@
+{
+  "source_dirs": ["src"],
+
+  "include_dirs": [
+    "include",
+    "vendor_stubs",
+    "build"
+  ],
+
+  "mod_dirs": ["build"],
+
+  "mod_dir": "build",
+
+  "extensions": [
+    ".f90",
+    ".F90",
+    ".f",
+    ".F"
+  ],
+
+  "fortran.linter.compiler": "/opt/intel/oneapi/2025.3/bin/ifx",
+
+  "incremental_sync": true,
+  "autocomplete": true,
+  "hover_signature": true,
+  "variable_hover": true,
+  "use_signature_help": true
+}
+

@@ -1,0 +1,108 @@
+&RunTitle
+   title = 'Disk 8 Spoke 8 wire'
+/
+
+&Frequency_MHz
+   fmin  = 145.0
+   fmax  = 145.0
+   nFreq = 1
+/
+
+&Ground
+   Ground_Plane = free_space
+   epsilon = 14.0
+   sigma = 0.005
+/
+
+&OPTIONS
+   NBASISPERLAMBDA = 40
+   OUTPUT_CURRENTS = T
+/
+
+&node_input
+   zHeight = 0.0
+   nNodes = 10
+   units = meters
+
+ node_list(1) = F, 0.0, 0.0, -0.4525
+ node_list(2) = C, 0.0, 0.0, 0.1
+ node_list(3) = SE, -0.4525, 0.4525, 0.1
+ node_list(4) = NW, 0.4525, -0.4525, 0.1
+ node_list(5) = NE, 0.4525, 0.4525, 0.1
+ node_list(6) = SW, -0.4525, -0.4525, 0.1
+ node_list(7) = N, 0.64, 0.0, 0.1
+ node_list(8) = S, -0.64, 0.0, 0.1
+ node_list(9) = W, 0.0, -0.64, 0.1
+ node_list(10) = E, 0.0, 0.64, 0.1
+/
+
+&wire_primitive
+   tag   = W0,
+   nNodes = 2,
+   nodeTags = F C
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = WNE,
+   nNodes = 2,
+   nodeTags = C NE
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = WE,
+   nNodes = 2,
+   nodeTags = C E
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = WSE,
+   nNodes = 2,
+   nodeTags = C SE
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = WS,
+   nNodes = 2,
+   nodeTags = C S
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = WSW,
+   nNodes = 2,
+   nodeTags = C SW
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = WW,
+   nNodes = 2,
+   nodeTags = C W
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = WNW,
+   nNodes = 2,
+   nodeTags = C NW
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = WN,
+   nNodes = 2,
+   nodeTags = C N
+   radius     = 0.001
+/
+
+&excitation_input
+   wireTag = W0
+   nodeTag = F
+   voltage = 1.0
+   phase_deg = 0.0
+/
+

@@ -1,0 +1,56 @@
+&RunTitle
+   title = 'J Pole Stub feed'
+/
+
+&Frequency_MHz
+   fmin  = 146.0
+   fmax  = 146.0
+   nFreq = 1
+/
+
+&Ground
+   Ground_Plane = real
+   epsilon = 14.0
+   sigma = 0.005
+/
+
+&OPTIONS
+   NBASISPERLAMBDA = 40
+   OUTPUT_CURRENTS = T
+/
+
+&node_input
+   zHeight = 10.0
+   nNodes = 7
+   units = meters
+
+ node_list(1) = R0, 0.0, 0.0, 0.0
+ node_list(2) = RTOP, 0.0, 0.0, 0.825  ! 1.0274
+ node_list(3) = S0, 0.0254, 0.0, 0.0
+ node_list(4) = STOP, 0.0254, 0.0, 0.5137
+ node_list(5) = RF, 0.0, 0.0, 0.175
+ node_list(6) = SF, 0.0254, 0.0, 0.175
+ node_list(7) = C, 0.0127, 0.0, 0.175
+/
+
+&wire_primitive
+   tag   = W1,
+   nNodes = 6,
+   nodeTags = RTOP RF R0 S0 SF STOP
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = W2,
+   nNodes = 3,
+   nodeTags = RF C SF
+   radius     = 0.001
+/
+
+&excitation_input
+   wireTag = W2
+   nodeTag = C
+   voltage = 1.0
+   phase_deg = 0.0
+/
+

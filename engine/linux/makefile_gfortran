@@ -1,0 +1,123 @@
+# ============================================================
+# NeoMOM Engine Makefile — gfortran
+# Invoke from: engine/linux/
+# ============================================================
+
+FC := gfortran
+
+# ------------------------------------------------------------
+# PATHS
+# Makefile lives in engine/linux/, so ROOT is two levels up
+# ------------------------------------------------------------
+
+ROOT        := ../..
+SRC_DIR     := $(ROOT)/engine/src
+LOCAL_BUILD := $(ROOT)/engine/build
+TOP_BUILD   := $(ROOT)/build
+
+NAME      := neomom
+LOCAL_EXE := $(LOCAL_BUILD)/$(NAME)
+FINAL_EXE := $(TOP_BUILD)/$(NAME)
+
+BUILD ?= Debug
+
+# ------------------------------------------------------------
+# FLAGS
+# ------------------------------------------------------------
+
+ifeq ($(BUILD),Debug)
+  FFLAGS := -g -O0 \
+            -fcheck=all \
+            -fbacktrace \
+            -Wall -Wunused \
+            -cpp
+else
+  FFLAGS := -O2 -fbacktrace -cpp
+endif
+
+FFLAGS += -J$(LOCAL_BUILD) -I$(LOCAL_BUILD)
+
+LDFLAGS :=
+LIBS    :=
+
+# ------------------------------------------------------------
+# SOURCES & DEPENDENCIES
+# ------------------------------------------------------------
+
+SRC  := $(wildcard $(SRC_DIR)/*.f90)
+OBJS := $(patsubst $(SRC_DIR)/%.f90, $(LOCAL_BUILD)/%.o, $(SRC))
+DEPS := $(LOCAL_BUILD)/deps.mk
+
+# ------------------------------------------------------------
+# DEFAULT TARGET
+# ------------------------------------------------------------
+
+.DEFAULT_GOAL := all
+
+all: $(LOCAL_BUILD) $(TOP_BUILD) $(LOCAL_EXE) install
+
+# ------------------------------------------------------------
+# DEPENDENCY GENERATION (requires makedepf90)
+# Install on Ubuntu: sudo apt install makedepf90
+# ------------------------------------------------------------
+
+$(DEPS): $(SRC) | $(LOCAL_BUILD)
+	makedepf90 -b $(LOCAL_BUILD) -o $(LOCAL_EXE) $(SRC) | \
+	    grep '^$(LOCAL_BUILD).*\.o' > $(DEPS)
+
+-include $(DEPS)
+
+# ------------------------------------------------------------
+# COMPILATION
+# ------------------------------------------------------------
+
+$(LOCAL_BUILD)/%.o: $(SRC_DIR)/%.f90 | $(LOCAL_BUILD)
+	$(FC) $(FFLAGS) $(CPPFLAGS) -c $< -o $@
+
+# ------------------------------------------------------------
+# LINK (local build only)
+# ------------------------------------------------------------
+
+$(LOCAL_EXE): $(OBJS)
+	$(FC) $(FFLAGS) -o $@ $(OBJS)
+
+# ------------------------------------------------------------
+# INSTALL — only step that writes to TOP_BUILD
+# ------------------------------------------------------------
+
+install: $(LOCAL_EXE) | $(TOP_BUILD)
+	cp $(LOCAL_EXE) $(FINAL_EXE)
+	@echo "Installed: $(FINAL_EXE)"
+
+# ------------------------------------------------------------
+# DIRECTORY CREATION
+# ------------------------------------------------------------
+
+$(LOCAL_BUILD):
+	mkdir -p $@
+
+$(TOP_BUILD):
+	mkdir -p $@
+
+# ------------------------------------------------------------
+# UTILITY TARGETS
+# ------------------------------------------------------------
+
+.PHONY: all clean distclean debug release install deps
+
+deps: $(DEPS)
+
+debug:
+	$(MAKE) BUILD=Debug
+
+release:
+	$(MAKE) BUILD=Release
+
+clean:
+	rm -rf $(LOCAL_BUILD)
+	@echo "engine/build/ cleaned"
+
+distclean:
+	rm -rf $(LOCAL_BUILD)
+	rm -f  $(FINAL_EXE)
+	@echo "engine/build/ and $(FINAL_EXE) removed"

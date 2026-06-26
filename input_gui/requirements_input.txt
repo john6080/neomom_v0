@@ -1,0 +1,17 @@
+# requirements_input.txt
+# neomom_input GUI — minimal dependencies
+#
+# Only matplotlib is required beyond the Python standard library.
+# tkinter is stdlib but must be present in the Python installation
+# (on Ubuntu: sudo apt install python3-tk).
+#
+# To recreate the venv from scratch:
+#   python3 -m venv ~/venvs/neomom_input
+#   source ~/venvs/neomom_input/bin/activate
+#   pip install -r requirements_input.txt
+#
+# To regenerate this file accurately from the active venv:
+#   pip-chill > requirements_input.txt   (pip install pip-chill)
+# Do NOT use pip freeze — it dumps everything including indirect deps.
+
+matplotlib

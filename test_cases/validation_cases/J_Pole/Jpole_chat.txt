@@ -1,0 +1,125 @@
+--------------------------------------------------------------------------------
+ 
+                   ---|  Input File |---
+ 
+&RunTitle
+   title = 'J Pole From Chat GPT'
+/
+
+&Frequency_MHz
+   fmin  = 146.52
+   fmax  = 146.52
+   nFreq = 1
+/
+
+&Ground
+   Ground_Plane = free_space
+   epsilon = 1.0
+   sigma = 0.0
+/
+
+&OPTIONS
+   NBASISPERLAMBDA = 40
+/
+
+&node_input
+   zHeight = 0.0
+   nNodes = 5
+   units = meters
+
+ node_list(1) = A, 0.0, 0.0, 0.0
+ node_list(2) = B, 0.0, 0.0, 1.535
+ node_list(3) = C, 0.05, 0.0, 0.0
+ node_list(4) = D, 0.05, 0.0, 0.511
+ node_list(5) = F, 0.05, 0.0, 0.25
+/
+
+&wire_primitive
+   tag   = W1,
+   nNodes = 2,
+   nodeTags = A B
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = W2,
+   nNodes = 3,
+   nodeTags = C F D
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = W3,
+   nNodes = 2,
+   nodeTags = A C
+   radius     = 0.001
+/
+
+&excitation_input
+   wireTag = W2
+   nodeTag = F
+   voltage = 1.0
+   phase_deg = 0.0
+/
+
+ 
+                      ---| End Of Copied Input Data |---
+--------------------------------------------------------------------------------
+ 
+ 
+ 
+ &OPTIONS
+ NBASISPERLAMBDA =          40,
+ OUTPUT_CURRENTS = F
+ /
+
+================================================================================
+  NeoMom v0                                      2026-06-17  16:38:37
+================================================================================
+  Run   :  J Pole From Chat GPT
+  File  :  E:\AntennaModeling_AI\models\validation_cases\J_Pole\Jpole_chat.nml
+================================================================================
+  FREQUENCY & MESH
+  ------------------------------------------------------------------------------
+  Frequency              :    146.5200  MHz
+  Wavelength             :    2.046085  m
+  Segments               :      44
+  Basis functions        :      43
+  Segment length         :   0.05115  m   (lambda /   40.0)
+  Antenna size           :    0.7506  lambda   (kD =   4.7162)
+================================================================================
+  GROUND
+  ------------------------------------------------------------------------------
+  Type                   :  FREE_SPACE
+================================================================================
+  PORT  1 of  1    W2 / F                                Z0_ref =   50.00  Ohm
+  ------------------------------------------------------------------------------
+  Zin                    :    76.053  +j    116.933  Ohm
+  |Zin| / angle          :   139.490  Ohm  /     56.96  deg
+  Gamma                  :  0.69676                  angle =    34.59  deg
+  SWR                    :     5.596
+  P_in                   : 1.9544E-03  W     (     1.954  mW)
+================================================================================
+  P_accepted             : 1.9544E-03  W
+================================================================================
+  PATTERN
+  ------------------------------------------------------------------------------
+  Theta  :   0.0 to  180.0 deg   step   5.0 deg  (   37 pts)
+  Phi    :   0.0 to  360.0 deg   step   5.0 deg  (   73 pts)   nAng =    2701
+  ------------------------------------------------------------------------------
+  Peak G_total           :   2.980 dBi   at  theta =   70.00 deg   phi =    0.00 deg
+  Peak G_theta           :   2.980 dBi   at  theta =   70.00 deg   phi =    0.00 deg
+  Peak G_phi             : -16.071 dBi   at  theta =    0.00 deg   phi =   90.00 deg
+================================================================================
+  POWER BALANCE  (FREE_SPACE)
+  ------------------------------------------------------------------------------
+  P_radiated             : 1.9543E-03  W
+  P_accepted             : 1.9544E-03  W
+  Ratio P_rad/P_in       :   1.0000              PASS  (< 1% error)
+================================================================================
+  OUTPUT FILES
+  ------------------------------------------------------------------------------
+  Text summary           :  E:\AntennaModeling_AI\models\validation_cases\J_Pole\Jpole_chat.txt
+  Pattern CSV            :  E:\AntennaModeling_AI\models\validation_cases\J_Pole\Jpole_chat.csv
+================================================================================
+

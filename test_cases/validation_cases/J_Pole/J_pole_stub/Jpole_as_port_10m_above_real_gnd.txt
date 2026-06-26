@@ -1,0 +1,132 @@
+--------------------------------------------------------------------------------
+ 
+                   ---|  Input File |---
+ 
+&RunTitle
+   title = 'J Pole Port Ex Differential'
+/
+
+&Frequency_MHz
+   fmin  = 139.0
+   fmax  = 139.0
+   nFreq = 1
+/
+
+&Ground
+   Ground_Plane = real
+   epsilon = 14.0
+   sigma = 0.005
+/
+
+&OPTIONS
+   NBASISPERLAMBDA = 40
+   OUTPUT_CURRENTS = T
+/
+
+&node_input
+   zHeight = 10.0
+   nNodes = 6
+   units = meters
+
+ node_list(1) = A, 0.0, 0.0, 0.0
+ node_list(2) = B, 0.0, 0.0, 1.535
+ node_list(3) = C, 0.05, 0.0, 0.0
+ node_list(4) = D, 0.05, 0.0, 0.511
+ node_list(5) = F, 0.05, 0.0, 0.25
+ node_list(6) = FP, 0.0, 0.0, 0.25
+/
+
+&wire_primitive
+   tag   = W1,
+   nNodes = 6,
+   nodeTags = B FP A C F D
+   radius     = 0.001
+/
+
+&excitation_input
+   wireTag = W1
+   nodeTag = F
+   voltage = 1.0
+   phase_deg = 0.0
+/
+
+&excitation_input
+   wireTag = W1
+   nodeTag = FP
+   voltage = 1.0
+   phase_deg = 0.0
+/
+
+ 
+                      ---| End Of Copied Input Data |---
+--------------------------------------------------------------------------------
+ 
+ 
+ 
+ &OPTIONS
+ NBASISPERLAMBDA =          40,
+ OUTPUT_CURRENTS = T
+ /
+
+================================================================================
+  NeoMom v0                                      2026-06-20  14:44:36
+================================================================================
+  Run   :  J Pole Port Ex Differential
+  File  :  ../models/validation_cases/J_Pole/J_pole_as_port/Jpole_as_port_10m_above_real_gnd.nml
+================================================================================
+  FREQUENCY & MESH
+  ------------------------------------------------------------------------------
+  Frequency              :    139.0000  MHz
+  Wavelength             :    2.156780  m
+  Segments               :      44
+  Basis functions        :      43
+  Segment length         :   0.05392  m   (lambda /   40.0)
+  Antenna size           :   10.6966  lambda   (kD =  67.2087)
+================================================================================
+  GROUND
+  ------------------------------------------------------------------------------
+  Type                   :  REAL
+    Epsilon_r            :   14.0000
+    Sigma                : 5.0000E-03  S/m
+    Height above ground  :   10.0000  m
+================================================================================
+  PORT  1 of  2    W1 / F                                Z0_ref =   50.00  Ohm
+  ------------------------------------------------------------------------------
+  Zin                    :    30.340  +j     -4.185  Ohm
+  |Zin| / angle          :    30.628  Ohm  /     -7.85  deg
+  Gamma                  :  0.24985                  angle =  -165.00  deg
+  SWR                    :     1.666
+  P_in                   : 1.6172E-02  W     (    16.172  mW)
+================================================================================
+  PORT  2 of  2    W1 / FP                               Z0_ref =   50.00  Ohm
+  ------------------------------------------------------------------------------
+  Zin                    :    33.055  +j     -1.001  Ohm
+  |Zin| / angle          :    33.070  Ohm  /     -1.74  deg
+  Gamma                  :  0.20436                  angle =  -175.93  deg
+  SWR                    :     1.514
+  P_in                   : 1.5112E-02  W     (    15.112  mW)
+================================================================================
+  TOTAL P_accepted       : 3.1284E-02  W   (sum of all ports)
+================================================================================
+  PATTERN
+  ------------------------------------------------------------------------------
+  Theta  :   0.0 to   90.0 deg   step   1.0 deg  (   91 pts)
+  Phi    :   0.0 to  360.0 deg   step   1.0 deg  (  361 pts)   nAng =   32851
+  ------------------------------------------------------------------------------
+  Peak G_total           :   6.899 dBi   at  theta =   87.00 deg   phi =    0.00 deg
+  Peak G_theta           :   6.899 dBi   at  theta =   87.00 deg   phi =    0.00 deg
+  Peak G_phi             : -11.164 dBi   at  theta =   87.00 deg   phi =   90.00 deg
+================================================================================
+  POWER BALANCE  (REAL)
+  ------------------------------------------------------------------------------
+  P_radiated             : 1.9988E-02  W
+  P_accepted             : 3.1284E-02  W
+  Radiation efficiency   :   0.6389              ( 63.9%)
+================================================================================
+  OUTPUT FILES
+  ------------------------------------------------------------------------------
+  Text summary           :  ../models/validation_cases/J_Pole/J_pole_as_port/Jpole_as_port_10m_above_real_gnd.txt
+  Pattern CSV            :  ../models/validation_cases/J_Pole/J_pole_as_port/Jpole_as_port_10m_above_real_gnd.csv
+  Current file           :  ../models/validation_cases/J_Pole/J_pole_as_port/Jpole_as_port_10m_above_real_gnd.cur
+================================================================================
+

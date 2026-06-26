@@ -1,0 +1,32 @@
+# Indentation
+-i 2
+--indent-continuation 4
+
+# Line length
+-l 100
+
+# Whitespace rules
+--whitespace
+--whitespace-comma
+--whitespace-operators
+--whitespace-relational
+--whitespace-logical
+
+# Case handling
+--case intrinsics=lower
+--case keywords=lower
+
+# Declarations (full alignment)
+--enable-decl
+--align-decl          # aligns the :: separator
+--align-names         # aligns variable names
+--align-attributes    # aligns attributes (intent, allocatable, pointer, etc.)
+--align-associate
+--align-construct-names
+
+# Continuation style
+--continuation 2
+
+# Cleanup
+--strip-trailing-whitespace
+

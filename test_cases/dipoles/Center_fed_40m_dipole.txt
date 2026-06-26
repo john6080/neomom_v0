@@ -1,0 +1,109 @@
+--------------------------------------------------------------------------------
+ 
+                   ---|  Input File |---
+ 
+&RunTitle
+   title = '40 m center fed dipole'
+/
+
+&Frequency_MHz
+   fmin  = 7.3
+   fmax  = 7.3
+   nFreq = 1
+/
+
+&Ground
+   Ground_Plane = free_space
+   epsilon = 14.0
+   sigma = 0.005
+/
+
+&OPTIONS
+   NBASISPERLAMBDA = 40
+/
+
+&node_input
+   zHeight = 30.0
+   nNodes = 3
+   units = feet
+
+ node_list(1) = A, -33.0, 0.0, 0.0
+ node_list(2) = B, 0.0, 0.0, 0.0
+ node_list(3) = C, 33.0, 0.0, 0.0
+/
+
+&wire_primitive
+   tag   = W1,
+   nNodes = 3,
+   nodeTags = A B C
+   radius     = 0.001
+/
+
+&excitation_input
+   wireTag = W1
+   nodeTag = B
+   voltage = 1.0
+   phase_deg = 0.0
+/
+
+ 
+                      ---| End Of Copied Input Data |---
+--------------------------------------------------------------------------------
+ 
+ 
+ 
+ &OPTIONS
+ NBASISPERLAMBDA =          40,
+ OUTPUT_CURRENTS = F
+ /
+
+================================================================================
+  NeoMom v0                                      2026-06-25  11:40:34
+================================================================================
+  Run   :  40 m center fed dipole
+  File  :  /home/john/AntennaModeling_neoMoM/test_cases/dipoles/Center_fed_40m_dipole.nml
+================================================================================
+  FREQUENCY & MESH
+  ------------------------------------------------------------------------------
+  Frequency              :      7.3000  MHz
+  Wavelength             :   41.067455  m
+  Segments               :      20
+  Basis functions        :      19
+  Segment length         :   1.02669  m   (lambda /   40.0)
+  Antenna size           :    0.4898  lambda   (kD =   3.0778)
+================================================================================
+  GROUND
+  ------------------------------------------------------------------------------
+  Type                   :  FREE_SPACE
+================================================================================
+  PORT  1 of  1    W1 / B                                Z0_ref =   50.00  Ohm
+  ------------------------------------------------------------------------------
+  Zin                    :    73.196  +j      9.423  Ohm
+  |Zin| / angle          :    73.800  Ohm  /      7.34  deg
+  Gamma                  :  0.20264                  angle =    17.73  deg
+  SWR                    :     1.508
+  P_in                   : 6.7196E-03  W     (     6.720  mW)
+================================================================================
+  P_accepted             : 6.7196E-03  W
+================================================================================
+  PATTERN
+  ------------------------------------------------------------------------------
+  Theta  :   0.0 to  180.0 deg   step   5.0 deg  (   37 pts)
+  Phi    :   0.0 to  360.0 deg   step   5.0 deg  (   73 pts)   nAng =    2701
+  ------------------------------------------------------------------------------
+  Peak G_total           :   2.146 dBi   at  theta =  180.00 deg   phi =   45.00 deg
+  Peak G_theta           :   2.146 dBi   at  theta =    0.00 deg   phi =    0.00 deg
+  Peak G_phi             :   2.146 dBi   at  theta =   65.00 deg   phi =   90.00 deg
+================================================================================
+  POWER BALANCE  (FREE_SPACE)
+  ------------------------------------------------------------------------------
+  P_radiated             : 6.7126E-03  W
+  P_accepted             : 6.7196E-03  W
+  Ratio P_rad/P_in       :   0.9990              PASS  (< 1% error)
+================================================================================
+  OUTPUT FILES
+  ------------------------------------------------------------------------------
+  Text summary           :  /home/john/AntennaModeling_neoMoM/test_cases/dipoles/Center_fed_40m_dipole.txt
+  Pattern CSV            :  /home/john/AntennaModeling_neoMoM/test_cases/dipoles/Center_fed_40m_dipole.csv
+================================================================================
+

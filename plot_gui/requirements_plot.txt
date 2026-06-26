@@ -1,0 +1,19 @@
+# requirements_plot.txt
+# neomom_plot GUI — minimal dependencies
+#
+# tkinter is stdlib but must be present in the Python installation
+# (on Ubuntu: sudo apt install python3-tk).
+# mpl_toolkits.mplot3d is part of matplotlib — no separate install needed.
+#
+# To recreate the venv from scratch:
+#   python3 -m venv ~/venvs/neomom_plot
+#   source ~/venvs/neomom_plot/bin/activate
+#   pip install -r requirements_plot.txt
+#
+# To regenerate this file accurately from the active venv:
+#   pip-chill > requirements_plot.txt   (pip install pip-chill)
+# Do NOT use pip freeze — it dumps everything including indirect deps.
+
+matplotlib
+numpy
+pandas

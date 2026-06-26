@@ -1,0 +1,159 @@
+--------------------------------------------------------------------------------
+ 
+                   ---|  Input File |---
+ 
+&RunTitle
+   title = 'J-antenna 144 MHz'
+/
+
+&Frequency_MHz
+   fmin  = 145.0
+   fmax  = 145.0
+   nFreq = 1
+/
+
+&Ground
+   Ground_Plane = real
+   epsilon = 14.0
+   sigma = 0.005
+/
+
+&OPTIONS
+   NBASISPERLAMBDA = 40
+/
+
+&node_input
+   zHeight = 7.0
+   nNodes = 8
+   units = meters
+
+ node_list(1) = N1, 0.0, 0.0, 0.59
+ node_list(2) = N2, 0.0, 0.0, 1.58
+ node_list(3) = N3, 0.0, 0.0, 0.12
+ node_list(4) = N4, 0.0, 0.0, 0.088
+ node_list(5) = N5, 0.0, 0.01, 0.088
+ node_list(6) = N6, 0.0, 0.01, 0.12
+ node_list(7) = N7, 0.0, 0.01, 0.595
+ node_list(8) = A, 0.0, 0.005, 0.12
+/
+
+&wire_primitive
+   tag   = W1,
+   nNodes = 2,
+   nodeTags = N1 N2
+   radius     = 0.003
+/
+
+&wire_primitive
+   tag   = W2,
+   nNodes = 2,
+   nodeTags = N1 N3
+   radius     = 0.003
+/
+
+&wire_primitive
+   tag   = W3,
+   nNodes = 2,
+   nodeTags = N3 N4
+   radius     = 0.003
+/
+
+&wire_primitive
+   tag   = W4,
+   nNodes = 2,
+   nodeTags = N4 N5
+   radius     = 0.003
+/
+
+&wire_primitive
+   tag   = W5,
+   nNodes = 2,
+   nodeTags = N5 N6
+   radius     = 0.003
+/
+
+&wire_primitive
+   tag   = W6,
+   nNodes = 2,
+   nodeTags = N6 N7
+   radius     = 0.003
+/
+
+&wire_primitive
+   tag   = W7,
+   nNodes = 3,
+   nodeTags = N3 A N6
+   radius     = 0.003
+/
+
+&excitation_input
+   wireTag = W7
+   nodeTag = A
+   voltage = 1.0
+   phase_deg = 0.0
+/
+
+ 
+                      ---| End Of Copied Input Data |---
+--------------------------------------------------------------------------------
+ 
+ 
+ 
+ &OPTIONS
+ NBASISPERLAMBDA =          40,
+ OUTPUT_CURRENTS = F
+ /
+
+================================================================================
+  NeoMom v0                                      2026-06-17  16:15:44
+================================================================================
+  Run   :  J-antenna 144 MHz
+  File  :  J-ant144.nml
+================================================================================
+  FREQUENCY & MESH
+  ------------------------------------------------------------------------------
+  Frequency              :    145.0000  MHz
+  Wavelength             :    2.067534  m
+  Segments               :      50
+  Basis functions        :      50
+  Segment length         :   0.05169  m   (lambda /   40.0)
+  Antenna size           :    8.2997  lambda   (kD =  52.1489)
+================================================================================
+  GROUND
+  ------------------------------------------------------------------------------
+  Type                   :  REAL
+    Epsilon_r            :   14.0000
+    Sigma                : 5.0000E-03  S/m
+    Height above ground  :    7.0000  m
+================================================================================
+  PORT  1 of  1    W7 / A                                Z0_ref =   50.00  Ohm
+  ------------------------------------------------------------------------------
+  Zin                    :    60.099  +j      7.640  Ohm
+  |Zin| / angle          :    60.582  Ohm  /      7.25  deg
+  Gamma                  :  0.11474                  angle =    33.14  deg
+  SWR                    :     1.259
+  P_in                   : 8.1873E-03  W     (     8.187  mW)
+================================================================================
+  P_accepted             : 8.1873E-03  W
+================================================================================
+  PATTERN
+  ------------------------------------------------------------------------------
+  Theta  :   0.0 to   90.0 deg   step   1.0 deg  (   91 pts)
+  Phi    :   0.0 to  360.0 deg   step   1.0 deg  (  361 pts)   nAng =   32851
+  ------------------------------------------------------------------------------
+  Peak G_total           :   6.420 dBi   at  theta =   87.00 deg   phi =   90.00 deg
+  Peak G_theta           :   6.420 dBi   at  theta =   87.00 deg   phi =   90.00 deg
+  Peak G_phi             : -16.241 dBi   at  theta =   86.00 deg   phi =    0.00 deg
+================================================================================
+  POWER BALANCE  (REAL)
+  ------------------------------------------------------------------------------
+  P_radiated             : 5.4094E-03  W
+  P_accepted             : 8.1873E-03  W
+  Radiation efficiency   :   0.6607              ( 66.1%)
+================================================================================
+  OUTPUT FILES
+  ------------------------------------------------------------------------------
+  Text summary           :  J-ant144.txt
+  Pattern CSV            :  J-ant144.csv
+================================================================================
+
