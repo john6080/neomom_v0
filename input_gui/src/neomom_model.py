@@ -32,6 +32,7 @@ class GroundBlock:
 @dataclass
 class OptionsBlock:
     nBasisPerLambda: int = 40      # Fortran solver parameter
+    output_currents: bool = False  # Write segment currents to output file
 
 
 # ------------------------------------------------------------

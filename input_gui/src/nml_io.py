@@ -39,7 +39,7 @@ def write_nml(model: NeoMoMModel, path: str):
         else:
             plane_out = "real"
 
-        w(f"   Ground_Plane = {plane_out}")
+        w(f"   Ground_Plane = '{plane_out}'")
         w(f"   epsilon = {g.permittivity}")
         w(f"   sigma = {g.conductivity}")
         w("/\n")
@@ -48,8 +48,10 @@ def write_nml(model: NeoMoMModel, path: str):
         # OPTIONS (legacy name)
         # ============================================================
         opt = model.options
+        currents_str = ".TRUE." if opt.output_currents else ".FALSE."
         w("&OPTIONS")
         w(f"   NBASISPERLAMBDA = {opt.nBasisPerLambda}")
+        w(f"   Output_Currents = {currents_str}")
         w("/\n")
 
         # ============================================================
@@ -61,11 +63,11 @@ def write_nml(model: NeoMoMModel, path: str):
         w("&node_input")
         w(f"   zHeight = {meta.zHeight}")
         w(f"   nNodes = {len(nodes)}")
-        w(f"   units = {meta.units}")
+        w(f"   units = '{meta.units}'")
         w("")
 
         for i, node in enumerate(nodes, start=1):
-            w(f" node_list({i}) = {node.tag}, {node.x}, {node.y}, {node.z}")
+            w(f" node_list({i}) = '{node.tag}', {node.x}, {node.y}, {node.z}")
 
         w("/\n")
 
@@ -73,10 +75,11 @@ def write_nml(model: NeoMoMModel, path: str):
         # wire_primitive (legacy format)
         # ============================================================
         for wpr in model.wires:
+            node_tags_quoted = " ".join(f"'{t}'" for t in wpr.node_tags)
             w("&wire_primitive")
-            w(f"   tag   = {wpr.tag},")
+            w(f"   tag   = '{wpr.tag}',")
             w(f"   nNodes = {len(wpr.node_tags)},")
-            w(f"   nodeTags = {' '.join(wpr.node_tags)}")
+            w(f"   nodeTags = {node_tags_quoted}")
             w(f"   radius     = {wpr.radius}")
             w("/\n")
 
@@ -85,8 +88,8 @@ def write_nml(model: NeoMoMModel, path: str):
         # ============================================================
         for ex in model.excitations:
             w("&excitation_input")
-            w(f"   wireTag = {ex.wireTag}")
-            w(f"   nodeTag = {ex.nodeTag}")
+            w(f"   wireTag = '{ex.wireTag}'")
+            w(f"   nodeTag = '{ex.nodeTag}'")
             w(f"   voltage = {ex.voltage}")
             w(f"   phase_deg = {ex.phase_deg}")
             w("/\n")

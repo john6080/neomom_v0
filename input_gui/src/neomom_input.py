@@ -179,6 +179,10 @@ def parse_scalar_block(lines):
         # GUI expects "NBASISPERLAMBDA"
         block["NBASISPERLAMBDA"] = block.pop("nbasisperlambda")
 
+    if "output_currents" in block:
+        raw = str(block["output_currents"]).strip().upper()
+        block["output_currents"] = raw in (".TRUE.", "TRUE", "T", "YES", "1")
+
     # RunTitle block (GUI already uses lowercase "title")
     if "title" in block:
         block["title"] = block["title"]
@@ -220,8 +224,8 @@ def parse_node_input(lines):
         if m_node:
             idx = int(m_node.group(1))
 
-            # Normalize tag and coordinates
-            tag = m_node.group(2).strip().upper()
+            # Normalize tag and coordinates (strip quotes added by writer)
+            tag = m_node.group(2).strip().strip("'\"").upper()
             x = m_node.group(3).strip()
             y = m_node.group(4).strip()
             z = m_node.group(5).strip()
@@ -282,7 +286,7 @@ def parse_wire_primitive(lines):
             key, val = normalize_nml_key_value(raw_key, raw_val)
 
             if key == "nodetags":
-                tags = [t.strip().upper() for t in val.split()]
+                tags = [t.strip().strip("'\"").upper() for t in val.split()]
                 wire["nodetags"] = tags
                 continue
 
@@ -343,7 +347,7 @@ def parse_mom_nml(path):
         "RunTitle": {"title": ""},
         "Frequency_MHz": {"fmin": "", "fmax": "", "nFreq": ""},
         "Ground": {"Ground_Plane": "", "epsilon": "", "sigma": ""},
-        "OPTIONS": {"NBASISPERLAMBDA": ""},
+        "OPTIONS": {"NBASISPERLAMBDA": "", "output_currents": False},
         "node_input_meta": {"zHeigth": "", "nNodes": "", "units": ""},
         "nodes": [],
         "wires": [],
@@ -432,7 +436,10 @@ def _dict_to_model(d: dict) -> "NeoMoMModel":
     except (TypeError, ValueError): pass
     opt = d.get("OPTIONS", {})
     try:
-        m.options = OptionsBlock(nBasisPerLambda = int(opt.get("NBASISPERLAMBDA", 40) or 40))
+        m.options = OptionsBlock(
+            nBasisPerLambda = int(opt.get("NBASISPERLAMBDA", 40) or 40),
+            output_currents = bool(opt.get("output_currents", False)),
+        )
     except (TypeError, ValueError): pass
     meta = d.get("node_input_meta", d.get("Node_input", {}).get("meta", {}))
     try:
@@ -1982,6 +1989,7 @@ class GlobalsFrame(ttk.Frame):
 
             # OptionsBlock
             m.options.nBasisPerLambda = int(self.nbasis_var.get())
+            m.options.output_currents = bool(self.output_currents_var.get())
 
         except Exception as e:
             messagebox.showerror("Invalid Globals Input", str(e))
@@ -2053,6 +2061,7 @@ class GlobalsFrame(ttk.Frame):
 
         # Options
         self.nbasis_var = tk.StringVar()
+        self.output_currents_var = tk.BooleanVar(value=False)
 
         self._build_main()
         self.load_from_model()
@@ -2180,6 +2189,18 @@ class GlobalsFrame(ttk.Frame):
             row=0, column=1, padx=4, pady=4, sticky="w"
         )
 
+        ttk.Label(opt_frame, text="Output Currents:").grid(
+            row=0, column=2, padx=(16, 4), pady=4, sticky="e"
+        )
+        ttk.Radiobutton(opt_frame, text="True",  value=True,
+                        variable=self.output_currents_var).grid(
+            row=0, column=3, padx=(0, 4), pady=4, sticky="w"
+        )
+        ttk.Radiobutton(opt_frame, text="False", value=False,
+                        variable=self.output_currents_var).grid(
+            row=0, column=4, padx=(0, 8), pady=4, sticky="w"
+        )
+
         # ------------------------------------------------------------
         # zHeight Warning Banner (row=4, hidden by default)
         # ------------------------------------------------------------
@@ -2254,6 +2275,7 @@ class GlobalsFrame(ttk.Frame):
 
         # OptionsBlock
         self.nbasis_var.set(m.options.nBasisPerLambda)
+        self.output_currents_var.set(m.options.output_currents)
 
         # Apply correct enabled/disabled state to epsilon/sigma fields
         self._on_ground_type_changed()

@@ -1,0 +1,113 @@
+--------------------------------------------------------------------------------
+ 
+                   ---|  Input File |---
+ 
+&RunTitle
+   title = 'test 4'
+/
+
+&Frequency_MHz
+   fmin  = 7.0
+   fmax  = 7.0
+   nFreq = 1
+/
+
+&Ground
+   Ground_Plane = 'real'
+   epsilon = 14.0
+   sigma = 0.005
+/
+
+&OPTIONS
+   NBASISPERLAMBDA = 40
+   Output_Currents = .FALSE.
+/
+
+&node_input
+   zHeight = 10.0
+   nNodes = 3
+   units = 'meters'
+
+ node_list(1) = 'A', 0.0, 0.0, 0.0
+ node_list(2) = 'B', 10.0, 0.0, 0.0
+ node_list(3) = 'C', 20.0, 0.0, 0.0
+/
+
+&wire_primitive
+   tag   = 'W1',
+   nNodes = 3,
+   nodeTags = 'A' 'B' 'C'
+   radius     = 0.001
+/
+
+&excitation_input
+   wireTag = 'W1'
+   nodeTag = 'B'
+   voltage = 1.0
+   phase_deg = 0.0
+/
+
+ 
+                      ---| End Of Copied Input Data |---
+--------------------------------------------------------------------------------
+ 
+ 
+ 
+ &OPTIONS
+ NBASISPERLAMBDA =          40,
+ OUTPUT_CURRENTS = F
+ /
+
+================================================================================
+  NeoMom v0                                      2026-06-28  17:25:55
+================================================================================
+  Run   :  test 4
+  File  :  /home/john/Ant_neomom_to_git/AntennaModeling_neoMoM/input_gui/junk.nml
+================================================================================
+  FREQUENCY & MESH
+  ------------------------------------------------------------------------------
+  Frequency              :      7.0000  MHz
+  Wavelength             :   42.827492  m
+  Segments               :      20
+  Basis functions        :      19
+  Segment length         :   1.07069  m   (lambda /   40.0)
+  Antenna size           :    1.0442  lambda   (kD =   6.5610)
+================================================================================
+  GROUND
+  ------------------------------------------------------------------------------
+  Type                   :  REAL
+    Epsilon_r            :   14.0000
+    Sigma                : 5.0000E-03  S/m
+    Height above ground  :   10.0000  m
+================================================================================
+  PORT  1 of  1    W1 / B                                Z0_ref =   50.00  Ohm
+  ------------------------------------------------------------------------------
+  Zin                    :    71.356  +j    -48.302  Ohm
+  |Zin| / angle          :    86.167  Ohm  /    -34.09  deg
+  Gamma                  :  0.40433                  angle =   -44.44  deg
+  SWR                    :     2.358
+  P_in                   : 4.8053E-03  W     (     4.805  mW)
+================================================================================
+  P_accepted             : 4.8053E-03  W
+================================================================================
+  PATTERN
+  ------------------------------------------------------------------------------
+  Theta  :   0.0 to   90.0 deg   step   5.0 deg  (   19 pts)
+  Phi    :   0.0 to  360.0 deg   step   5.0 deg  (   73 pts)   nAng =    1387
+  ------------------------------------------------------------------------------
+  Peak G_total           :   6.034 dBi   at  theta =   20.00 deg   phi =   90.00 deg
+  Peak G_theta           :   5.995 dBi   at  theta =    0.00 deg   phi =    0.00 deg
+  Peak G_phi             :   6.034 dBi   at  theta =   20.00 deg   phi =   90.00 deg
+================================================================================
+  POWER BALANCE  (REAL)
+  ------------------------------------------------------------------------------
+  P_radiated             : 3.6589E-03  W
+  P_accepted             : 4.8053E-03  W
+  Radiation efficiency   :   0.7614              ( 76.1%)
+================================================================================
+  OUTPUT FILES
+  ------------------------------------------------------------------------------
+  Text summary           :  /home/john/Ant_neomom_to_git/AntennaModeling_neoMoM/input_gui/junk.txt
+  Pattern CSV            :  /home/john/Ant_neomom_to_git/AntennaModeling_neoMoM/input_gui/junk.csv
+================================================================================
+
