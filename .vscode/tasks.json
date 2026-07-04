@@ -1,0 +1,111 @@
+{
+    // VS Code build tasks — NeoMOM
+    // Committed to repo so all machines get the same build tasks.
+    //
+    // Run a task: Terminal > Run Task
+    // The preLaunchTask in launch.json triggers "build engine debug"
+    // automatically before debugging.
+
+    "version": "2.0.0",
+    "tasks": [
+
+        // ----------------------------------------------------------
+        // Build Fortran engine — Debug (default make target)
+        // ----------------------------------------------------------
+        {
+            "label": "build engine debug",
+            "type": "shell",
+            "command": "make",
+            "args": [],
+            "options": {
+                "cwd": "${workspaceFolder}/engine/linux"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": {
+                "owner": "fortran",
+                "fileLocation": ["absolute"],
+                "pattern": {
+                    "regexp": "^(.*)\\((\\d+)\\):\\s+(error|warning|remark)\\s+#?(\\d+)?:?\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "severity": 3,
+                    "message": 5
+                }
+            }
+        },
+
+        // ----------------------------------------------------------
+        // Build Fortran engine — Release
+        // ----------------------------------------------------------
+        {
+            "label": "build engine release",
+            "type": "shell",
+            "command": "make",
+            "args": ["release"],
+            "options": {
+                "cwd": "${workspaceFolder}/engine/linux"
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": {
+                "owner": "fortran",
+                "fileLocation": ["absolute"],
+                "pattern": {
+                    "regexp": "^(.*)\\((\\d+)\\):\\s+(error|warning|remark)\\s+#?(\\d+)?:?\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "severity": 3,
+                    "message": 5
+                }
+            }
+        },
+
+        // ----------------------------------------------------------
+        // Clean engine build
+        // ----------------------------------------------------------
+        {
+            "label": "clean engine",
+            "type": "shell",
+            "command": "make",
+            "args": ["clean"],
+            "options": {
+                "cwd": "${workspaceFolder}/engine/linux"
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+
+        // ----------------------------------------------------------
+        // Full build — all components (Linux)
+        // ----------------------------------------------------------
+        {
+            "label": "build all linux",
+            "type": "shell",
+            "command": "./scripts/build_all_linux.sh",
+            "args": [],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        }
+    ]
+}

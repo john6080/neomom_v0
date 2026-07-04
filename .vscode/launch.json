@@ -1,0 +1,84 @@
+{
+    // VS Code debug launch configurations — NeoMOM
+    // Committed to repo so all machines get the same debug setup.
+    //
+    // Prerequisites:
+    //   sudo apt install gdb
+    //   Build engine in Debug mode first:
+    //     cd engine/linux && make
+    //   The debug exe lands at: engine/build/neomom
+    //
+    // To launch: Run > Start Debugging (F5)
+    //            or select config from the Run and Debug panel
+
+    "version": "0.2.0",
+    "configurations": [
+
+        // ----------------------------------------------------------
+        // Fortran engine — debug build, delta_loop test case
+        // ----------------------------------------------------------
+        {
+            "name": "neomom engine (delta_loop)",
+            "type": "cppdbg",
+            "request": "launch",
+
+            // Debug exe — built by: cd engine/linux && make (Debug is default)
+            "program": "${workspaceFolder}/engine/build/neomom",
+
+            // Input file passed as command-line argument
+            // neomom reads the .nml file from argv[1]
+            "args": [
+                "${workspaceFolder}/test_cases/delta_loop/Delta_Loop_40m.nml"
+            ],
+
+            // Run from project root so any relative paths in the
+            // engine resolve correctly
+            "cwd": "${workspaceFolder}",
+
+            "stopAtEntry": false,
+            "externalConsole": false,
+            "MIMode": "gdb",
+
+            "setupCommands": [
+                {
+                    "description": "Enable pretty printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set disassembly flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ],
+
+            // Build debug engine before launching
+            // Runs: cd engine/linux && make (Debug is default)
+            "preLaunchTask": "build engine debug"
+        },
+
+        // ----------------------------------------------------------
+        // Fortran engine — run only, no rebuild (faster iteration)
+        // ----------------------------------------------------------
+        {
+            "name": "neomom engine (delta_loop, no rebuild)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/engine/build/neomom",
+            "args": [
+                "${workspaceFolder}/test_cases/delta_loop/Delta_Loop_40m.nml"
+            ],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+    ]
+}
