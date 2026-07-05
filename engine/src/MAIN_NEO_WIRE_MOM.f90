@@ -104,7 +104,7 @@ Program neomom
  
 
    call out( compiler_version() )
-   call out( compiler_options() )
+   !call out( compiler_options() )
  
    
 

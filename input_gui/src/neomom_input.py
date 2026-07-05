@@ -2615,12 +2615,15 @@ class MomNMLApp(tk.Tk):
         # Float validator for numeric entry fields
         self.float_vcmd = (self.register(self._validate_float), "%P")
 
-
         # --------------------------------------------------------
         # HiDPI / DPI scaling
         # On Windows, the OS handles DPI scaling automatically —
         # applying manual tk scaling on top doubles the size.
         # On Linux we apply scaling based on screen resolution.
+        #
+        # Geometry is computed as a fraction of screen size so the
+        # window fits correctly on both 1080p and 4K monitors without
+        # hardcoded pixel values.
         # --------------------------------------------------------
         import platform
         sw = self.winfo_screenwidth()
@@ -2636,11 +2639,11 @@ class MomNMLApp(tk.Tk):
         else:
             # Linux / macOS: reports physical pixels, manual scaling.
             if sw >= 3500 and sh >= 2000:
-                scale = 3.0       # 4K physical
+                scale = 2.5       # 4K physical (~3840x2160)
             elif sw >= 2500 and sh >= 1400:
-                scale = 1.75      # 1440p physical
+                scale = 1.5       # 1440p physical (~2560x1440)
             else:
-                scale = 1.2       # 1080p baseline
+                scale = 1.2       # 1080p — no scaling, use native size
             font_scale = scale    # Linux: font and geometry scale together
             self.tk.call('tk', 'scaling', scale)
 
@@ -2652,14 +2655,13 @@ class MomNMLApp(tk.Tk):
         style.configure("Treeview", rowheight=int(28 * font_scale))
 
         # HiDPI Treeview font tuning
-        # Base font size 8 → scales to 24 on 4K
+        # Base font size 8 → scales to 20 on 4K
         base_size = 8
         tv_font = ("TkDefaultFont", int(base_size * font_scale))
 
         style.configure("Treeview", font=tv_font)
         style.configure("Treeview.Heading",
                         font=(tv_font[0], tv_font[1] + 1, "bold"))
-
 
         # Alternating row colors (zebra striping)
         style.map("Treeview", background=[("selected", "#347083")])
@@ -2680,12 +2682,100 @@ class MomNMLApp(tk.Tk):
 
 
         self.title("Neo Wire MOM Input Editor")
-        # Window geometry — Windows reports logical pixels already scaled by OS,
-        # so use a smaller logical size that Windows will scale up correctly.
+        # Window geometry — computed as a fraction of screen size so
+        # the window fits correctly on any monitor without hardcoded values.
+
         if platform.system() == "Windows":
-            self.geometry("600x475")    # half of 1200x950 — OS doubles it to fill 4K
+            self.geometry("600x475")
         else:
-            self.geometry("1200x950")   # Linux: physical pixels, full size
+            # Linux: size as fraction of screen — fits 1080p, 1440p and 4K
+            # w = int(sw * 0.55)   # 55% of screen width  → 1056px on 1080p
+            # h = int(sh * 0.75)   # 75% of screen height → 810px on 1080p
+            w = int(sw * 0.35)   # 55% of screen width  → 1056px on 1080p
+            h = int(sh * 0.45)   # 75% of screen height → 810px on 1080p            
+            self.geometry(f"{w}x{h}")
+
+        # if platform.system() == "Windows":
+        #     # Windows reports logical pixels already scaled by OS.
+        #     # Use a smaller logical size that Windows will scale up correctly.
+        #     self.geometry("600x475")
+        # else:
+        #     # Linux: physical pixels — 65% width, 80% height of screen.
+        #     # On 1080p: ~1248x864   On 4K: ~2496x1728 (then tk scale applies)
+        #     w = int(sw * 0.65)
+        #     h = int(sh * 0.80)
+        #     self.geometry(f"{w}x{h}")
+
+        # # --------------------------------------------------------
+        # # HiDPI / DPI scaling
+        # # On Windows, the OS handles DPI scaling automatically —
+        # # applying manual tk scaling on top doubles the size.
+        # # On Linux we apply scaling based on screen resolution.
+        # # --------------------------------------------------------
+        # import platform
+        # sw = self.winfo_screenwidth()
+        # sh = self.winfo_screenheight()
+
+        # if platform.system() == "Windows":
+        #     # Windows handles geometry scaling via OS DPI awareness.
+        #     # tk scaling = 1.0 gives correct window size on 4K at 200%.
+        #     # font_scale is set separately to get readable font sizes.
+        #     scale      = 1.0      # controls tk scaling (window geometry)
+        #     font_scale = 2.0      # controls font/row sizes independently
+        #     self.tk.call('tk', 'scaling', scale)
+        # else:
+        #     # Linux / macOS: reports physical pixels, manual scaling.
+        #     if sw >= 3500 and sh >= 2000:
+        #         scale = 3.0       # 4K physical
+        #     elif sw >= 2500 and sh >= 1400:
+        #         scale = 1.75      # 1440p physical
+        #     else:
+        #         scale = 1.2       # 1080p baseline
+        #     font_scale = scale    # Linux: font and geometry scale together
+        #     self.tk.call('tk', 'scaling', scale)
+
+        # # Store font_scale for use elsewhere
+        # self._font_scale = font_scale
+
+        # # Fix Treeview row height using font_scale
+        # style = ttk.Style(self)
+        # style.configure("Treeview", rowheight=int(28 * font_scale))
+
+        # # HiDPI Treeview font tuning
+        # # Base font size 8 → scales to 24 on 4K
+        # base_size = 8
+        # tv_font = ("TkDefaultFont", int(base_size * font_scale))
+
+        # style.configure("Treeview", font=tv_font)
+        # style.configure("Treeview.Heading",
+        #                 font=(tv_font[0], tv_font[1] + 1, "bold"))
+
+
+        # # Alternating row colors (zebra striping)
+        # style.map("Treeview", background=[("selected", "#347083")])
+
+        # style.configure("Treeview",
+        #                 background="#ffffff",
+        #                 foreground="black",
+        #                 fieldbackground="#ffffff")
+
+        # style.configure("Treeview.Row", background="#ffffff")
+        # style.configure("Treeview.Alternate", background="#f0f0f0")
+
+        # style.configure("Hdr3.TLabel", font=("Segoe UI", 10, "bold"))
+        # style.configure("Panel.TFrame", background="#f7f7f7")
+        # style.configure("Panel.TLabel", background="#f7f7f7")
+        # style.configure("Panel.TEntry", fieldbackground="#ffffff")
+
+
+
+        # self.title("Neo Wire MOM Input Editor")
+        # # Window geometry — Windows reports logical pixels already scaled by OS,
+        # # so use a smaller logical size that Windows will scale up correctly.
+        # if platform.system() == "Windows":
+        #     self.geometry("600x475")    # half of 1200x950 — OS doubles it to fill 4K
+        # else:
+        #     self.geometry("1200x950")   # Linux: physical pixels, full size
 
         #self.model = None
         self.model = NeoMoMModel()

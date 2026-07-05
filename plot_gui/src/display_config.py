@@ -18,57 +18,25 @@ class DisplayConfig:
     """
     Computes display-aware sizing on first import.
 
-    Attributes (all public, read-only by convention)
-    ----------
-    screen_w_px, screen_h_px : int
-        Raw screen resolution in pixels.
-    scale_factor : float
-        OS UI scaling factor (e.g. 2.0 for 200%).
-        Set explicitly here for Ubuntu/TkAgg which doesn't
-        reliably auto-report HiDPI scaling.
-    logical_w, logical_h : int
-        Effective desktop size in logical pixels
-        (physical / scale_factor).
-    mpl_dpi : int
-        DPI passed to matplotlib figures.  On HiDPI screens we
-        use a higher DPI so figures are physically larger.
+    Figure size and font size are set INDEPENDENTLY by resolution tier.
+    Reducing figure size no longer shrinks fonts.
 
-    Figure sizes (width, height) in inches for plt.subplots():
-    ----------------------------------------------------------
-    fig_polar   : square polar plot  (elevation or azimuth)
-    fig_cart    : rectangular Cartesian plot
-    fig_heatmap : wide heatmap
-    fig_3d      : square-ish 3D surface plot
+    Linux tiers (set in _detect_screen):
+        1080p : FIG_POLAR_IN=4.5, MPL_DPI=100, FONT_BASE=10
+        1440p : FIG_POLAR_IN=5.5, MPL_DPI=120, FONT_BASE=11
+        4K    : FIG_POLAR_IN=6.0, MPL_DPI=200, FONT_BASE=14
 
-    Font sizes (points):
-    --------------------
-    font_title, font_label, font_tick, font_legend, font_annot
+    Tune FONT_BASE up/down by 1pt increments for your monitor.
     """
 
-    # ----------------------------------------------------------------
-    # Direct sizing for 4K monitor at Ubuntu 200% scaling.
-    # Tune FIG_POLAR_IN and MPL_DPI to taste — everything else
-    # cascades from these two values.
-    #
-    # FIG_POLAR_IN : side length in inches for polar plots
-    # MPL_DPI      : dots per inch — higher = larger physical window
-    #
-    # At 200% Ubuntu scaling, the window manager doubles everything,
-    # so a 7-inch figure at 100 DPI appears as a 700px window which
-    # the OS then scales to 1400px on screen — filling roughly
-    # half a 4K display width.  Adjust up/down in steps of 0.5.
-    # ----------------------------------------------------------------
-    FIG_POLAR_IN = 6.0    # inches — tune this
-    MPL_DPI      = 200    # DPI   — tune this
-    WIN_POLAR_SCALE = 0.5  # size multiplier for polar/cart/heatmap windows on Windows
-    WIN_3D_SCALE   = 0.5   # size multiplier for 3D windows on Windows
+    WIN_POLAR_SCALE = 0.5
+    WIN_3D_SCALE    = 0.5
 
     def __init__(self):
         self._detect_screen()
         self._compute_sizes()
 
     def _detect_screen(self):
-        """Record physical screen size and Windows DPI scale factor."""
         root = tk.Tk()
         root.withdraw()
         self.screen_w_px = root.winfo_screenwidth()
@@ -76,85 +44,108 @@ class DisplayConfig:
         self.logical_w   = self.screen_w_px
         self.logical_h   = self.screen_h_px
 
-        # On Windows, detect the actual DPI scale factor so _compute_sizes()
-        # can divide out the OS upscaling that would otherwise double the window.
-        # winfo_fpixels('1i') returns actual pixels per inch; 96 = 100% scaling.
-        self._win_dpi_scale = 1.0
+        sw = self.screen_w_px
+        sh = self.screen_h_px
+
         if platform.system() == 'Windows':
+            self.FIG_POLAR_IN = 6.0
+            self.MPL_DPI      = 200
+            self.FONT_BASE    = 14
             try:
                 actual_dpi = root.winfo_fpixels('1i')
                 self._win_dpi_scale = actual_dpi / 96.0
             except Exception:
                 self._win_dpi_scale = 1.0
 
+        else:
+            self._win_dpi_scale = 1.0
+
+            if sw >= 3500 and sh >= 2000:
+                # 4K (~3840x2160)
+                self.FIG_POLAR_IN = 6.0
+                self.MPL_DPI      = 200
+                self.FONT_BASE    = 14
+
+            elif sw >= 2500 and sh >= 1400:
+                # 1440p (~2560x1440)
+                self.FIG_POLAR_IN = 5.5
+                self.MPL_DPI      = 120
+                self.FONT_BASE    = 11
+
+            else:
+                # 1080p (~1920x1080)
+                self.FIG_POLAR_IN = 4.5
+                self.MPL_DPI      = 100
+                self.FONT_BASE    = 10   # ← tune this for 1080p font size
+
         root.destroy()
 
     def _compute_sizes(self):
-        """
-        Derive all figure sizes from FIG_POLAR_IN.
-        Cartesian is wider/shorter, heatmap full-width, 3D slightly larger.
-        """
         p = self.FIG_POLAR_IN
-        # Polar/cart/heatmap — apply WIN_POLAR_SCALE on Windows
-        _pp = p * self.WIN_POLAR_SCALE if platform.system() == 'Windows' else p
-        self.fig_polar   = (_pp,          _pp)
-        self.fig_cart    = (_pp * 1.6,    _pp * 0.7)
-        self.fig_heatmap = (_pp * 2.2,    _pp * 0.8)
-        # 3D windows need an additional size reduction on Windows because
-        # the forced wm_geometry interacts differently with the OS DPI scale.
-        _3d_p = p * 1.1
+        f = self.FONT_BASE        # font base — independent of figure size
+
         if platform.system() == 'Windows':
-            _3d_p *= self.WIN_3D_SCALE
-        self.fig_3d      = (_3d_p,      _3d_p)
-        # On Windows, the OS applies its DPI scale factor on top of
-        # matplotlib's own sizing, which would make every window too large.
-        # Divide MPL_DPI by the detected scale so the OS upscale brings it
-        # back to the intended physical size.  Works for 100 / 125 / 150 / 200%.
-        if platform.system() == 'Windows' and self._win_dpi_scale > 1.0:
-            self.mpl_dpi = round(self.MPL_DPI / self._win_dpi_scale)
+            _pp   = p * self.WIN_POLAR_SCALE
+            _3d_p = p * 1.1 * self.WIN_3D_SCALE
+            if self._win_dpi_scale > 1.0:
+                self.mpl_dpi = round(self.MPL_DPI / self._win_dpi_scale)
+            else:
+                self.mpl_dpi = self.MPL_DPI
         else:
+            _pp          = p
+            _3d_p        = p * 1.1
             self.mpl_dpi = self.MPL_DPI
 
-        # Polar/cart font sizes — scale with _pp so fonts shrink with window.
-        # Floors prevent values so small that matplotlib ignores them.
-        _sp = _pp / 7.0
-        self.font_title  = max(round(10 * _sp, 1), 6.0)
-        self.font_label  = max(round(9  * _sp, 1), 5.5)
-        self.font_tick   = max(round(8  * _sp, 1), 5.0)
-        self.font_legend = max(round(9  * _sp, 1), 5.5)
-        self.font_annot  = max(round(8  * _sp, 1), 5.0)
+        # Figure sizes (width, height) in inches
+        self.fig_polar   = (_pp,         _pp)
+        self.fig_cart    = (_pp * 1.6,   _pp * 0.7)
+        self.fig_heatmap = (_pp * 2.2,   _pp * 0.8)
+        self.fig_3d      = (_3d_p,       _3d_p)
 
-        # Line widths — scale with _pp so they thin down with the window
-        _lw = _pp / self.FIG_POLAR_IN   # 1.0 on Linux, WIN_POLAR_SCALE on Windows
-        self.lw_plot  = max(round(1.5 * _lw, 2), 0.4)  # main pattern lines
-        self.lw_minor = max(round(0.8 * _lw, 2), 0.2)  # minor tick marks
-        self.lw_grid  = max(round(0.5 * _lw, 2), 0.2)  # polar grid rings
+        # --------------------------------------------------------------
+        # Font sizes — derived from FONT_BASE, NOT from figure size.
+        # This means fonts stay readable even when figures are smaller.
+        # --------------------------------------------------------------
+        self.font_title  = round(f * 1.1, 1)   # slightly larger than base
+        self.font_label  = round(f * 1.0, 1)   # base size
+        self.font_tick   = round(f * 0.9, 1)   # slightly smaller
+        self.font_legend = round(f * 0.9, 1)
+        self.font_annot  = round(f * 0.85, 1)
 
-        # 3D-specific font sizes — scale with _3d_p so they shrink with the
-        # window on Windows.  A floor prevents unreadably tiny text.
-        _s3d = _3d_p / 7.0
-        self.font_3d_title = max(round(11 * _s3d, 1), 6.0)
-        self.font_3d_label = max(round(10 * _s3d, 1), 5.5)
-        self.font_3d_annot = max(round( 8 * _s3d, 1), 5.0)
+        # 3D fonts — same base, slightly larger title
+        self.font_3d_title = round(f * 1.2, 1)
+        self.font_3d_label = round(f * 1.0, 1)
+        self.font_3d_annot = round(f * 0.85, 1)
+
+        # Line widths — still tied to figure size
+        self.lw_plot  = max(round(1.5 * (_pp / 4.5), 2), 0.4)
+        self.lw_minor = max(round(0.8 * (_pp / 4.5), 2), 0.2)
+        self.lw_grid  = max(round(0.5 * (_pp / 4.5), 2), 0.2)
 
     def report(self):
-        """Print a summary — useful for tuning on a new machine."""
         def fmt(t): return f"({t[0]:.2f}, {t[1]:.2f})"
+        def px(t):
+            w = round(t[0] * self.mpl_dpi)
+            h = round(t[1] * self.mpl_dpi)
+            return f"{w}x{h}px"
         print(f"\n{'='*50}")
         print(f"  Display Configuration")
         print(f"{'='*50}")
         print(f"  Screen (tkinter)  : {self.screen_w_px} x {self.screen_h_px} px")
+        print(f"  Platform          : {platform.system()}")
         print(f"  Windows DPI scale : {self._win_dpi_scale:.2f}x  (1.0 on Linux/Mac)")
-        print(f"  FIG_POLAR_IN      : {self.FIG_POLAR_IN} in  (tune this)")
-        print(f"  matplotlib DPI    : {self.mpl_dpi}      (tune this)")
-        print(f"  WIN_POLAR_SCALE   : {self.WIN_POLAR_SCALE}     (Windows polar/cart window scale, tune this)")
-        print(f"  WIN_3D_SCALE      : {self.WIN_3D_SCALE}     (Windows 3D window scale, tune this)")
-        print(f"  fig_polar         : {fmt(self.fig_polar)} in")
-        print(f"  fig_cart          : {fmt(self.fig_cart)} in")
-        print(f"  fig_heatmap       : {fmt(self.fig_heatmap)} in")
-        print(f"  fig_3d            : {fmt(self.fig_3d)} in")
+        print(f"  FIG_POLAR_IN      : {self.FIG_POLAR_IN} in")
+        print(f"  FONT_BASE         : {self.FONT_BASE} pt")
+        print(f"  MPL_DPI (base)    : {self.MPL_DPI}")
+        print(f"  mpl_dpi (actual)  : {self.mpl_dpi}")
+        print(f"  fig_polar         : {fmt(self.fig_polar)} in  →  {px(self.fig_polar)}")
+        print(f"  fig_cart          : {fmt(self.fig_cart)} in  →  {px(self.fig_cart)}")
+        print(f"  fig_heatmap       : {fmt(self.fig_heatmap)} in  →  {px(self.fig_heatmap)}")
+        print(f"  fig_3d            : {fmt(self.fig_3d)} in  →  {px(self.fig_3d)}")
         print(f"  font_title        : {self.font_title} pt")
+        print(f"  font_label        : {self.font_label} pt")
         print(f"  font_tick         : {self.font_tick} pt")
+        print(f"  font_3d_title     : {self.font_3d_title} pt")
         print(f"{'='*50}\n")
 
 
