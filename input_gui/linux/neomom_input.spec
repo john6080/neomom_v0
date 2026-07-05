@@ -77,6 +77,14 @@ a = Analysis(
 
         # matplotlib backend for tkinter embedding
         'matplotlib.backends.backend_tkagg',
+        'matplotlib.figure',
+
+        # numpy — imported inside a function, missed by static analysis
+        'numpy',
+
+        # Pillow tkinter bridge — Pillow is an indirect matplotlib
+        # dependency; PyInstaller does not auto-detect this module
+        'PIL._tkinter_finder',
     ],
 
     hookspath=[],

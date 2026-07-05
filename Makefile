@@ -9,6 +9,8 @@
 #   make input        → build neomom_input GUI only
 #   make plot         → build neomom_plot GUI only
 #   make all          → full build (calls build_all_linux.sh)
+#   make copy         → copy all three executables to ~/bin
+#   make deploy       → full build then copy to ~/bin
 #
 # Engine compiler selection (passed through to engine/linux/Makefile):
 #   make engine COMPILER=gfortran
@@ -67,3 +69,25 @@ plot:
 	    plot_gui/linux/neomom_plot.spec \
 	    --distpath plot_gui/build/dist \
 	    --workpath plot_gui/build/work
+
+# --------------------------------------------------------------
+# COPY TO ~/bin — Linux local install
+# Copies all three executables from their build/dist locations.
+# Run after a successful build (make all or individual targets).
+# --------------------------------------------------------------
+
+.PHONY: copy deploy
+
+copy:
+	@echo "Copying executables to ~/bin..."
+	@mkdir -p $$HOME/bin
+	cp build/neomom                            $$HOME/bin/neomom
+	cp input_gui/build/dist/neomom_input       $$HOME/bin/neomom_input
+	cp plot_gui/build/dist/neomom_plot         $$HOME/bin/neomom_plot
+	@echo "Installed:"
+	@echo "  ~/bin/neomom"
+	@echo "  ~/bin/neomom_input"
+	@echo "  ~/bin/neomom_plot"
+
+deploy: all copy
+	@echo "Deploy complete."

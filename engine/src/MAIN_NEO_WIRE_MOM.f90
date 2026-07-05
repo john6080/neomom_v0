@@ -87,6 +87,8 @@ Program neomom
    use antenna_system_m
    use fresnel_reflection_m
    use excitation_m
+   use iso_fortran_env
+   use antenna_system_m
 
    implicit none
 
@@ -99,6 +101,12 @@ Program neomom
    integer :: iFreq, i                         ! loop indices
 
    !------| start of main |------------------------------------------------------
+ 
+
+   call out( compiler_version() )
+   call out( compiler_options() )
+ 
+   
 
    ! ---- Step 0: read input ----
    ! Input reads namelists (/runTitle/, /Ground/, /OPTIONS/), mesh geometry

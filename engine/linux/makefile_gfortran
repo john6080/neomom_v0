@@ -26,22 +26,29 @@ BUILD ?= Debug
 # ------------------------------------------------------------
 
 ifeq ($(BUILD),Debug)
-  FFLAGS := -g -O0 \
-            -fcheck=all \
-            -fbacktrace \
-            -Wall -Wunused \
-            -cpp
+  FFLAGS  := -g -O0 \
+             -fcheck=all \
+             -fbacktrace \
+             -Wall -Wunused \
+             -cpp
+  # Debug: dynamic linking is fine — runs on the build machine
+  LDFLAGS :=
 else
-  FFLAGS := -O2 -fbacktrace -cpp
+  FFLAGS  := -O2 -fbacktrace -cpp
+  # Release: statically link gfortran and gcc runtime libraries so
+  # the exe runs on machines without the matching gfortran version.
+  # -static-libgfortran  links libgfortran statically
+  # -static-libgcc       links libgcc statically
+  # Note: glibc remains dynamic (fully static glibc causes issues)
+  LDFLAGS := -static-libgfortran -static-libgcc
 endif
 
 FFLAGS += -J$(LOCAL_BUILD) -I$(LOCAL_BUILD)
 
-LDFLAGS :=
 LIBS    :=
 
 # ------------------------------------------------------------
-# SOURCES & DEPENDENCIES
+# SOURCES, OBJECTS & DEPENDENCIES
 # ------------------------------------------------------------
 
 SRC  := $(wildcard $(SRC_DIR)/*.f90)
@@ -79,7 +86,7 @@ $(LOCAL_BUILD)/%.o: $(SRC_DIR)/%.f90 | $(LOCAL_BUILD)
 # ------------------------------------------------------------
 
 $(LOCAL_EXE): $(OBJS)
-	$(FC) $(FFLAGS) -o $@ $(OBJS)
+	$(FC) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 
 # ------------------------------------------------------------
 # INSTALL — only step that writes to TOP_BUILD
@@ -103,7 +110,7 @@ $(TOP_BUILD):
 # UTILITY TARGETS
 # ------------------------------------------------------------
 
-.PHONY: all clean distclean debug release install deps
+.PHONY: all clean distclean debug release install deps copy
 
 deps: $(DEPS)
 
@@ -121,3 +128,7 @@ distclean:
 	rm -rf $(LOCAL_BUILD)
 	rm -f  $(FINAL_EXE)
 	@echo "engine/build/ and $(FINAL_EXE) removed"
+
+copy:
+	cp $(FINAL_EXE) $$HOME/bin/neomom
+	@echo "Copied neomom to ~/bin/"

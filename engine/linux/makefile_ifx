@@ -26,21 +26,27 @@ BUILD ?= Debug
 # ------------------------------------------------------------
 
 ifeq ($(BUILD),Debug)
-  FFLAGS := -g -O0 -traceback \
-            -check bounds \
-            -debug all -fpp \
-            -warn unused -warn all
+  FFLAGS  := -g -O0 -traceback \
+             -check bounds \
+             -debug all -fpp \
+             -warn unused -warn all
+  # Debug: dynamic linking is fine — runs on the build machine
+  LDFLAGS :=
 else
-  FFLAGS := -O2 -traceback -fpp
+  FFLAGS  := -O2 -traceback -fpp
+  # Release: statically link Intel runtime libraries so the exe
+  # runs on machines without Intel oneAPI installed.
+  # -static-intel        links libimf, libsvml, libirng etc. statically
+  # -qopenmp-link=static links OpenMP runtime statically (if used)
+  LDFLAGS := -static-intel -qopenmp-link=static
 endif
 
 FFLAGS += -module $(LOCAL_BUILD) -I$(LOCAL_BUILD)
 
-LDFLAGS :=
 LIBS    :=
 
 # ------------------------------------------------------------
-# SOURCES & DEPENDENCIES
+# SOURCES, OBJECTS & DEPENDENCIES
 # ------------------------------------------------------------
 
 SRC  := $(wildcard $(SRC_DIR)/*.f90)
@@ -78,7 +84,7 @@ $(LOCAL_BUILD)/%.o: $(SRC_DIR)/%.f90 | $(LOCAL_BUILD)
 # ------------------------------------------------------------
 
 $(LOCAL_EXE): $(OBJS)
-	$(FC) $(FFLAGS) -o $@ $(OBJS)
+	$(FC) $(FFLAGS) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 
 # ------------------------------------------------------------
 # INSTALL — only step that writes to TOP_BUILD
@@ -102,7 +108,7 @@ $(TOP_BUILD):
 # UTILITY TARGETS
 # ------------------------------------------------------------
 
-.PHONY: all clean distclean debug release install deps
+.PHONY: all clean distclean debug release install deps copy
 
 deps: $(DEPS)
 
@@ -120,3 +126,7 @@ distclean:
 	rm -rf $(LOCAL_BUILD)
 	rm -f  $(FINAL_EXE)
 	@echo "engine/build/ and $(FINAL_EXE) removed"
+
+copy:
+	cp $(FINAL_EXE) $$HOME/bin/neomom
+	@echo "Copied neomom to ~/bin/"

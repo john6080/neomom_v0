@@ -70,7 +70,13 @@ Thumbs.db
 desktop.ini
 
 # VS Code
-.vscode/
+
+# VS Code — keep launch and tasks, ignore machine-specific settings
+.vscode/settings.json
+.vscode/extensions.json
+# launch.json and tasks.json are intentionally NOT ignored
+#==============================
+
 
 # ==============================================================
 # KEEP EMPTY DIRECTORIES

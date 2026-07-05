@@ -1,0 +1,23 @@
+{
+    "source_dirs": [
+        "engine/src"
+    ],
+    "include_dirs": [
+        "engine/build"
+    ],
+    "mod_dirs": [
+        "engine/build"
+    ],
+    "extensions": [
+        ".f90",
+        ".F90",
+        ".f",
+        ".F"
+    ],
+    "incremental_sync": true,
+    "autocomplete": true,
+    "hover_signature": true,
+    "variable_hover": true,
+    "use_signature_help": true,
+    "notifyInit": true
+}
