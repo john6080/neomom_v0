@@ -41,6 +41,7 @@ Module vector_and_utility_m
              , real_value_after_equal &
              , char_value_after_equal &
              , toUpper &
+             , toLower &
              , write_complex_rect &
              , nml_error
 
@@ -159,6 +160,30 @@ CONTAINS
          string(i:i) = char
       END DO
    END SUBROUTINE change_to_upper_case
+
+!---------------------------------------------------------------
+!  toLower: convert string to lower case in place.
+!  Thin public wrapper around the private change_to_lower_case.
+!---------------------------------------------------------------
+   subroutine toLower(string)
+      CHARACTER(LEN=*), INTENT(INOUT) :: string
+      call change_to_lower_case(string)
+   end subroutine toLower
+
+!---------------------------------------------------------------
+!  change_to_lower_case: private pure worker, converts ASCII
+!  upper-case letters (65-90) to lower case (97-122) in place.
+!---------------------------------------------------------------
+   pure SUBROUTINE change_to_lower_case(string)
+      CHARACTER(LEN=*), INTENT(INOUT) :: string
+      INTEGER             :: i
+      CHARACTER(LEN=1)    :: char
+      DO i = 1, LEN(string)
+         char = string(i:i)
+         IF (IACHAR(char) >= 65 .AND. IACHAR(char) <= 90) char = ACHAR(IACHAR(char) + 32)
+         string(i:i) = char
+      END DO
+   END SUBROUTINE change_to_lower_case
 
 !===============================================================
 !  File I/O utilities

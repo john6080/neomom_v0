@@ -142,6 +142,11 @@ Module antenna_system_m
       type(FILE_TYPE) :: OutFile                ! .txt  text summary output
       type(FILE_TYPE) :: OutFile_3d             ! .csv  pattern output
 
+      ! ---- command-line run control flags ----
+      logical :: bPlot        = .TRUE.   ! .FALSE. suppresses neomom_plot launch
+      logical :: bCurrents    = .FALSE.  ! desired currents value from command line
+      logical :: bCurrOverride = .FALSE. ! .TRUE. if currents= was supplied on cmd line
+
    contains
 
       procedure :: Input
@@ -826,9 +831,13 @@ contains
       call out('')
 
       ! ---- launch Python post-processor (non-blocking) ----
-      cPlot = 'neomom_plot  '
-      call execute_command_line(trim(cPlot)//'  '//trim(this%OutFile_3d%cName), &
-                                wait=.false.)
+      if (this%bPlot) then
+         cPlot = 'neomom_plot  '
+         call execute_command_line(trim(cPlot)//'  '//trim(this%OutFile_3d%cName), &
+                                   wait=.false.)
+      else
+         write(*,'(2x,a)') 'Plot suppressed (plot=.false. on command line)'
+      end if
 
    end subroutine data_out
 
@@ -917,6 +926,49 @@ contains
       call Get_Command_Argument(0, cBuffer)
       call Get_Command_Argument(1, this%GeoFile%cName)
 
+      ! ---- optional key=value arguments (argv 2..N) ----------------------
+      ! Usage examples:
+      !   neomom input.nml plot=.false.
+      !   neomom input.nml currents=.true.
+      !   neomom input.nml plot=.false. currents=.true.
+      ! Keys are case-insensitive. Values accept .true./.false. or true/false.
+      ! Unknown keys produce a warning and are ignored.
+      block
+         integer        :: iArg, ieq
+         character(256) :: cArg, cKey, cVal
+
+         do iArg = 2, nArg
+            call Get_Command_Argument(iArg, cArg)
+            cArg = trim(adjustl(cArg))
+            ieq  = index(cArg, "=")
+
+            if (ieq > 0) then
+               cKey = cArg(1:ieq-1)
+               cVal = cArg(ieq+1:)
+               call toLower(cKey)
+               call toLower(cVal)
+
+               select case (trim(cKey))
+
+               case ("plot")
+                  this%bPlot = (trim(cVal) == ".true." .or. trim(cVal) == "true")
+                  write(*,"(2x,a,l1)") "Command-line: plot     = ", this%bPlot
+
+               case ("currents")
+                  this%bCurrents    = (trim(cVal) == ".true." .or. trim(cVal) == "true")
+                  this%bCurrOverride = .TRUE.   ! flag that cmd-line wins over .nml
+                  write(*,"(2x,a,l1)") "Command-line: currents = ", this%bCurrents
+
+               case default
+                  write(*,"(2x,a,a,a)") &
+                     "WARNING: unknown command-line option ", trim(cArg), " ignored"
+
+               end select
+            end if
+         end do
+      end block
+      ! ---------------------------------------------------------------------
+
       this%GeoFile%cName = trim(this%GeoFile%cName)
 
       l = len(trim(this%GeoFile%cName))
@@ -987,6 +1039,11 @@ contains
 
          this%nBasisPerLambda = nBasisPerLambda
          this%mesh%bOutputCurrents = output_currents
+
+         ! Command-line currents= overrides the .nml setting unconditionally.
+         ! If currents= was supplied on the command line, bCurrOverride is .TRUE.
+         ! and bCurrents holds the desired value regardless of .nml.
+         if (this%bCurrOverride) this%mesh%bOutputCurrents = this%bCurrents
 
          write (this%OutFile%iU, *)
          call CenteredOut('---| Name List Data |---')
