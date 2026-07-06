@@ -10,6 +10,7 @@ Module antenna_system_m
 !
 !  Subroutines (bound to ANTENNA_TYPE):
 !   Input        -- read .geo namelist file, build mesh, set excitations
+!                   also parses optional command-line key=value flags
 !   pattern_3d   -- adaptive 3-D far-field pattern, gain, CSV output
 !   power_check  -- energy-conservation / radiation-efficiency check
 !   data_out     -- formatted output panel + launch neomom_plot
@@ -22,18 +23,47 @@ Module antenna_system_m
 !   matrix_m               MATRIX_TYPE (LU factorisation)
 !   angle_cut_m            ANGLE_CUT_TYPE (spherical angle grid)
 !   frequency_m            FREQUENCY_TYPE (bk, lambda, freq_mhz)
-!   vector_and_utility_m   zp() (polar form), out(), CenteredOut(), etc.
+!   vector_and_utility_m   zp() (polar form), out(), CenteredOut(), toLower()
 !   file_m                 FILE_TYPE, OpenFile(), copy_file()
 !
 !==============================================================================
 !  SOLUTION FLOW
 !==============================================================================
 !
-!  Typical main-program call sequence:
+!  Typical main-program call sequence (single frequency):
 !
 !   call sys%Input()           1. read .geo file, build mesh, assemble Z, solve
 !   call sys%pattern_3d(pat)   2. compute far-field on adaptive grid
-!   call sys%data_out()        3. formatted panel + launch plot_neomom
+!   call sys%data_out()        3. formatted panel + launch neomom_plot
+!
+!  Frequency sweep (nFreq > 1) — same sequence inside the freq loop in main.
+!  Output files are automatically tagged with frequency:
+!   Single : dipole.csv  dipole.txt  dipole.cur
+!   Sweep  : dipole_7.000MHz.csv  dipole_7.000MHz.txt  dipole_7.000MHz.cur
+!
+!==============================================================================
+!  COMMAND-LINE OPTIONS
+!==============================================================================
+!
+!  argv(1)  : input .geo file path (required)
+!  argv(2+) : optional key=value pairs (case-insensitive), any order
+!
+!  Supported keys:
+!   plot=.false.      suppress neomom_plot launch (batch/sweep mode)
+!   plot=.true.       force plot launch (default)
+!   currents=.true.   override .nml output_currents — write .cur file
+!   currents=.false.  override .nml output_currents — suppress .cur file
+!
+!  Examples:
+!   neomom dipole.nml
+!   neomom dipole.nml plot=.false.
+!   neomom dipole.nml plot=.false. currents=.true.
+!
+!  Notes:
+!   - currents= overrides the .nml output_currents setting unconditionally.
+!     If currents= is absent, the .nml value is used unchanged.
+!   - Unknown keys produce a warning and are silently ignored.
+!   - Values accept both .true./.false. and true/false (without dots).
 !
 !==============================================================================
 
@@ -111,7 +141,21 @@ Module antenna_system_m
 !   cVersion         -- version string embedded in output headers (default 'NeoMom v0')
 !   GeoFile          -- FILE_TYPE for the .geo geometry input file
 !   OutFile          -- FILE_TYPE for the .txt text output file
+!                       Single freq: <cInFileBase>.txt (opened once in Input)
+!                       Sweep:       <cInFileBase>_<freq>MHz.txt (reopened each freq)
 !   OutFile_3d       -- FILE_TYPE for the .csv far-field pattern output file
+!                       Single freq: <cInFileBase>.csv
+!                       Sweep:       <cInFileBase>_<freq>MHz.csv
+!
+!  Command-line run control flags (set by Input arg parser):
+!   bPlot        -- .TRUE. (default): launch neomom_plot after data_out
+!                   .FALSE.: suppress plot launch (set by plot=.false.)
+!   bCurrents    -- desired currents output state from command line
+!                   Only meaningful when bCurrOverride = .TRUE.
+!   bCurrOverride -- .TRUE. if currents= was present on command line.
+!                    When .TRUE., bCurrents overrides mesh%bOutputCurrents
+!                    unconditionally, ignoring the .nml output_currents value.
+!                    When .FALSE., the .nml output_currents is used unchanged.
 !------------------------------------------------------------------------------
    type ANTENNA_TYPE
 
@@ -205,13 +249,16 @@ contains
 !  CSV OUTPUT FORMAT
 !==============================================================================
 !
-!  File: <cInFileBase>.csv
+!  Filename:
+!   Single frequency : <cInFileBase>.csv
+!   Sweep (nFreq>1)  : <cInFileBase>_<freq_mhz>MHz.csv  e.g. dipole_7.000MHz.csv
+!
 !  Header: version, timestamp, geometry file content (verbatim), then
 !          filename, title, freq [MHz], wavelength [m], impedance, SWR,
 !          peak gains [dBi] and angles, ground type, height, grid params.
 !  Data: theta_deg  phi_deg  re_Etheta  im_Etheta  re_Ephi  im_Ephi
 !   Field values are Er / sqrt(P_in) [V*m / W^0.5].
-!   plot_neomom recovers gain as FOURPI/(2*ETA0) * |Er_norm|^2.
+!   neomom_plot recovers gain as FOURPI/(2*ETA0) * |Er_norm|^2.
 !
 !==============================================================================
    subroutine pattern_3d(this, pat)
@@ -353,7 +400,15 @@ contains
          ! ================================================================
          ! 8.  Write CSV output file
          ! ================================================================
-         this%OutFile_3d%cName = trim(this%cInFileBase)//'.csv'
+         ! ---- frequency-tagged CSV filename for sweep runs ----
+         ! Single frequency : dipole.csv            (unchanged behaviour)
+         ! Sweep (nFreq>1)  : dipole_7.000MHz.csv   (one file per frequency)
+         if (this%freq%nFreq > 1) then
+            write (this%OutFile_3d%cName, '(a,a,f0.3,a)') &
+               trim(this%cInFileBase), '_', this%freq%freq_mhz, 'MHz.csv'
+         else
+            this%OutFile_3d%cName = trim(this%cInFileBase)//'.csv'
+         end if
 
          open (newunit=iU, file=trim(this%OutFile_3d%cName), status='UNKNOWN')
 
@@ -568,8 +623,15 @@ contains
 !   power_check must have been called (fills this%P_rad).
 !   Per-port compute_Zin_Pin and compute_gamma_SWR must have been called.
 !
+!  Output file naming:
+!   Single frequency : dipole.txt, dipole.csv, dipole.cur
+!   Sweep (nFreq>1)  : dipole_7.000MHz.txt, dipole_7.000MHz.csv, dipole_7.000MHz.cur
+!   The .txt file is closed and reopened per frequency for sweep runs.
+!   The .csv filename is set in pattern_3d before data_out is called.
+!
 !  Post-processing:
 !   Launches neomom_plot via execute_command_line (non-blocking, wait=.false.)
+!   unless bPlot = .FALSE. (set by plot=.false. on command line).
 !==============================================================================
    subroutine data_out(this)
 
@@ -591,6 +653,17 @@ contains
 
       nPorts = size(this%mesh%excitations)
       call date_and_time(values=v)
+
+      ! ---- frequency-tagged .txt summary for sweep runs ----
+      ! Single frequency: dipole.txt (opened once in Input, reused here)
+      ! Sweep (nFreq>1) : dipole_7.000MHz.txt (reopen per frequency)
+      if (this%freq%nFreq > 1) then
+         close (this%OutFile%iU)   ! close previous frequency's file
+         write (this%OutFile%cName, '(a,a,f0.3,a)') &
+            trim(this%cInFileBase), '_', this%freq%freq_mhz, 'MHz.txt'
+         this%OutFile%cSTATUS = 'replace'
+         call OpenFile(this%OutFile)
+      end if
 
       ! Admittance (not stored per-port; computed here for primary port)
       this%admittance = zONE/this%inputImpedance
@@ -811,7 +884,13 @@ contains
       ! ---- optional current file (.cur) ----
       if (this%mesh%bOutputCurrents) then
 
-         cName = trim(this%cInFileBase)//'.cur'
+         ! Frequency-tagged on sweeps, plain name for single frequency
+         if (this%freq%nFreq > 1) then
+            write (cName, '(a,a,f0.3,a)') &
+               trim(this%cInFileBase), '_', this%freq%freq_mhz, 'MHz.cur'
+         else
+            cName = trim(this%cInFileBase)//'.cur'
+         end if
 
          open (newUnit=iUout, File=trim(cName))
          ! Columns: iBasis, vNode(3), Re(I), Im(I), |I| [mA], phase [deg]
@@ -843,9 +922,16 @@ contains
 
 !==============================================================================
 !  Input: read the .geo file, build the mesh, fill and factor the Z-matrix.
+!         Also parses optional command-line key=value flags (argv 2..N).
 !
 !  Called as:  call sys%Input()
 !  Arguments:  none (all state goes into this%...)
+!
+!  Command-line parsing (argv 2..N, after the mandatory .geo filename):
+!   Key=value pairs are matched case-insensitively using toLower().
+!   Supported keys: plot, currents  (see module header for full details).
+!   Unknown keys produce a WARNING to stdout and are ignored.
+!   Parsed values are echoed to stdout for traceability in batch logs.
 !
 !==============================================================================
 !  .GEO FILE STRUCTURE (Fortran NAMELIST format)
@@ -878,6 +964,8 @@ contains
 !     Freq%Freq_Set(1)    → selects first frequency point
 !  3. /Ground/       → Reflection_Coef%cGround_Plane, epsilon_ground, sigma
 !  4. /OPTIONS/      → nBasisPerLambda, mesh%bOutputCurrents
+!                    If currents= was on command line, bCurrOverride overrides
+!                    mesh%bOutputCurrents after the namelist read.
 !  5. read_geometry_input → mesh%node_primitives, wire_primitives, zHeight
 !  6. read_excitations    → mesh%excitations
 !
