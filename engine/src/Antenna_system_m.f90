@@ -49,19 +49,24 @@ Module antenna_system_m
 !  argv(2+) : optional key=value pairs (case-insensitive), any order
 !
 !  Supported keys:
-!   plot=.false.      suppress neomom_plot launch (batch/sweep mode)
-!   plot=.true.       force plot launch (default)
-!   currents=.true.   override .nml output_currents — write .cur file
-!   currents=.false.  override .nml output_currents — suppress .cur file
+!   plot=.false.         suppress neomom_plot launch (batch/sweep mode)
+!   plot=.true.          force plot launch (default)
+!   currents=.true.      override .nml output_currents — write .cur file
+!   currents=.false.     override .nml output_currents — suppress .cur file
+!   sweep=pattern        run full 3-D pattern (default)
+!   sweep=impedance      skip pattern_3d, write _Zin.csv only
 !
 !  Examples:
 !   neomom dipole.nml
 !   neomom dipole.nml plot=.false.
 !   neomom dipole.nml plot=.false. currents=.true.
+!   neomom dipole.nml sweep=impedance
+!   neomom dipole.nml sweep=impedance plot=.false.
 !
 !  Notes:
-!   - currents= overrides the .nml output_currents setting unconditionally.
-!     If currents= is absent, the .nml value is used unchanged.
+!   - currents= and sweep= override their respective .nml settings unconditionally.
+!     If absent, the .nml value is used unchanged.
+!   - sweep_mode can also be set in &OPTIONS: sweep_mode = 'impedance'
 !   - Unknown keys produce a warning and are silently ignored.
 !   - Values accept both .true./.false. and true/false (without dots).
 !
@@ -156,6 +161,14 @@ Module antenna_system_m
 !                    When .TRUE., bCurrents overrides mesh%bOutputCurrents
 !                    unconditionally, ignoring the .nml output_currents value.
 !                    When .FALSE., the .nml output_currents is used unchanged.
+!
+!  Sweep mode:
+!   sweep_mode     -- 'pattern' (default) or 'impedance'.
+!                     Set via &OPTIONS sweep_mode or command-line sweep=.
+!                     'pattern'   : full pattern_3d + data_out per frequency.
+!                     'impedance' : skip pattern_3d; write _Zin.csv row per freq.
+!   bSweepOverride -- .TRUE. if sweep= was present on command line.
+!                     When .TRUE., command-line sweep_mode wins over .nml value.
 !------------------------------------------------------------------------------
    type ANTENNA_TYPE
 
@@ -187,9 +200,17 @@ Module antenna_system_m
       type(FILE_TYPE) :: OutFile_3d             ! .csv  pattern output
 
       ! ---- command-line run control flags ----
-      logical :: bPlot        = .TRUE.   ! .FALSE. suppresses neomom_plot launch
-      logical :: bCurrents    = .FALSE.  ! desired currents value from command line
-      logical :: bCurrOverride = .FALSE. ! .TRUE. if currents= was supplied on cmd line
+      logical :: bPlot         = .TRUE.   ! .FALSE. suppresses neomom_plot launch
+      logical :: bCurrents     = .FALSE.  ! desired currents value from command line
+      logical :: bCurrOverride = .FALSE.  ! .TRUE. if currents= was supplied on cmd line
+
+      ! ---- sweep mode ----
+      ! sweep_mode = 'pattern'   : full 3-D pattern + data_out (default)
+      ! sweep_mode = 'impedance' : Zin/SWR only, skip pattern_3d, write _Zin.csv
+      ! Set via &OPTIONS sweep_mode = 'impedance' in .nml, or
+      ! command-line sweep=impedance (command line wins when bSweepOverride=.TRUE.)
+      character(20) :: sweep_mode    = 'pattern'   ! 'pattern' or 'impedance'
+      logical       :: bSweepOverride = .FALSE.    ! .TRUE. if sweep= on command line
 
    contains
 
@@ -948,8 +969,9 @@ contains
 !  /
 !
 !  &OPTIONS
-!    nBasisPerLambda  = 40         ! mesh density
-!    output_currents  = .FALSE.    ! write .cur file
+!    nBasisPerLambda  = 40           ! mesh density
+!    output_currents  = .FALSE.      ! write .cur file
+!    sweep_mode       = 'pattern'    ! 'pattern' or 'impedance'
 !  /
 !
 !  Node/wire primitives in geometry-specific format (read_geometry_input).
@@ -993,10 +1015,15 @@ contains
       character(80)   :: title
       !character(8)    :: NodeTag
       ! character(16)   :: WireTag
-      logical         :: output_currents = .FALSE.
+      logical         :: output_currents
+      character(20)   :: sweep_mode
       real            :: zHeight
 
-      NAMELIST /OPTIONS/ nBasisPerLambda, output_currents
+      ! ---- explicit defaults (avoid implied SAVE from declaration init) ----
+      output_currents = .FALSE.
+      sweep_mode      = 'pattern'
+
+      NAMELIST /OPTIONS/ nBasisPerLambda, output_currents, sweep_mode
       namelist /ground/ Ground_Plane, epsilon, sigma
       namelist /runTitle/ title
 
@@ -1046,6 +1073,13 @@ contains
                   this%bCurrents    = (trim(cVal) == ".true." .or. trim(cVal) == "true")
                   this%bCurrOverride = .TRUE.   ! flag that cmd-line wins over .nml
                   write(*,"(2x,a,l1)") "Command-line: currents = ", this%bCurrents
+
+               case ("sweep")
+                  ! Accepted values: pattern, impedance
+                  ! Command-line always wins over .nml sweep_mode
+                  this%sweep_mode    = trim(cVal)
+                  this%bSweepOverride = .TRUE.
+                  write(*,"(2x,a,a)") "Command-line: sweep    = ", trim(this%sweep_mode)
 
                case default
                   write(*,"(2x,a,a,a)") &
@@ -1132,6 +1166,10 @@ contains
          ! If currents= was supplied on the command line, bCurrOverride is .TRUE.
          ! and bCurrents holds the desired value regardless of .nml.
          if (this%bCurrOverride) this%mesh%bOutputCurrents = this%bCurrents
+
+         ! Apply sweep_mode from .nml — command-line sweep= wins if supplied.
+         ! bSweepOverride is .TRUE. only when sweep= appears on the command line.
+         if (.not. this%bSweepOverride) this%sweep_mode = trim(sweep_mode)
 
          write (this%OutFile%iU, *)
          call CenteredOut('---| Name List Data |---')

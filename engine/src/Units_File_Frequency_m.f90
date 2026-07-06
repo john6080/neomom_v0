@@ -391,7 +391,8 @@ Module frequency_m
       character(nCharLen)   :: cFreqUnits = cMHZ
       real(wp)              :: bk, lambda, freq, freq_ghz, freq_mhz
       integer               :: nFreq, iFreq
-      real(wp), allocatable :: array(:)   ! sweep values in cFreqUnits
+      real(wp)              :: fstep = ZERO   ! step size [cFreqUnits]; 0 = use nFreq
+      real(wp), allocatable :: array(:)       ! sweep values in cFreqUnits
    contains
       procedure :: Freq_Set         ! set current frequency by index; updates bk, lambda, freq
       procedure :: Read_Freq_Data   ! read &Frequency_MHz namelist from open file
@@ -413,27 +414,48 @@ contains
 !  For nfreq > 1: array(i) = fmin + (i-1) * (fmax-fmin)/(nfreq-1),
 !                 giving exact values at both endpoints.
 !------------------------------------------------------------------------------
-   subroutine init(self, fmax, fmin, nfreq, cunits)
+   subroutine init(self, fmax, fmin, nfreq, cunits, fstep_in)
       class(FREQUENCY_TYPE), intent(inout) :: self
-      real(wp), intent(in)    :: fmax, fmin
-      integer, intent(in)    :: nfreq
-      character(*), intent(in) :: cunits
+      real(wp), intent(in)           :: fmax, fmin
+      integer,  intent(in)           :: nfreq
+      character(*), intent(in)       :: cunits
+      real(wp), intent(in), optional :: fstep_in
 
-      real(wp)  :: fdelta = ZERO
-      integer   :: i, ierr
+      real(wp)  :: fdelta
+      integer   :: i, ierr, nf
+      logical   :: bUseStep        ! .TRUE. if fstep_in present and > 0
       real(wp), allocatable :: myArray(:)
 
-      if (allocated(self%array)) deallocate (self%array)
+      if (allocated(self%array)) deallocate(self%array)
 
-      if (nfreq > 1) fdelta = (fmax - fmin)/real(nfreq - 1)
-
-      self%nfreq = nfreq
       self%cFreqUnits = cunits
+      fdelta          = ZERO
 
-      allocate (myArray(nfreq), stat=ierr)
+      ! ---- check fstep_in separately to avoid present() in compound test ----
+      bUseStep = .FALSE.
+      if (present(fstep_in)) then
+         if (fstep_in > ZERO) bUseStep = .TRUE.
+      end if
 
-      do i = 1, nfreq
-         myArray(i) = fmin + fdelta*(i - 1)
+      if (bUseStep) then
+         ! fstep supplied — compute nFreq from step size
+         self%fstep = fstep_in
+         nf = nint((fmax - fmin) / fstep_in) + 1
+         if (nf < 1) nf = 1
+         fdelta = fstep_in
+      else
+         ! nFreq supplied directly
+         self%fstep = ZERO
+         nf = nfreq
+         if (nf > 1) fdelta = (fmax - fmin) / real(nf - 1, wp)
+      end if
+
+      self%nfreq = nf
+
+      allocate(myArray(nf), stat=ierr)
+
+      do i = 1, nf
+         myArray(i) = fmin + fdelta * real(i - 1, wp)
       end do
 
       self%array = myArray
@@ -554,18 +576,38 @@ contains
       class(FREQUENCY_TYPE), intent(inout) :: F
       integer, intent(in) :: iU
 
-      real(wp)      :: fMin, fMax
-      integer       :: nFreq = 0, ios
+      real(wp)      :: fMin, fMax, fstep
+      integer       :: nFreq, ios
       character(80) :: msg
 
-      namelist /Frequency_MHz/ fmin, fmax, nFreq
+      ! ---- explicit defaults before namelist read ----
+      ! (avoids Fortran SAVE behaviour of in-declaration initialisation)
+      fMin  = ZERO
+      fMax  = ZERO
+      fstep = ZERO
+      nFreq = -1       ! sentinel: -1 means not supplied in namelist
+
+      namelist /Frequency_MHz/ fmin, fmax, nFreq, fstep
 
       read (iU, NML=Frequency_MHz, IOSTAT=ios, iomsg=msg)
       write (*, nml=Frequency_MHz)   ! echo namelist to stdout for verification
 
       call nml_error('Frequency_MHz', ios, msg)  ! fatal if ios /= 0
 
-      call f%init(fmax, fmin, nFreq, cMHZ)
+      ! ---- validate ----
+      if (fstep <= ZERO .and. nFreq <= 0) &
+         call FatalError('Frequency_MHz: supply fstep > 0 or nFreq > 0', '', 0)
+
+      ! ---- build sweep array ----
+      if (fstep > ZERO) then
+         ! fstep path — nFreq computed inside init()
+         call f%init(fmax, fmin, 1, cMHZ, fstep_in=fstep)
+         write (*, '(2x,a,i0,a,f0.4,a)') &
+            'Frequency sweep: ', f%nFreq, ' points at ', fstep, ' MHz/step'
+      else
+         ! nFreq path — existing behaviour unchanged
+         call f%init(fmax, fmin, nFreq, cMHZ)
+      end if
 
    end subroutine Read_Freq_Data
 

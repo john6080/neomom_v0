@@ -7,7 +7,7 @@ Program neomom
 !   Top-level orchestrator for a wire MOM EFIE solve followed by far-field
 !   gain computation.  All geometry, frequency, and excitation data are read
 !   from namelists; results are written to CSV and summary text files by
-!   data_out, which also launches plot_neomom.
+!   data_out, which also launches neomom_plot.
 !
 !  EFIE physics:
 !   Z_mn = j·k·ETA0 · Σ_pq [ A_pq − (1/k²)·Φ_pq ]
@@ -24,23 +24,22 @@ Program neomom
 !   ├─ reads geometry  (wire primitives, node primitives)
 !   └─ reads excitations (&excitation_input namelist)
 !
-!  do iFreq = 1, sys%freq%nFreq
-!   │
-!   ├─ 1. freq%Freq_Set(iFreq)        set λ, bk = 2πf/c for this frequency
-!   ├─ 2. mesh%seglengthDesired       = λ / nBasisPerLambda  (re-mesh per freq)
-!   ├─ 3. mesh%assemble_mesh()        build Segs, Nodes, Basis2(:)
-!   ├─ 4. Reflection_Coef%init(bk)   Fresnel ε_eff for this frequency
-!   ├─ 5. mesh%matrix_fill(bk, zBlk)  fill upper triangle of Z [nBasis×nBasis]
-!   ├─ 6. matrix%LU_Factor()          factor (MKL Bunch-Kaufman or pure LU)
-!   ├─ 7. apply_excitations → volts   RHS(iBasis) = zVolts for each port
-!   ├─ 8. LU_Solve(cur)               cur ← Z⁻¹·volts   [A, complex]
-!   ├─ 9. per-port: compute_Zin_Pin, compute_gamma_SWR, print_post_solve
-!   ├─ 10. sys%PowerIn                = sum of Pin across all ports
-!   ├─ 11. primary-port aliases       inputImpedance, gamma, SWR ← port 1
-!   ├─ 12. pattern_3d                 far-field E, gain, CSV output
-!   └─ 13. data_out                   summary file + launch plot_neomom
+!  Sweep mode selected by sys%sweep_mode ('pattern' or 'impedance'):
 !
+!  PATTERN mode (default):
+!  do iFreq = 1, sys%freq%nFreq
+!   ├─ Steps 1-11: mesh, solve, Zin, SWR (always run)
+!   ├─ 12. pattern_3d   far-field E, gain, CSV output
+!   └─ 13. data_out     summary file + launch neomom_plot
 !  end do
+!
+!  IMPEDANCE mode (sweep=impedance or OPTIONS sweep_mode='impedance'):
+!  open _Zin.csv
+!  do iFreq = 1, sys%freq%nFreq
+!   ├─ Steps 1-11: mesh, solve, Zin, SWR (always run)
+!   └─ write one row to _Zin.csv (pattern_3d and data_out skipped)
+!  end do
+!  close _Zin.csv → launch neomom_Zin
 !
 !==============================================================================
 !  NOTABLE DESIGN POINTS
@@ -79,6 +78,12 @@ Program neomom
 !   compute_gamma_SWR guards against |gamma| → 1 (open/short circuit) and
 !   sets SWR = huge(real) in that case.
 !
+!  Impedance sweep output (_Zin.csv):
+!   Columns: freq_MHz, Rin, Xin, |Zin|, Gin, Bin, |Yin|, SWR
+!   Y = 1/Zin; Gin = Re(Y), Bin = Im(Y).
+!   Bin zero-crossing marks resonance — key MoM validation diagnostic.
+!   One file per run; all frequencies in a single CSV.
+!
 !==============================================================================
 
    use basic_header_m
@@ -99,91 +104,57 @@ Program neomom
 
    integer :: nR                               ! number of basis functions (DOF count)
    integer :: iFreq, i                         ! loop indices
+   integer :: iZin                             ! Zin CSV file unit
 
    !------| start of main |------------------------------------------------------
- 
 
    call out( compiler_version() )
-   !call out( compiler_options() )
- 
-   
 
    ! ---- Step 0: read input ----
-   ! Input reads namelists (/runTitle/, /Ground/, /OPTIONS/), mesh geometry
-   ! (wire primitives + node primitives), and excitations (&excitation_input).
-   ! Called ONCE outside the frequency loop; geometry is fixed across freqs.
    call sys%Input
 
+   ! ---- open Zin CSV before loop if impedance sweep ----
+   if (trim(sys%sweep_mode) == 'impedance') call open_Zin_csv(sys, iZin)
+
    ! ===========================================================================
-   ! Frequency loop — all mesh and matrix operations repeat per frequency
-   ! because the segment length and basis functions depend on wavelength.
+   ! Frequency loop
    ! ===========================================================================
    do iFreq = 1, sys%freq%nFreq
 
       ! ---- Step 1: set wavelength and wave number for this frequency ----
-      ! Freq_Set assigns: freq_mhz, lambda = c/f, bk = 2π/lambda [1/m]
       call sys%freq%Freq_Set(iFreq)
 
       ! ---- Step 2: target segment length = λ / nBasisPerLambda ----
-      ! Default nBasisPerLambda = 40 → ~λ/40 segments.
-      ! assemble_mesh subdivides each wire primitive to honour this length.
       sys%mesh%seglengthDesired = sys%freq%lambda / sys%nBasisPerLambda
 
       ! ---- Step 3: build the mesh ----
-      ! Populates: Segs(:), Nodes(:), Basis2(:), connectivity, node_primitives.
-      ! Re-called each frequency so the DOF count may differ between iterations.
       call sys%mesh%assemble_mesh()
 
       ! ---- Step 4: Fresnel reflection coefficient for this frequency ----
-      ! init(bk) computes ε_eff = ε_r − j·σ·η0/bk from the ground parameters
-      ! read by Input.  (Note: current code uses σ/bk; η0 factor may be missing
-      ! — see Fresnel_Reflection_m documentation for the dimensional check.)
       call sys%mesh%Reflection_Coef%init(sys%freq%bk)
 
       ! ---- Step 5: fill impedance matrix ----
-      ! zfill_m fills the UPPER TRIANGLE only (symmetric EFIE matrix).
-      ! If USE_MKL=.FALSE. the pure-Fortran LU path must copy upper→lower
-      ! before factoring — this is handled inside matrix_fill / LU_Factor.
       call sys%mesh%matrix_fill(sys%freq%bk, sys%matrix%zBlk)
 
       ! ---- Step 6: LU factorisation ----
-      ! MKL path: csytrf (Bunch-Kaufman symmetric factorisation).
-      ! Pure Fortran path: partial-pivot LU after symmetrisation.
-          
       call sys%matrix%LU_Factor()
 
-      nR = size(sys%matrix%zBlk, 1)   ! nBasis for this frequency
-      
+      nR = size(sys%matrix%zBlk, 1)
+
       ! ---- allocate / reset RHS and solution vectors ----
-      ! Both volts (RHS) and cur (solution, allocated inside ANTENNA_TYPE)
-      ! are released and re-allocated because nR may change with frequency.
       if (allocated(volts)) deallocate(volts, sys%cur)
       allocate(volts(nR), sys%cur(nR))
       volts = zZERO
 
       ! ---- Step 7: load RHS from excitation data ----
-      ! apply_excitations sets volts(iBasis) = zVolts for each port.
-      ! Accumulates (+=) to support multiple simultaneous sources.
-      ! Precondition: find_feed_node and find_basis_ID were called in Input.
       call apply_excitations(sys%mesh%excitations, sys%mesh%basis2, volts)
 
       ! ---- Step 8: solve Z · cur = volts ----
-      ! sys%cur is initialised to volts then overwritten in-place by LU_Solve.
-      ! After return, sys%cur(m) = current [A] at basis hub m.
       sys%cur = volts
       call sys%matrix%LU_Solve(sys%cur)
 
       ! =========================================================================
       ! Steps 9–11: per-port impedance, reflection, and total accepted power.
-      !
-      ! Each excitation carries its own Zin, Pin, gamma, SWR (see EXCITATION_TYPE).
-      ! compute_Zin_Pin   : Zin = zVolts/I_hub;  Pin = 0.5 Re(V·I*)
-      ! compute_gamma_SWR : gamma = (Zin−Z0_ref)/(Zin+Z0_ref); SWR from |gamma|
-      ! print_post_solve  : formatted port summary to stdout
-      !
-      ! sys%PowerIn = sum of Pin across all ports (used by pattern_3d for gain).
-      ! Primary-port aliases (inputImpedance, gamma, SWR) set from port 1 for
-      ! backward compatibility with data_out.
       ! =========================================================================
       sys%PowerIn = ZERO
 
@@ -199,23 +170,149 @@ Program neomom
       sys%gamma          = sys%mesh%excitations(1)%gamma
       sys%SWR            = sys%mesh%excitations(1)%SWR
 
-      ! ---- Step 12: 3-D far-field pattern and gain ----
-      ! pattern_3d:
-      !  (a) builds adaptive theta/phi grid (step ~ bw/10, snapped to DIV360)
-      !  (b) calls pattern_v2 for exact radiation integrals at each angle
-      !  (c) calls power_check (trapezoidal phi integration for P_rad)
-      !  (d) computes G_theta, G_phi, G_total [linear]; finds peak angles
-      !  (e) normalises Er → Er/sqrt(P_in) for CSV output
-      !  (f) writes .csv file (plot_neomom recovers gain as FOURPI/(2*ETA0)*|Er|²)
-      call sys%pattern_3d(sys%pat_3d)
+      ! =========================================================================
+      ! Steps 12-13: output — gated on sweep mode
+      ! =========================================================================
+      if (trim(sys%sweep_mode) == 'impedance') then
 
-      ! ---- Step 13: write summary output and launch plot_neomom ----
-      ! data_out writes a .txt summary (Z_in, SWR, gain, grid params) and
-      ! calls execute_command_line('neomom_plot <csv>', wait=.false.).
-      call sys%data_out()
+         ! Impedance sweep — append one row to Zin CSV, skip pattern
+         call write_Zin_row(sys, iZin)
+
+      else
+
+         ! Pattern mode — full 3-D pattern and summary output
+         ! ---- Step 12: 3-D far-field pattern and gain ----
+         call sys%pattern_3d(sys%pat_3d)
+
+         ! ---- Step 13: write summary output and launch neomom_plot ----
+         call sys%data_out()
+
+      end if
 
    end do   ! iFreq
 
+   ! ---- close Zin CSV and launch neomom_Zin after loop ----
+   if (trim(sys%sweep_mode) == 'impedance') call close_Zin_csv(sys, iZin)
+
 contains
+
+!==============================================================================
+!  open_Zin_csv: open the impedance sweep output CSV and write the header.
+!
+!  Called once before the frequency loop when sweep_mode = 'impedance'.
+!  File name: <cInFileBase>_Zin.csv
+!
+!  Header columns:
+!   freq_MHz  Rin_Ohm  Xin_Ohm  Zin_Ohm  Gin_S  Bin_S  Yin_S  SWR
+!
+!  Y = 1/Zin; Gin = Re(Y), Bin = Im(Y).
+!  Bin zero-crossing at resonance is the key MoM validation diagnostic.
+!==============================================================================
+   subroutine open_Zin_csv(sys, iU)
+      type(ANTENNA_TYPE), intent(in) :: sys
+      integer,            intent(out) :: iU
+
+      character(512) :: cName
+      integer        :: v(8)
+
+      call date_and_time(values=v)
+
+      write (cName, '(a,a)') trim(sys%cInFileBase), '_Zin.csv'
+
+      open (newunit=iU, file=trim(cName), status='REPLACE')
+
+      ! ---- header ----
+      write (iU, '(a)') '# NeoMOM Impedance Sweep'
+      write (iU, '(a,i4.4,2("-",i2.2),a,i2.2,2(":",i2.2))') &
+         '# ', v(1), v(2), v(3), ', T', v(5), v(6), v(7)
+      write (iU, '(a,a)')   '# title       : ', trim(sys%cTitle)
+      write (iU, '(a,a)')   '# file        : ', trim(sys%GeoFile%cName)
+      write (iU, '(a,a)')   '# ground      : ', &
+         trim(sys%mesh%Reflection_Coef%cGround_Plane)
+      write (iU, '(a,i0)')  '# nports      : ', size(sys%mesh%excitations)
+      write (iU, '(a,i0)')  '# nfreq       : ', sys%freq%nFreq
+      write (iU, '(a,f0.4)') '# fstart_MHz  : ', sys%freq%array(1)
+      write (iU, '(a,f0.4)') '# fstop_MHz   : ', &
+         sys%freq%array(sys%freq%nFreq)
+      if (sys%freq%fstep > 0.0_wp) &
+         write (iU, '(a,f0.4)') '# fstep_MHz   : ', sys%freq%fstep
+      write (iU, '(a,f0.1)') '# z0_ref_Ohm  : ', 50.0
+      write (iU, '(a)') '#'
+      write (iU, '(a)') &
+         '# freq_MHz    Rin_Ohm    Xin_Ohm    Zin_Ohm' // &
+         '    Gin_S      Bin_S      Yin_S      SWR'
+
+      write (*, '(2x,a,a)') 'Zin sweep CSV: ', trim(cName)
+
+   end subroutine open_Zin_csv
+
+!==============================================================================
+!  write_Zin_row: append one data row to the impedance sweep CSV.
+!
+!  Called once per frequency inside the loop when sweep_mode = 'impedance'.
+!  Requires sys%inputImpedance and sys%SWR to be set (steps 9-11 complete).
+!
+!  Columns: freq_MHz  Rin  Xin  |Zin|  Gin  Bin  |Yin|  SWR
+!==============================================================================
+   subroutine write_Zin_row(sys, iU)
+      type(ANTENNA_TYPE), intent(in) :: sys
+      integer,            intent(in) :: iU
+
+      complex(wp) :: Zin, Yin
+      real(wp)    :: Rin, Xin, Zin_mag
+      real(wp)    :: Gin, Bin, Yin_mag
+
+      Zin     = sys%inputImpedance
+      Rin     = real(Zin,  wp)
+      Xin     = aimag(Zin)
+      Zin_mag = abs(Zin)
+
+      ! Admittance Y = 1/Zin — guard against divide-by-zero
+      if (Zin_mag > 0.0_wp) then
+         Yin = (1.0_wp, 0.0_wp) / Zin
+      else
+         Yin = (0.0_wp, 0.0_wp)
+      end if
+
+      Gin     = real(Yin,  wp)
+      Bin     = aimag(Yin)
+      Yin_mag = abs(Yin)
+
+      write (iU, '(8g14.6)') &
+         sys%freq%freq_mhz, &
+         Rin, Xin, Zin_mag, &
+         Gin, Bin, Yin_mag, &
+         sys%SWR
+
+   end subroutine write_Zin_row
+
+!==============================================================================
+!  close_Zin_csv: close the impedance sweep CSV and launch neomom_Zin.
+!
+!  Called once after the frequency loop when sweep_mode = 'impedance'.
+!  Launches neomom_Zin non-blocking (wait=.false.) if sys%bPlot = .TRUE.
+!  Use plot=.false. on command line to suppress the launch for batch runs.
+!==============================================================================
+   subroutine close_Zin_csv(sys, iU)
+      type(ANTENNA_TYPE), intent(in) :: sys
+      integer,            intent(in) :: iU
+
+      character(512) :: cName, cCmd
+
+      write (cName, '(a,a)') trim(sys%cInFileBase), '_Zin.csv'
+
+      close (iU)
+      write (*, '(2x,a,a)') 'Zin sweep complete: ', trim(cName)
+
+      ! ---- launch neomom_Zin (non-blocking) ----
+      if (sys%bPlot) then
+         cCmd = 'neomom_Zin  '
+         call execute_command_line( &
+            trim(cCmd)//' '//trim(cName), wait=.false.)
+      else
+         write (*, '(2x,a)') 'Plot suppressed (plot=.false.)'
+      end if
+
+   end subroutine close_Zin_csv
 
 END Program neomom

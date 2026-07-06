@@ -55,5 +55,6 @@
  
  &OPTIONS
  NBASISPERLAMBDA =          40,
- OUTPUT_CURRENTS = F
+ OUTPUT_CURRENTS = F,
+ SWEEP_MODE      = pattern             
  /
