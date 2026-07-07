@@ -54,19 +54,19 @@ Module antenna_system_m
 !   currents=.true.      override .nml output_currents — write .cur file
 !   currents=.false.     override .nml output_currents — suppress .cur file
 !   sweep=pattern        run full 3-D pattern (default)
-!   sweep=impedance      skip pattern_3d, write _Zin.csv only
+!   sweep=vna_sweep      skip pattern_3d, write _Zin.csv only (VNA sweep)
 !
 !  Examples:
 !   neomom dipole.nml
 !   neomom dipole.nml plot=.false.
 !   neomom dipole.nml plot=.false. currents=.true.
-!   neomom dipole.nml sweep=impedance
-!   neomom dipole.nml sweep=impedance plot=.false.
+!   neomom dipole.nml sweep=vna_sweep
+!   neomom dipole.nml sweep=vna_sweep plot=.false.
 !
 !  Notes:
 !   - currents= and sweep= override their respective .nml settings unconditionally.
 !     If absent, the .nml value is used unchanged.
-!   - sweep_mode can also be set in &OPTIONS: sweep_mode = 'impedance'
+!   - sweep_mode can also be set in &OPTIONS: sweep_mode = 'vna_sweep'
 !   - Unknown keys produce a warning and are silently ignored.
 !   - Values accept both .true./.false. and true/false (without dots).
 !
@@ -163,10 +163,10 @@ Module antenna_system_m
 !                    When .FALSE., the .nml output_currents is used unchanged.
 !
 !  Sweep mode:
-!   sweep_mode     -- 'pattern' (default) or 'impedance'.
+!   sweep_mode     -- 'pattern' (default) or 'vna_sweep'.
 !                     Set via &OPTIONS sweep_mode or command-line sweep=.
 !                     'pattern'   : full pattern_3d + data_out per frequency.
-!                     'impedance' : skip pattern_3d; write _Zin.csv row per freq.
+!                     'vna_sweep' : skip pattern_3d; write _Zin.csv row per freq.
 !   bSweepOverride -- .TRUE. if sweep= was present on command line.
 !                     When .TRUE., command-line sweep_mode wins over .nml value.
 !------------------------------------------------------------------------------
@@ -200,16 +200,16 @@ Module antenna_system_m
       type(FILE_TYPE) :: OutFile_3d             ! .csv  pattern output
 
       ! ---- command-line run control flags ----
-      logical :: bPlot         = .TRUE.   ! .FALSE. suppresses neomom_plot launch
-      logical :: bCurrents     = .FALSE.  ! desired currents value from command line
+      logical :: bPlot = .TRUE.   ! .FALSE. suppresses neomom_plot launch
+      logical :: bCurrents = .FALSE.  ! desired currents value from command line
       logical :: bCurrOverride = .FALSE.  ! .TRUE. if currents= was supplied on cmd line
 
       ! ---- sweep mode ----
       ! sweep_mode = 'pattern'   : full 3-D pattern + data_out (default)
-      ! sweep_mode = 'impedance' : Zin/SWR only, skip pattern_3d, write _Zin.csv
-      ! Set via &OPTIONS sweep_mode = 'impedance' in .nml, or
-      ! command-line sweep=impedance (command line wins when bSweepOverride=.TRUE.)
-      character(20) :: sweep_mode    = 'pattern'   ! 'pattern' or 'impedance'
+      ! sweep_mode = 'vna_sweep' : Zin/SWR only, skip pattern_3d, write _Zin.csv
+      ! Set via &OPTIONS sweep_mode = 'vna_sweep' in .nml, or
+      ! command-line sweep=vna_sweep (command line wins when bSweepOverride=.TRUE.)
+      character(20) :: sweep_mode = 'pattern'   ! 'pattern' or 'vna_sweep'
       logical       :: bSweepOverride = .FALSE.    ! .TRUE. if sweep= on command line
 
    contains
@@ -663,8 +663,8 @@ contains
       integer        :: iB, iUout, nPorts, i
       complex        :: zCur          ! polar form from zp(): (amplitude, phase_deg)
       real(wp)       :: zAng, gamAng, ratio
-      character(120) :: cLine
-      character(256)  :: cName, cPlot
+      character(256) :: cLine
+      character(256) :: cName, cPlot
       integer        :: v(8)
 
       character(len=80), parameter :: SEP = &
@@ -936,7 +936,7 @@ contains
          call execute_command_line(trim(cPlot)//'  '//trim(this%OutFile_3d%cName), &
                                    wait=.false.)
       else
-         write(*,'(2x,a)') 'Plot suppressed (plot=.false. on command line)'
+         write (*, '(2x,a)') 'Plot suppressed (plot=.false. on command line)'
       end if
 
    end subroutine data_out
@@ -971,7 +971,7 @@ contains
 !  &OPTIONS
 !    nBasisPerLambda  = 40           ! mesh density
 !    output_currents  = .FALSE.      ! write .cur file
-!    sweep_mode       = 'pattern'    ! 'pattern' or 'impedance'
+!    sweep_mode       = 'pattern'    ! 'pattern' or 'vna_sweep'
 !  /
 !
 !  Node/wire primitives in geometry-specific format (read_geometry_input).
@@ -1021,7 +1021,7 @@ contains
 
       ! ---- explicit defaults (avoid implied SAVE from declaration init) ----
       output_currents = .FALSE.
-      sweep_mode      = 'pattern'
+      sweep_mode = 'pattern'
 
       NAMELIST /OPTIONS/ nBasisPerLambda, output_currents, sweep_mode
       namelist /ground/ Ground_Plane, epsilon, sigma
@@ -1055,11 +1055,11 @@ contains
          do iArg = 2, nArg
             call Get_Command_Argument(iArg, cArg)
             cArg = trim(adjustl(cArg))
-            ieq  = index(cArg, "=")
+            ieq = index(cArg, "=")
 
             if (ieq > 0) then
-               cKey = cArg(1:ieq-1)
-               cVal = cArg(ieq+1:)
+               cKey = cArg(1:ieq - 1)
+               cVal = cArg(ieq + 1:)
                call toLower(cKey)
                call toLower(cVal)
 
@@ -1067,22 +1067,22 @@ contains
 
                case ("plot")
                   this%bPlot = (trim(cVal) == ".true." .or. trim(cVal) == "true")
-                  write(*,"(2x,a,l1)") "Command-line: plot     = ", this%bPlot
+                  write (*, "(2x,a,l1)") "Command-line: plot     = ", this%bPlot
 
                case ("currents")
-                  this%bCurrents    = (trim(cVal) == ".true." .or. trim(cVal) == "true")
+                  this%bCurrents = (trim(cVal) == ".true." .or. trim(cVal) == "true")
                   this%bCurrOverride = .TRUE.   ! flag that cmd-line wins over .nml
-                  write(*,"(2x,a,l1)") "Command-line: currents = ", this%bCurrents
+                  write (*, "(2x,a,l1)") "Command-line: currents = ", this%bCurrents
 
                case ("sweep")
-                  ! Accepted values: pattern, impedance
+                  ! Accepted values: pattern, vna_sweep
                   ! Command-line always wins over .nml sweep_mode
-                  this%sweep_mode    = trim(cVal)
+                  this%sweep_mode = trim(cVal)
                   this%bSweepOverride = .TRUE.
-                  write(*,"(2x,a,a)") "Command-line: sweep    = ", trim(this%sweep_mode)
+                  write (*, "(2x,a,a)") "Command-line: sweep    = ", trim(this%sweep_mode)
 
                case default
-                  write(*,"(2x,a,a,a)") &
+                  write (*, "(2x,a,a,a)") &
                      "WARNING: unknown command-line option ", trim(cArg), " ignored"
 
                end select

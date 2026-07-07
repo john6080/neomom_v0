@@ -9,7 +9,6 @@
 #   make input        → build neomom_input GUI only
 #   make plot         → build neomom_plot GUI only
 #   make Zin          → build neomom_Zin GUI only
-#   make current      → build neomom_current GUI only
 #   make all          → full build (calls build_all_linux.sh)
 #   make copy         → copy all executables to ~/bin
 #   make deploy       → full build then copy to ~/bin
@@ -52,7 +51,7 @@ distclean: clean
 # BUILD TARGETS
 # --------------------------------------------------------------
 
-.PHONY: all engine input plot Zin current
+.PHONY: all engine input plot Zin
 
 all:
 	@bash $(SCRIPTS) $(COMPILER)
@@ -81,13 +80,6 @@ Zin:
 	    --distpath neomom_Zin/build/dist \
 	    --workpath neomom_Zin/build/work
 
-current:
-	@mkdir -p neomom_current/build/dist neomom_current/build/work
-	$$HOME/venvs/neomom_plot/bin/pyinstaller \
-	    neomom_current/linux/neomom_current.spec \
-	    --distpath neomom_current/build/dist \
-	    --workpath neomom_current/build/work
-
 # --------------------------------------------------------------
 # COPY TO ~/bin — Linux local install
 # --------------------------------------------------------------
@@ -97,17 +89,15 @@ current:
 copy:
 	@echo "Copying executables to ~/bin..."
 	@mkdir -p $$HOME/bin
-	cp build/neomom                                $$HOME/bin/neomom
-	cp neomom_input/build/dist/neomom_input        $$HOME/bin/neomom_input
-	cp neomom_plot/build/dist/neomom_plot          $$HOME/bin/neomom_plot
-	cp neomom_Zin/build/dist/neomom_Zin            $$HOME/bin/neomom_Zin
-	cp neomom_current/build/dist/neomom_current    $$HOME/bin/neomom_current
+	cp build/neomom                            $$HOME/bin/neomom
+	cp neomom_input/build/dist/neomom_input    $$HOME/bin/neomom_input
+	cp neomom_plot/build/dist/neomom_plot      $$HOME/bin/neomom_plot
+	cp neomom_Zin/build/dist/neomom_Zin        $$HOME/bin/neomom_Zin
 	@echo "Installed:"
 	@echo "  ~/bin/neomom"
 	@echo "  ~/bin/neomom_input"
 	@echo "  ~/bin/neomom_plot"
 	@echo "  ~/bin/neomom_Zin"
-	@echo "  ~/bin/neomom_current"
 
 deploy: all copy
 	@echo "Deploy complete."

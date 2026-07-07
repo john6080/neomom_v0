@@ -17,18 +17,18 @@
 #   - python3-tk installed: sudo apt install python3-tk
 #   - ~/venvs/neomom_input venv populated from requirements_input.txt
 #   - ~/venvs/neomom_plot  venv populated from requirements_plot.txt
-#     (neomom_Zin and neomom_current also use neomom_plot venv)
+#     (neomom_Zin uses neomom_plot venv)
 #   - upx installed (optional): sudo apt install upx
 # ==============================================================
 
-set -e
-set -o pipefail
+set -e          # stop on any error
+set -o pipefail # catch errors inside pipes
 
 # --------------------------------------------------------------
 # CONFIGURATION
 # --------------------------------------------------------------
 
-COMPILER=${1:-ifx}
+COMPILER=${1:-ifx}                          # first arg or default ifx
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
@@ -37,7 +37,6 @@ ENGINE_DIR="$PROJECT_ROOT/engine/linux"
 INPUT_SPEC="$PROJECT_ROOT/neomom_input/linux/neomom_input.spec"
 PLOT_SPEC="$PROJECT_ROOT/neomom_plot/linux/neomom_plot.spec"
 ZIN_SPEC="$PROJECT_ROOT/neomom_Zin/linux/neomom_Zin.spec"
-CUR_SPEC="$PROJECT_ROOT/neomom_current/linux/neomom_current.spec"
 
 INPUT_DIST="$PROJECT_ROOT/neomom_input/build/dist"
 INPUT_WORK="$PROJECT_ROOT/neomom_input/build/work"
@@ -45,8 +44,6 @@ PLOT_DIST="$PROJECT_ROOT/neomom_plot/build/dist"
 PLOT_WORK="$PROJECT_ROOT/neomom_plot/build/work"
 ZIN_DIST="$PROJECT_ROOT/neomom_Zin/build/dist"
 ZIN_WORK="$PROJECT_ROOT/neomom_Zin/build/work"
-CUR_DIST="$PROJECT_ROOT/neomom_current/build/dist"
-CUR_WORK="$PROJECT_ROOT/neomom_current/build/work"
 
 ENGINE_EXE="$PROJECT_ROOT/build/neomom"
 
@@ -64,7 +61,7 @@ MODELS_DIR="$PROJECT_ROOT/test_cases/validation_cases"
 GREEN='\033[0;32m'
 RED='\033[0;91m'
 CYAN='\033[0;36m'
-NC='\033[0m'
+NC='\033[0m'   # no colour
 
 step()  { echo -e "\n${CYAN}==>${NC} $*"; }
 ok()    { echo -e "${GREEN}  OK:${NC} $*"; }
@@ -76,12 +73,11 @@ die()   { echo -e "${RED}  FAILED:${NC} $*" >&2; exit 1; }
 
 step "Preflight checks"
 
-[[ -f "$INPUT_SPEC"   ]] || die "Input spec not found: $INPUT_SPEC"
-[[ -f "$PLOT_SPEC"    ]] || die "Plot spec not found:  $PLOT_SPEC"
-[[ -f "$ZIN_SPEC"     ]] || die "Zin spec not found:   $ZIN_SPEC"
-[[ -f "$CUR_SPEC"     ]] || die "Current spec not found: $CUR_SPEC"
-[[ -x "$PYINST_INPUT" ]] || die "PyInstaller not found: $PYINST_INPUT"
-[[ -x "$PYINST_PLOT"  ]] || die "PyInstaller not found: $PYINST_PLOT"
+[[ -f "$INPUT_SPEC"    ]] || die "Input spec not found: $INPUT_SPEC"
+[[ -f "$PLOT_SPEC"     ]] || die "Plot spec not found:  $PLOT_SPEC"
+[[ -f "$ZIN_SPEC"      ]] || die "Zin spec not found:   $ZIN_SPEC"
+[[ -x "$PYINST_INPUT"  ]] || die "PyInstaller not found: $PYINST_INPUT"
+[[ -x "$PYINST_PLOT"   ]] || die "PyInstaller not found: $PYINST_PLOT"
 
 command -v "$COMPILER" >/dev/null 2>&1 || die "Compiler not found: $COMPILER"
 command -v makedepf90  >/dev/null 2>&1 || die "makedepf90 not found. Run: sudo apt install makedepf90"
@@ -146,22 +142,7 @@ mkdir -p "$ZIN_DIST" "$ZIN_WORK"
 ok "neomom_Zin built: $ZIN_DIST/neomom_Zin"
 
 # --------------------------------------------------------------
-# STEP 5 — neomom_current GUI
-# --------------------------------------------------------------
-
-step "Building neomom_current (PyInstaller)"
-
-mkdir -p "$CUR_DIST" "$CUR_WORK"
-
-"$PYINST_PLOT" "$CUR_SPEC" \
-    --distpath "$CUR_DIST" \
-    --workpath "$CUR_WORK"
-
-[[ -f "$CUR_DIST/neomom_current" ]] || die "neomom_current exe not found after build"
-ok "neomom_current built: $CUR_DIST/neomom_current"
-
-# --------------------------------------------------------------
-# STEP 6 — Harvest into packages/linux/
+# STEP 5 — Harvest into packages/linux/
 # --------------------------------------------------------------
 
 step "Harvesting package"
@@ -172,14 +153,12 @@ mkdir -p \
     "$PACKAGE_DIR/neomom_input" \
     "$PACKAGE_DIR/neomom_plot" \
     "$PACKAGE_DIR/neomom_Zin" \
-    "$PACKAGE_DIR/neomom_current" \
     "$PACKAGE_DIR/models"
 
-cp "$ENGINE_EXE"               "$PACKAGE_DIR/neomom/"
-cp "$INPUT_DIST/neomom_input"  "$PACKAGE_DIR/neomom_input/"
-cp "$PLOT_DIST/neomom_plot"    "$PACKAGE_DIR/neomom_plot/"
-cp "$ZIN_DIST/neomom_Zin"      "$PACKAGE_DIR/neomom_Zin/"
-cp "$CUR_DIST/neomom_current"  "$PACKAGE_DIR/neomom_current/"
+cp "$ENGINE_EXE"              "$PACKAGE_DIR/neomom/"
+cp "$INPUT_DIST/neomom_input" "$PACKAGE_DIR/neomom_input/"
+cp "$PLOT_DIST/neomom_plot"   "$PACKAGE_DIR/neomom_plot/"
+cp "$ZIN_DIST/neomom_Zin"     "$PACKAGE_DIR/neomom_Zin/"
 
 if [[ -d "$MODELS_DIR" ]]; then
     cp -r "$MODELS_DIR"/. "$PACKAGE_DIR/models/"
@@ -191,7 +170,7 @@ fi
 ok "Package tree assembled: $PACKAGE_DIR"
 
 # --------------------------------------------------------------
-# STEP 7 — Zip
+# STEP 6 — Zip
 # --------------------------------------------------------------
 
 step "Creating zip archive"
@@ -212,6 +191,5 @@ echo "  Engine  : $PACKAGE_DIR/neomom/neomom"
 echo "  Input   : $PACKAGE_DIR/neomom_input/neomom_input"
 echo "  Plot    : $PACKAGE_DIR/neomom_plot/neomom_plot"
 echo "  Zin     : $PACKAGE_DIR/neomom_Zin/neomom_Zin"
-echo "  Current : $PACKAGE_DIR/neomom_current/neomom_current"
 echo "  Archive : $PACKAGE_ZIP"
 echo ""

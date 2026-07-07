@@ -1980,7 +1980,23 @@ class GlobalsFrame(ttk.Frame):
             # FrequencyBlock
             m.frequency.fmin  = float(self.fmin_var.get())
             m.frequency.fmax  = float(self.fmax_var.get())
-            m.frequency.nFreq = int(self.nfreq_var.get())
+            # nFreq only used in pattern mode
+            # VNA mode uses fstep — nFreq computed by engine
+            mode = self.sweep_mode_var.get()
+            if mode == 'vna_sweep':
+                m.frequency.nFreq = 0      # signals: use fstep
+                try:
+                    m.frequency.fstep = float(self.fstep_var.get())
+                except ValueError:
+                    m.frequency.fstep = 0.010   # safe default
+            else:
+                # pattern mode
+                try:
+                    m.frequency.nFreq = int(self.nfreq_var.get())
+                except ValueError:
+                    m.frequency.nFreq = 1   # safe default
+                m.frequency.fstep = 0.0
+            m.options.sweep_mode = mode
 
             # GroundBlock
             m.ground.ground_type  = self.ground_type_var.get().strip().upper()
@@ -2022,22 +2038,35 @@ class GlobalsFrame(ttk.Frame):
         self._check_zheight_warning()
 
     def _on_start_freq_changed(self, event=None):
-        """When user edits Start Frequency, auto-fill Stop and Steps."""
+        """When user edits Start Frequency.
+        Pattern mode: auto-fill Stop = Start, Steps = 1.
+        VNA mode: just update point count, leave Stop alone.
+        """
         try:
             fmin = float(self.fmin_var.get())
         except ValueError:
             return
 
-        self.fmax_var.set(str(fmin))
-        self.nfreq_var.set("1")
+        if self.sweep_mode_var.get() == 'pattern':
+            self.fmax_var.set(str(fmin))
+            self.nfreq_var.set("1")
+        else:
+            # VNA mode — update point count only
+            self._update_point_count()
+
         # Update zHeight/lambda label in NodesFrame
         app = self.master.master
         if hasattr(app, 'nodes_frame'):
             app.nodes_frame._update_zheight_wl_label()
 
     def _on_stop_freq_changed(self, event=None):
-        """When user edits Stop Frequency, clear Steps."""
-        self.nfreq_var.set("")
+        """When user edits Stop Frequency.
+        Pattern mode: clear Steps.  VNA mode: update point count.
+        """
+        if self.sweep_mode_var.get() == 'pattern':
+            self.nfreq_var.set("")
+        else:
+            self._update_point_count()
 
 
     def __init__(self, master, model, *args, **kwargs):
@@ -2052,7 +2081,10 @@ class GlobalsFrame(ttk.Frame):
         # Frequency (legacy NEC/MMANA format)
         self.fmin_var  = tk.StringVar()
         self.fmax_var  = tk.StringVar()
-        self.nfreq_var = tk.StringVar()
+        self.nfreq_var      = tk.StringVar()
+        self.fstep_var      = tk.StringVar(value='0.010')
+        self.sweep_mode_var = tk.StringVar(value='pattern')  # 'pattern' or 'vna_sweep'
+        self.launch_plot_var = tk.BooleanVar(value=True)
 
         # Ground
         self.ground_type_var = tk.StringVar()
@@ -2091,10 +2123,11 @@ class GlobalsFrame(ttk.Frame):
         # Frequency Block (legacy: fmin, fmax, nFreq)
         # ------------------------------------------------------------
 
+        # ── Frequency frame — Start/Stop plus sweep mode and controls ────
         freq_frame = ttk.LabelFrame(self, text="Frequency (MHz)")
         freq_frame.grid(row=1, column=0, sticky="ew", padx=8, pady=6)
 
-        # --- Start Frequency ---
+        # Row 0: Start / Stop
         ttk.Label(freq_frame, text="Start:").grid(row=0, column=0, padx=4, pady=4, sticky="e")
         fmin_entry = ttk.Entry(
             freq_frame,
@@ -2106,7 +2139,6 @@ class GlobalsFrame(ttk.Frame):
         fmin_entry.grid(row=0, column=1, padx=4, pady=4, sticky="w")
         fmin_entry.bind("<KeyRelease>", self._on_start_freq_changed)
 
-        # --- Stop Frequency ---
         ttk.Label(freq_frame, text="Stop:").grid(row=0, column=2, padx=4, pady=4, sticky="e")
         fmax_entry = ttk.Entry(
             freq_frame,
@@ -2118,11 +2150,43 @@ class GlobalsFrame(ttk.Frame):
         fmax_entry.grid(row=0, column=3, padx=4, pady=4, sticky="w")
         fmax_entry.bind("<KeyRelease>", self._on_stop_freq_changed)
 
-        # --- Steps ---
-        ttk.Label(freq_frame, text="Steps:").grid(row=0, column=4, padx=4, pady=4, sticky="e")
-        ttk.Entry(freq_frame, textvariable=self.nfreq_var, width=6).grid(
-            row=0, column=5, padx=4, pady=4, sticky="w"
-        )
+        # Row 1: sweep mode radio buttons
+        ttk.Label(freq_frame, text="Mode:").grid(row=1, column=0, padx=4, pady=(2,4), sticky="e")
+        ttk.Radiobutton(freq_frame, text="Pattern Sweep",
+                        variable=self.sweep_mode_var, value='pattern',
+                        command=self._on_sweep_mode_changed).grid(
+            row=1, column=1, columnspan=2, padx=4, pady=(2,4), sticky="w")
+        ttk.Radiobutton(freq_frame, text="VNA Sweep",
+                        variable=self.sweep_mode_var, value='vna_sweep',
+                        command=self._on_sweep_mode_changed).grid(
+            row=1, column=3, columnspan=2, padx=4, pady=(2,4), sticky="w")
+
+        # Row 2: pattern sweep controls (Steps)
+        self._pat_frame = ttk.Frame(freq_frame)
+        self._pat_frame.grid(row=2, column=0, columnspan=6, sticky="ew", padx=4, pady=2)
+        ttk.Label(self._pat_frame, text="Steps:").pack(side="left", padx=4)
+        ttk.Entry(self._pat_frame, textvariable=self.nfreq_var,
+                  width=6).pack(side="left", padx=4)
+        ttk.Label(self._pat_frame,
+                  text="(each step produces a separate _xxxMHz.csv)",
+                  foreground="grey").pack(side="left", padx=8)
+
+        # Row 2: VNA sweep controls (Step size + point count)
+        self._vna_frame = ttk.Frame(freq_frame)
+        self._vna_frame.grid(row=2, column=0, columnspan=6, sticky="ew", padx=4, pady=2)
+        ttk.Label(self._vna_frame, text="Step size:").pack(side="left", padx=4)
+        ttk.Entry(self._vna_frame, textvariable=self.fstep_var,
+                  width=8).pack(side="left", padx=2)
+        ttk.Label(self._vna_frame, text="MHz").pack(side="left")
+        self._points_label = ttk.Label(self._vna_frame,
+                                       text="→  — points",
+                                       foreground="#1a6", width=16)
+        self._points_label.pack(side="left", padx=8)
+
+        # Traces for live point count — set AFTER _points_label exists
+        self.fstep_var.trace_add('write', self._update_point_count)
+        self.fmin_var.trace_add('write',  self._update_point_count)
+        self.fmax_var.trace_add('write',  self._update_point_count)
 
         # ------------------------------------------------------------
         # Ground Block
@@ -2189,17 +2253,36 @@ class GlobalsFrame(ttk.Frame):
             row=0, column=1, padx=4, pady=4, sticky="w"
         )
 
+        # Output Currents stays in Options
         ttk.Label(opt_frame, text="Output Currents:").grid(
             row=0, column=2, padx=(16, 4), pady=4, sticky="e"
         )
-        ttk.Radiobutton(opt_frame, text="True",  value=True,
+        ttk.Radiobutton(opt_frame, text="Yes", value=True,
                         variable=self.output_currents_var).grid(
             row=0, column=3, padx=(0, 4), pady=4, sticky="w"
         )
-        ttk.Radiobutton(opt_frame, text="False", value=False,
+        ttk.Radiobutton(opt_frame, text="No", value=False,
                         variable=self.output_currents_var).grid(
             row=0, column=4, padx=(0, 8), pady=4, sticky="w"
         )
+
+        # ------------------------------------------------------------
+        # Run Controls Frame — Launch plot only
+        # ------------------------------------------------------------
+        run_frame = ttk.LabelFrame(self, text="Run Controls")
+        run_frame.grid(row=4, column=0, sticky="ew", padx=8, pady=6)
+
+        ttk.Label(run_frame, text="Launch plot:").grid(
+            row=0, column=0, padx=4, pady=6, sticky="e")
+        ttk.Radiobutton(run_frame, text="Yes",
+                        variable=self.launch_plot_var, value=True).grid(
+            row=0, column=1, padx=4, pady=6, sticky="w")
+        ttk.Radiobutton(run_frame, text="No",
+                        variable=self.launch_plot_var, value=False).grid(
+            row=0, column=2, padx=4, pady=6, sticky="w")
+
+        # Initialise sweep mode display
+        self._on_sweep_mode_changed()
 
         # ------------------------------------------------------------
         # zHeight Warning Banner (row=4, hidden by default)
@@ -2207,7 +2290,7 @@ class GlobalsFrame(ttk.Frame):
         self.columnconfigure(0, weight=1)
 
         self._zheight_warn_frame = tk.Frame(self, bg="#FFD700", relief="flat")
-        self._zheight_warn_frame.grid(row=4, column=0, sticky="ew", padx=8, pady=(2, 2))
+        self._zheight_warn_frame.grid(row=5, column=0, sticky="ew", padx=8, pady=(2, 2))
         self._zheight_warn_frame.grid_remove()   # hidden by default
 
         warn_icon = tk.Label(self._zheight_warn_frame, text="⚠", bg="#FFD700",
@@ -2267,6 +2350,9 @@ class GlobalsFrame(ttk.Frame):
         self.fmin_var.set(m.frequency.fmin)
         self.fmax_var.set(m.frequency.fmax)
         self.nfreq_var.set(m.frequency.nFreq)
+        self.fstep_var.set(m.frequency.fstep)
+        self.sweep_mode_var.set(m.options.sweep_mode)
+        self._on_sweep_mode_changed()
 
         # GroundBlock
         self.ground_type_var.set(m.ground.ground_type)
@@ -2310,6 +2396,34 @@ class GlobalsFrame(ttk.Frame):
         if hasattr(app, 'nodes_frame'):
             app.nodes_frame._update_zheight_wl_label()
 
+
+    def _on_sweep_mode_changed(self):
+        """Show/hide pattern vs VNA sweep controls."""
+        mode = self.sweep_mode_var.get()
+        if mode == 'vna_sweep':
+            self._pat_frame.grid_remove()
+            self._vna_frame.grid()
+            self._update_point_count()
+        else:
+            self._vna_frame.grid_remove()
+            self._pat_frame.grid()
+
+    def _update_point_count(self, *args):
+        """Recompute and display VNA sweep point count live."""
+        try:
+            fmin  = float(self.fmin_var.get())
+            fmax  = float(self.fmax_var.get())
+            fstep = float(self.fstep_var.get())
+            if fstep > 0 and fmax > fmin:
+                n = int(round((fmax - fmin) / fstep)) + 1
+                self._points_label.config(text=f'→  {n} points')
+            else:
+                self._points_label.config(text='→  —')
+        except (ValueError, ZeroDivisionError, AttributeError):
+            try:
+                self._points_label.config(text='→  —')
+            except Exception:
+                pass
 
 # end class GlobalsFrame
 
@@ -2468,10 +2582,29 @@ class MomNMLApp(tk.Tk):
         # Open the live output window -- it will drain the queue
         self._open_solver_output_window(q)
 
+        # ---- build command with optional flags ----
+        cmd = [solver, abs_path]
+
+        gf = self.globals_frame
+
+        # sweep mode
+        if gf.sweep_mode_var.get() == 'vna_sweep':
+            cmd.append('sweep=vna_sweep')
+
+        # plot suppression
+        if not gf.launch_plot_var.get():
+            cmd.append('plot=.false.')
+
+        # currents override — always pass so .nml value is overridden
+        if gf.output_currents_var.get():
+            cmd.append('currents=.true.')
+        else:
+            cmd.append('currents=.false.')
+
         def worker():
             try:
                 proc = subprocess.Popen(
-                    [solver, abs_path],
+                    cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     text=True,

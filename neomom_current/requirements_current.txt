@@ -1,0 +1,16 @@
+# requirements_current.txt
+# neomom_current GUI — minimal dependencies
+#
+# Uses the neomom_plot venv — no separate venv needed.
+# matplotlib, numpy and mpl_toolkits are already installed there.
+#
+# tkinter is stdlib but must be present:
+#   Ubuntu/Debian: sudo apt install python3-tk
+#   Windows:       included by default in python.org installer
+#
+# To build using the neomom_plot venv:
+#   Linux:   $HOME/venvs/neomom_plot/bin/pyinstaller ...
+#   Windows: %USERPROFILE%\venvs\neomom_plot\Scripts\pyinstaller.exe ...
+
+matplotlib
+numpy

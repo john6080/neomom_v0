@@ -15,18 +15,30 @@ def write_nml(model: NeoMoMModel, path: str):
         w("/\n")
 
         # ============================================================
-        # Frequency_MHz  (LEGACY FORMAT)
+        # Frequency_MHz
+        #
+        # Pattern sweep (nFreq > 1, fstep = 0):
+        #   fmin, fmax, nFreq — engine produces one _xxxMHz.csv per step
+        #
+        # VNA sweep (fstep > 0):
+        #   fmin, fmax, fstep — engine computes nFreq automatically
+        #   nFreq = 0 signals "use fstep"
+        #   sweep_mode = 'vna_sweep' written to OPTIONS below
         # ============================================================
         freq = model.frequency
 
         w("&Frequency_MHz")
         w(f"   fmin  = {freq.fmin}")
         w(f"   fmax  = {freq.fmax}")
-        w(f"   nFreq = {freq.nFreq}")
+        if freq.fstep > 0.0:
+            w(f"   fstep = {freq.fstep}")
+            w(f"   nFreq = 0")        # 0 signals: use fstep
+        else:
+            w(f"   nFreq = {freq.nFreq}")
         w("/\n")
 
         # ============================================================
-        # Ground (legacy names)
+        # Ground
         # ============================================================
         g = model.ground
         w("&Ground")
@@ -45,20 +57,23 @@ def write_nml(model: NeoMoMModel, path: str):
         w("/\n")
 
         # ============================================================
-        # OPTIONS (legacy name)
+        # OPTIONS
+        # sweep_mode written only when not default ('pattern')
         # ============================================================
         opt = model.options
         currents_str = ".TRUE." if opt.output_currents else ".FALSE."
         w("&OPTIONS")
         w(f"   NBASISPERLAMBDA = {opt.nBasisPerLambda}")
         w(f"   Output_Currents = {currents_str}")
+        if opt.sweep_mode != 'pattern':
+            w(f"   sweep_mode = '{opt.sweep_mode}'")
         w("/\n")
 
         # ============================================================
-        # node_input (legacy format)
+        # node_input
         # ============================================================
         nodes = model.nodes
-        meta = model.node_input_meta  # you still have this in your model
+        meta  = model.node_input_meta
 
         w("&node_input")
         w(f"   zHeight = {meta.zHeight}")
@@ -72,7 +87,7 @@ def write_nml(model: NeoMoMModel, path: str):
         w("/\n")
 
         # ============================================================
-        # wire_primitive (legacy format)
+        # wire_primitive
         # ============================================================
         for wpr in model.wires:
             node_tags_quoted = " ".join(f"'{t}'" for t in wpr.node_tags)
@@ -84,7 +99,7 @@ def write_nml(model: NeoMoMModel, path: str):
             w("/\n")
 
         # ============================================================
-        # excitation_input (legacy format)
+        # excitation_input
         # ============================================================
         for ex in model.excitations:
             w("&excitation_input")

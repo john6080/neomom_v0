@@ -1,40 +1,28 @@
 # ==============================================================
-# neomom_input.spec
-# NeoMOM Input GUI — PyInstaller one-file build  (WINDOWS)
+# neomom_current.spec
+# NeoMOM Current Distribution Viewer — PyInstaller one-file build (LINUX)
 #
 # Repository layout:
 #
-#   input_gui/
+#   neomom_current/
 #   ├── linux/
-#   │   └── neomom_input.spec     <- Linux version
+#   │   └── neomom_current.spec      <- this file
 #   ├── windows/
-#   │   └── neomom_input.spec     <- this file
+#   │   └── neomom_current.spec      <- Windows version
 #   └── src/
-#       ├── neomom_input.py
-#       ├── constants.py
-#       ├── maa_parser.py
-#       ├── neomom_model.py
-#       ├── nml_io.py
-#       ├── nml_to_maa.py
-#       └── nml_to_nec.py
+#       └── neomom_current.py
 #
-# Build command (from project root or scripts/):
+# Build command (from project root):
 #
-#   & "$env:USERPROFILE\venvs\neomom_input\Scripts\pyinstaller.exe" `
-#       input_gui\windows\neomom_input.spec `
-#       --distpath input_gui\build\dist `
-#       --workpath input_gui\build\work
+#   $HOME/venvs/neomom_plot/bin/pyinstaller \
+#       neomom_current/linux/neomom_current.spec \
+#       --distpath neomom_current/build/dist \
+#       --workpath neomom_current/build/work
 #
 # Output:
-#   input_gui\build\dist\neomom_input.exe    <- the executable
+#   neomom_current/build/dist/neomom_current    <- the executable
 #
-# Prerequisites:
-#   - Run from project root
-#   - venv at %USERPROFILE%\venvs\neomom_input populated from
-#     requirements_input.txt
-#   - python3-tk equivalent: ensure tkinter is included in your
-#     Python Windows installation (it is by default in the
-#     official python.org installer)
+# Uses neomom_plot venv — no separate venv needed.
 # ==============================================================
 
 import os
@@ -45,17 +33,14 @@ block_cipher = None
 # --------------------------------------------------------------
 # PATHS
 # SPECPATH is set automatically by PyInstaller to the directory
-# containing this .spec file (input_gui/linux/)
+# containing this .spec file (neomom_current/linux/)
 # --------------------------------------------------------------
 
 SRC = os.path.abspath(os.path.join(SPECPATH, '..', 'src'))
 
 # --------------------------------------------------------------
 # DATA FILES
-# Bundle all .py helpers so that the importlib dynamic loads of
-# nml_to_nec.py and nml_to_maa.py work inside the frozen bundle.
-# PyInstaller static analysis cannot detect these runtime loads.
-# At runtime they are extracted to sys._MEIPASS by PyInstaller.
+# Bundle all .py files in src/
 # --------------------------------------------------------------
 
 all_py = [
@@ -68,7 +53,7 @@ all_py = [
 # --------------------------------------------------------------
 
 a = Analysis(
-    [os.path.join(SRC, 'neomom_input.py')],
+    [os.path.join(SRC, 'neomom_current.py')],
 
     pathex=[SRC],
 
@@ -77,15 +62,25 @@ a = Analysis(
     datas=all_py,
 
     hiddenimports=[
-        # tkinter submodules — not auto-detected by PyInstaller
+        # tkinter submodules
         'tkinter',
         'tkinter.ttk',
         'tkinter.filedialog',
         'tkinter.messagebox',
         'tkinter.font',
 
-        # matplotlib backend for tkinter embedding
+        # matplotlib backends and 3D toolkit
         'matplotlib.backends.backend_tkagg',
+        'matplotlib.backends._backend_tk',
+        'matplotlib.figure',
+        'mpl_toolkits.mplot3d',
+        'mpl_toolkits.mplot3d.art3d',
+
+        # numpy
+        'numpy',
+
+        # Pillow tkinter bridge
+        'PIL._tkinter_finder',
     ],
 
     hookspath=[],
@@ -112,8 +107,6 @@ pyz = PYZ(
 
 # --------------------------------------------------------------
 # EXE — one-file bundle
-# a.binaries, a.zipfiles, a.datas are included directly here
-# (no COLLECT block) which is what makes this a one-file build.
 # --------------------------------------------------------------
 
 exe = EXE(
@@ -124,14 +117,12 @@ exe = EXE(
     a.datas,
     [],
 
-    name='neomom_input',
+    name='neomom_current',
 
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
 
-    # UPX compression — reduces exe size if upx is installed.
-    # Set to False if build machine does not have upx.
     upx=True,
     upx_exclude=[],
 

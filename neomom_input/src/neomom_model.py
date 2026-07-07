@@ -4,8 +4,6 @@
 from dataclasses import dataclass, field
 from typing import List
 
-#from neomom_model import Node, WirePrimitive, Excitation
-
 # ------------------------------------------------------------
 # GLOBAL BLOCKS (Fortran-style derived types)
 # ------------------------------------------------------------
@@ -17,23 +15,23 @@ class NodeInputMeta:
 
 @dataclass
 class FrequencyBlock:
-    fmin: float = 7.0
-    fmax: float = 7.0
-    nFreq: int = 1
-
+    fmin:  float = 7.0
+    fmax:  float = 7.0
+    nFreq: int   = 1
+    fstep: float = 0.0   # MHz; 0 = use nFreq (pattern sweep)
+                          # > 0 = use fstep (VNA sweep, nFreq computed by engine)
 
 @dataclass
 class GroundBlock:
-    ground_type: str = "free_space"  # free_space, perfect, real
+    ground_type:  str   = "free_space"   # free_space, perfect, real
     conductivity: float = 0.005
     permittivity: float = 14.0
 
-
 @dataclass
 class OptionsBlock:
-    nBasisPerLambda: int = 40      # Fortran solver parameter
-    output_currents: bool = False  # Write segment currents to output file
-
+    nBasisPerLambda: int  = 40
+    output_currents: bool = False
+    sweep_mode:      str  = 'pattern'   # 'pattern' or 'vna_sweep'
 
 # ------------------------------------------------------------
 # GEOMETRY BLOCKS
@@ -41,53 +39,50 @@ class OptionsBlock:
 
 @dataclass
 class Node:
-    tag: str        # string tag (A, B, C, AA, etc.)
+    tag: str
     x: float
     y: float
     z: float
 
-
 @dataclass
 class Wire:
-    tag: str                 # wire tag (w1, w2, w10b, etc.)
-    node_tags: List[str]     # list of node tags (A, CC, D, E)
-    radius: float
-    segments: int
-
+    tag:       str
+    node_tags: List[str]
+    radius:    float
+    segments:  int
 
 # ------------------------------------------------------------
-# EXCITATION BLOCK (NeoMoM-accurate)
+# EXCITATION BLOCK
 # ------------------------------------------------------------
 
 @dataclass
 class Excitation:
-    wireTag: str             # which wire is excited
-    nodeTag: str             # which node on that wire
-    voltage: float = 1.0
+    wireTag:   str
+    nodeTag:   str
+    voltage:   float = 1.0
     phase_deg: float = 0.0
 
-
 # ------------------------------------------------------------
-# TOP-LEVEL MODEL (Fortran-style TYPE :: NeoMoMModel)
+# TOP-LEVEL MODEL
 # ------------------------------------------------------------
 
 @dataclass
 class NeoMoMModel:
-    """Structured model for NeoMoM input, replacing loose dictionaries."""
+    """Structured model for NeoMoM input."""
 
     run_title: str = "Untitled NeoMoM Run"
 
-    frequency: FrequencyBlock = field(default_factory=FrequencyBlock)
-    ground: GroundBlock = field(default_factory=GroundBlock)
-    options: OptionsBlock = field(default_factory=OptionsBlock)
+    frequency:       FrequencyBlock = field(default_factory=FrequencyBlock)
+    ground:          GroundBlock    = field(default_factory=GroundBlock)
+    options:         OptionsBlock   = field(default_factory=OptionsBlock)
+    node_input_meta: NodeInputMeta  = field(default_factory=NodeInputMeta)
 
-    node_input_meta: NodeInputMeta = field(default_factory=NodeInputMeta)
-
-    nodes: List[Node] = field(default_factory=list)
-    wires: List[Wire] = field(default_factory=list)
+    nodes:       List[Node]       = field(default_factory=list)
+    wires:       List[Wire]       = field(default_factory=list)
     excitations: List[Excitation] = field(default_factory=list)
+
     # --------------------------------------------------------
-    # Convenience methods (Fortran-style subroutines)
+    # Convenience methods
     # --------------------------------------------------------
 
     def add_node(self, tag: str, x: float, y: float, z: float):
@@ -108,5 +103,5 @@ class NeoMoMModel:
         self.excitations.clear()
 
     def reset(self):
-        """Reset the entire model to defaults (Fortran-style reinitialization)."""
+        """Reset the entire model to defaults."""
         self.__init__()
