@@ -1,0 +1,36 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Antenna Modeling (ifx)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/neomom",
+      "args": [
+        "..//test_cases/Delta_Loop_40m_at_10m.nml"
+
+        //"../models/Center_fed_40m_dipole.nml",
+        //"geo/sloper.nml"
+        //"geo/two_loop.nml"
+        //"geo/disk_cone_maa.nml"
+        //"geo/cr2.maa.nml"
+       //"../models/validation_cases/J_Pole/J_pole_as_port/Jpole_10m_stub_feed.nml",
+
+
+        //home/john/AntennaModeling_AI/models/validation_cases/J_Pole/J_pole_as_port
+      ],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    }
+  ]
+}

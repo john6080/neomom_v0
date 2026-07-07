@@ -1,0 +1,56 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+
+    {
+      "label": "Build active Fortran file",
+      "type": "shell",
+      "command": "make",
+      "args": [
+        "BUILD_ACTIVE=$(file)"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      
+    },
+
+   // {
+   //   "label": "Make (full build)",
+   //   "type": "shell",
+   //   "command": "make",
+   //   "group": "build",
+   //   "presentation": {
+   //     "reveal": "always",
+   //     "panel": "shared"
+   //   },
+     
+   // }
+
+  ],
+
+
+  "label": "Make (full build)",
+  "type": "shell",
+  "command": "make",
+  "problemMatcher": {
+    "owner": "fortran",
+    "fileLocation": ["relative", "${workspaceFolder}"],
+    "pattern": {
+      "regexp": "^(.*)\\((\\d+)\\):\\s+(error|warning)\\s+#\\d+:\\s+(.*)$",
+      "file": 1,
+      "line": 2,
+      "severity": 3,
+      "message": 4
+    }
+  },
+  "group": {
+    "kind": "build",
+    "isDefault": true
+  }
+}

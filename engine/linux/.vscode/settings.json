@@ -1,0 +1,73 @@
+{
+    // ─── Intel ifx Compiler ───────────────────────────────────────────────────
+    //"fortran.compiler.compiler": "ifx",
+    //"fortran.compiler.compilerPath": "ifx",
+    // If ifx is not on PATH, use the full path, e.g.:
+    // "fortran.compiler.compilerPath": "/opt/intel/oneapi/compiler/latest/bin/ifx",
+
+    // ─── Language Server (fortls) ─────────────────────────────────────────────
+    "fortran.fortls.path": "fortls",
+    "fortran.fortls.disabled": false,
+    "fortran.fortls.notifyInit": true,
+    "fortran.fortls.maxLineLength": 132,
+    "fortran.fortls.maxCommentLineLength": 132,
+    "fortran.fortls.extraArgs": [
+        "--hover_signature",
+        "--hover_language=fortran",
+        "--use_signature_help",
+        "--incremental_sync",
+        "--autocomplete_no_prefix",
+        "--lowercase_intrinsics",
+        "--source_dirs=${workspaceFolder}",
+        "--source_dirs=${workspaceFolder}/src"    // ← add more dirs where your .f90 files live
+    ],
+//"fortran.includePaths": ["build"],
+//"fortran.linterEnabled": false,
+
+    // ─── Linting ──────────────────────────────────────────────────────────────
+    "fortran.linter.compiler": "ifx",
+    "fortran.linter.compilerPath": "ifx",
+    // If ifx is not on PATH, use the full path, e.g.:
+    // "fortran.linter.compilerPath": "/opt/intel/oneapi/compiler/latest/bin/ifx",
+    //"fortran.linter.enabled": true,
+    "fortran.linter.extraArgs": [
+        "-warn", "all",         // enables ALL warnings including undeclared variables
+        "-stand", "f18",        // strict Fortran 2018 standard checking
+        "-implicitnone",        // treat all variables as requiring explicit declaration
+        "-syntax-only",         // do not produce object files — lint only
+        "-I", "${workspaceFolder}",           // search project root for .mod files
+        "-I", "${workspaceFolder}/build",     // ← adjust to wherever your .mod files are built
+        "-I", "${workspaceFolder}/modules",   // ← add/remove paths to match your project layout
+        "-I", "${workspaceFolder}/src"
+    ],
+
+
+//"fortran.fortls.mod_output": "build",
+//"fortran.fortls.mod_dirs": ["build"],
+//"fortran.fortls.linting": false,
+
+
+
+    // ─── Editor Niceties ──────────────────────────────────────────────────────
+    "[fortran]": {
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true,
+        "editor.rulers": [80, 132],
+        "editor.detectIndentation": false
+    },
+    "files.associations": {
+        "*.f90": "FortranFreeForm",
+        "*.f95": "FortranFreeForm",
+        "*.f03": "FortranFreeForm",
+        "*.f08": "FortranFreeForm",
+        "*.f":   "fortran-fixed-form",
+        "*.for": "fortran-fixed-form"
+    },
+    "editor.defaultFormatter": "fortran-lang.linter-gfortran",
+
+    {
+    "files.encoding": "utf8",
+    "files.eol": "\n",
+    "files.trimTrailingWhitespace": true
+}
+}
