@@ -196,6 +196,34 @@ def _interpolate_at(x, y, x0):
 
 
 # ------------------------------------------------------------------
+# SWR recomputation utility
+# ------------------------------------------------------------------
+
+def compute_swr(Rin, Xin, Z0=50.0):
+    """
+    Recompute SWR from Rin and Xin arrays at arbitrary Z0.
+
+    Parameters
+    ----------
+    Rin  : numpy array  — resistance [Ohm]
+    Xin  : numpy array  — reactance [Ohm]
+    Z0   : float        — reference impedance [Ohm], default 50.0
+
+    Returns
+    -------
+    swr  : numpy array  — SWR, clipped to [1, 999]
+    """
+    import numpy as np
+    Zin   = Rin + 1j * Xin
+    gamma = (Zin - Z0) / (Zin + Z0)
+    gm    = np.abs(gamma)
+    # Guard against |gamma| >= 1 (open/short circuit)
+    gm    = np.clip(gm, 0.0, 0.9999)
+    swr   = (1.0 + gm) / (1.0 - gm)
+    return np.clip(swr, 1.0, 999.0)
+
+
+# ------------------------------------------------------------------
 # Command-line self-test
 # ------------------------------------------------------------------
 if __name__ == '__main__':

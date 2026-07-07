@@ -18,7 +18,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
-from ham_bands import overlay_bands
+from ham_bands   import overlay_bands
+from Zin_reader  import compute_swr
 
 
 # ------------------------------------------------------------------
@@ -167,27 +168,33 @@ def plot_GB(ax, data, meta, show_bands=True):
 # ------------------------------------------------------------------
 # plot_SWR: SWR vs frequency
 # ------------------------------------------------------------------
-def plot_SWR(ax, data, meta, show_bands=True):
+def plot_SWR(ax, data, meta, show_bands=True, Z0=50.0):
     """
     Plot SWR vs frequency.
+
+    SWR is recomputed from Rin/Xin at the given Z0 reference impedance
+    so the plot updates correctly when Z0 changes in the GUI.
 
     Features:
      - SWR = 2.0 reference line (grey dashed) — standard bandwidth marker
      - Vertical resonance marker at Bin zero crossing
-     - Annotation with SWR minimum value and frequency
-     - Y-axis clipped at SWR_MAX to prevent large off-resonance values
-       from collapsing the useful part of the plot
+     - Annotation with SWR minimum, frequency, and Z0 reference
+     - Z0 shown in plot title and annotation box
+     - Y-axis clipped at SWR_MAX
 
     Parameters
     ----------
-    ax   : matplotlib Axes
-    data : dict from Zin_reader.read_Zin_file()
-    meta : dict from Zin_reader.read_Zin_file()
+    ax        : matplotlib Axes
+    data      : dict from Zin_reader.read_Zin_file()
+    meta      : dict from Zin_reader.read_Zin_file()
+    show_bands: bool — overlay ham band markers
+    Z0        : float — reference impedance [Ohm], default 50.0
     """
-    SWR_MAX = 20.0     # clip SWR display at this value
+    SWR_MAX = 20.0
 
     freq = data['freq_mhz']
-    swr  = np.clip(data['SWR'], 1.0, SWR_MAX)
+    # Recompute SWR at the user-selected Z0
+    swr  = np.clip(compute_swr(data['Rin'], data['Xin'], Z0), 1.0, SWR_MAX)
 
     # ---- curve ----
     ax.plot(freq, swr, color=COL_SWR, lw=LW, label='SWR')
@@ -204,18 +211,22 @@ def plot_SWR(ax, data, meta, show_bands=True):
     # ---- SWR minimum annotation ----
     swr_min = meta.get('swr_min')
     f_min   = meta.get('f_swr_min_mhz')
-    if swr_min and f_min:
-        ax.annotate(
-            f'SWR min = {swr_min:.2f}\n@ {f_min:.4f} MHz',
-            xy=(f_min, swr_min),
-            xytext=(0.05, 0.85),
-            textcoords='axes fraction',
-            fontsize=8,
-            color=COL_SWR,
-            bbox=dict(boxstyle='round,pad=0.3', fc='white',
-                      ec=COL_SWR, alpha=0.85),
-            arrowprops=dict(arrowstyle='->', color=COL_SWR, lw=0.8)
-        )
+    # Recompute SWR min at current Z0
+    idx_min   = int(np.argmin(swr))
+    swr_min   = float(swr[idx_min])
+    f_min     = float(freq[idx_min])
+
+    ax.annotate(
+        f'SWR min = {swr_min:.2f}\n@ {f_min:.4f} MHz\nZ\u2080 = {Z0:.1f} \u03a9',
+        xy=(f_min, swr_min),
+        xytext=(0.05, 0.85),
+        textcoords='axes fraction',
+        fontsize=8,
+        color=COL_SWR,
+        bbox=dict(boxstyle='round,pad=0.3', fc='white',
+                  ec=COL_SWR, alpha=0.85),
+        arrowprops=dict(arrowstyle='->', color=COL_SWR, lw=0.8)
+    )
 
     # ---- ham band overlay ----
     if show_bands:
@@ -224,7 +235,7 @@ def plot_SWR(ax, data, meta, show_bands=True):
     # ---- formatting ----
     ax.set_xlabel('Frequency [MHz]')
     ax.set_ylabel('SWR')
-    ax.set_title(_make_title(meta, 'SWR vs Frequency'))
+    ax.set_title(_make_title(meta, f'SWR vs Frequency  |  Z₀ = {Z0:.1f} Ω'))
     ax.set_ylim(bottom=1.0, top=min(SWR_MAX, swr.max() * 1.1))
     ax.legend(loc='upper right', framealpha=0.85)
     ax.grid(True, which='major', linestyle=':', alpha=0.5)
@@ -291,7 +302,7 @@ def _set_freq_limits(ax, freq):
 # ------------------------------------------------------------------
 if __name__ == '__main__':
     import sys
-    from Zin_reader import read_Zin_file
+    from Zin_reader import read_Zin_file, compute_swr
 
     if len(sys.argv) < 2:
         print("Usage: python3 Zin_plots.py <_Zin.csv>")
@@ -304,7 +315,7 @@ if __name__ == '__main__':
 
     plot_RX (axes[0], data, meta, show_bands=True)
     plot_GB (axes[1], data, meta, show_bands=True)
-    plot_SWR(axes[2], data, meta, show_bands=True)
+    plot_SWR(axes[2], data, meta, show_bands=True, Z0=50.0)
 
     fig.tight_layout()
     plt.show()

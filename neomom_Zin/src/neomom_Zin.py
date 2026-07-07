@@ -75,6 +75,7 @@ class NeoMoMZin(tk.Tk):
         self._data       = None
         self._csv_path   = None
         self._show_bands = tk.BooleanVar(value=True)
+        self._Z0_var     = tk.StringVar(value='50.0')
         self._active_tab = 0          # 0=RX, 1=GB, 2=SWR
 
         # ---- build UI ----
@@ -128,6 +129,19 @@ class NeoMoMZin(tk.Tk):
             command=self._redraw_current
         ).pack(side='left', padx=2)
 
+        # Z0 reference — shown only on SWR tab
+        ttk.Separator(bar, orient='vertical').pack(
+            side='left', fill='y', padx=8)
+        self._Z0_label = ttk.Label(bar, text='Z₀ [Ω]:')
+        self._Z0_label.pack(side='left', padx=(4, 2))
+        self._Z0_entry = ttk.Entry(bar, textvariable=self._Z0_var, width=7)
+        self._Z0_entry.pack(side='left', padx=2)
+        self._Z0_entry.bind('<Return>',   lambda e: self._redraw_current())
+        self._Z0_entry.bind('<FocusOut>', lambda e: self._redraw_current())
+        # Hidden by default — shown only when SWR tab active
+        self._Z0_label.pack_forget()
+        self._Z0_entry.pack_forget()
+
         # File label (right side)
         self._file_label = ttk.Label(bar, text='No file loaded',
                                      foreground='grey')
@@ -176,6 +190,14 @@ class NeoMoMZin(tk.Tk):
         for i, btn in enumerate(self._tab_btns):
             btn.state(['pressed'] if i == idx else ['!pressed'])
 
+        # Show Z0 field only on SWR tab (idx=2)
+        if idx == 2:
+            self._Z0_label.pack(side='left', padx=(4, 2))
+            self._Z0_entry.pack(side='left', padx=2)
+        else:
+            self._Z0_label.pack_forget()
+            self._Z0_entry.pack_forget()
+
         self._redraw_current()
 
     def _redraw_current(self):
@@ -193,7 +215,14 @@ class NeoMoMZin(tk.Tk):
         elif self._active_tab == 1:
             plot_GB (self._ax, self._data, self._meta, show_bands=bands)
         else:
-            plot_SWR(self._ax, self._data, self._meta, show_bands=bands)
+            try:
+                Z0 = float(self._Z0_var.get())
+                if Z0 <= 0:
+                    Z0 = 50.0
+            except ValueError:
+                Z0 = 50.0
+            plot_SWR(self._ax, self._data, self._meta,
+                     show_bands=bands, Z0=Z0)
 
         self._fig.tight_layout()
         self._canvas.draw()
