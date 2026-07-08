@@ -105,6 +105,7 @@ Program neomom
    integer :: nR                               ! number of basis functions (DOF count)
    integer :: iFreq, i                         ! loop indices
    integer :: iZin                             ! Zin CSV file unit
+   character(120) :: cLine
 
    !------| start of main |------------------------------------------------------
 
@@ -174,6 +175,10 @@ Program neomom
       ! Steps 12-13: output — gated on sweep mode
       ! =========================================================================
       if (trim(sys%sweep_mode) == 'vna_sweep') then
+
+         write (cLine, '(2x,a,t26,a,f12.4,2x,a)') &
+            'Frequency', ':', sys%freq%freq_mhz, 'MHz'
+         call out(cLine)
 
          ! VNA sweep — append one row to Zin CSV, skip pattern
          call write_Zin_row(sys, iZin)
