@@ -2403,6 +2403,13 @@ class GlobalsFrame(ttk.Frame):
         if mode == 'vna_sweep':
             self._pat_frame.grid_remove()
             self._vna_frame.grid()
+            # Ensure a sensible default step size is shown
+            try:
+                v = float(self.fstep_var.get())
+                if v <= 0.0:
+                    self.fstep_var.set('0.010')
+            except ValueError:
+                self.fstep_var.set('0.010')
             self._update_point_count()
         else:
             self._vna_frame.grid_remove()
@@ -3228,12 +3235,27 @@ class MomNMLApp(tk.Tk):
         if not nec_path:
             return
 
-        # 3. Write model to a temporary .nml so nml_to_nec can parse it
+        # 3. Write model to a temporary .nml so nml_to_nec can parse it.
+        #    NEC is single-frequency only — force nFreq=1, fstep=0,
+        #    sweep_mode='pattern' regardless of current GUI mode.
+        #    Save and restore the original frequency/options values after.
         tmp_fd, tmp_path = tempfile.mkstemp(suffix=".nml")
         os.close(tmp_fd)
         try:
             from nml_io import write_nml
+            # Save original values
+            _orig_nFreq      = self.model.frequency.nFreq
+            _orig_fstep      = self.model.frequency.fstep
+            _orig_sweep_mode = self.model.options.sweep_mode
+            # Force single frequency for NEC export
+            self.model.frequency.nFreq      = 1
+            self.model.frequency.fstep      = 0.0
+            self.model.options.sweep_mode   = 'pattern'
             write_nml(self.model, tmp_path)
+            # Restore original values
+            self.model.frequency.nFreq      = _orig_nFreq
+            self.model.frequency.fstep      = _orig_fstep
+            self.model.options.sweep_mode   = _orig_sweep_mode
 
             # 4. Convert: nml_to_nec reads the 'units' field and scales
             #    ALL node coordinates AND wire radii to metres before
@@ -3321,7 +3343,17 @@ class MomNMLApp(tk.Tk):
         os.close(tmp_fd)
         try:
             from nml_io import write_nml
+            # MAA is single-frequency — force nFreq=1, fstep=0
+            _orig_nFreq      = self.model.frequency.nFreq
+            _orig_fstep      = self.model.frequency.fstep
+            _orig_sweep_mode = self.model.options.sweep_mode
+            self.model.frequency.nFreq    = 1
+            self.model.frequency.fstep    = 0.0
+            self.model.options.sweep_mode = 'pattern'
             write_nml(self.model, tmp_path)
+            self.model.frequency.nFreq      = _orig_nFreq
+            self.model.frequency.fstep      = _orig_fstep
+            self.model.options.sweep_mode   = _orig_sweep_mode
 
             # nml_to_maa converts all units to metres and applies zHeight
             maa_text = nml_to_maa(tmp_path)

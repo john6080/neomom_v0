@@ -142,8 +142,9 @@ def nml_to_maa(nml_path):
 
         elif bname == 'wire_primitive':
             tag    = kv.get('tag', '').strip("'\" ,").upper()
-            ntstr  = kv.get('nodetags', '').strip("'\"")
-            ntags  = [t.upper() for t in ntstr.split() if t.strip()]
+            ntstr  = kv.get('nodetags', '')
+            # Strip quotes from each tag — write_nml writes 'A' 'B' 'C'
+            ntags  = [t.strip("'\"").upper() for t in ntstr.split() if t.strip()]
             radius = float(kv.get('radius', '0.001')) * scale
             if len(ntags) >= 2:
                 wires.append({

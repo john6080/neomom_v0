@@ -187,8 +187,10 @@ def nml_to_nec(nml_path):
         # -- wire primitives (may appear many times) --
         elif bname == 'wire_primitive':
             tag    = kv.get('tag', '').strip("'\" ,").upper()
-            ntstr  = kv.get('nodetags', '').strip("'\"")
-            ntags  = [t.upper() for t in ntstr.split() if t.strip()]
+            ntstr  = kv.get('nodetags', '')
+            # Strip quotes from each individual tag — write_nml writes
+            # nodeTags = 'A' 'B' 'C' so each token may have quotes
+            ntags  = [t.strip("'\"").upper() for t in ntstr.split() if t.strip()]
             radius = float(kv.get('radius', '0.001')) * scale
             if len(ntags) >= 2:
                 wires.append({
