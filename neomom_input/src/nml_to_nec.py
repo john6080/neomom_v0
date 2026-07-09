@@ -130,7 +130,10 @@ def nml_to_nec(nml_path):
 
     # ── defaults ──────────────────────────────────────────────────────────────
     title           = 'NeoMoM antenna'
-    freq_mhz        = 145.0
+    freq_mhz        = 145.0    # fmin — mesh reference at single freq
+    fmax_mhz        = 145.0    # fmax — used for sweep FR card
+    fstep_mhz       = 0.0      # > 0 means use fstep, else use nFreq
+    nFreq           = 1        # number of frequency points
     ground_type     = 'free_space'
     epsilon         = 1.0
     sigma           = 0.0
@@ -159,7 +162,13 @@ def nml_to_nec(nml_path):
 
         # -- frequency --
         elif bname == 'frequency_mhz':
-            freq_mhz = float(kv.get('fmin', freq_mhz))
+            freq_mhz  = float(kv.get('fmin',  freq_mhz))
+            fmax_mhz  = float(kv.get('fmax',  freq_mhz))
+            fstep_mhz = float(kv.get('fstep', 0.0))
+            try:
+                nFreq = int(kv.get('nfreq', 1))
+            except (ValueError, TypeError):
+                nFreq = 1
 
         # -- ground --
         elif bname == 'ground':
@@ -192,13 +201,25 @@ def nml_to_nec(nml_path):
             # nodeTags = 'A' 'B' 'C' so each token may have quotes
             ntags  = [t.strip("'\"").upper() for t in ntstr.split() if t.strip()]
             radius = float(kv.get('radius', '0.001')) * scale
+            # Expand polyline into N-1 two-node segments.
+            # Wire (A,B,C,D,E) -> A->B, B->C, C->D, D->E
+            # Each segment tagged as W1_s1, W1_s2, etc. for N>2 nodes.
             if len(ntags) >= 2:
-                wires.append({
-                    'tag'   : tag,
-                    'n1'    : ntags[0],
-                    'n2'    : ntags[-1],
-                    'radius': radius,
-                })
+                n_segs = len(ntags) - 1
+                for si in range(n_segs):
+                    # Skip degenerate zero-length segments
+                    if ntags[si] == ntags[si + 1]:
+                        continue
+                    seg_tag = tag if n_segs == 1 else f'{tag}_s{si+1}'
+                    wires.append({
+                        'tag'      : seg_tag,
+                        'wire_tag' : tag,      # parent wire tag for excitation matching
+                        'n1'       : ntags[si],
+                        'n2'       : ntags[si + 1],
+                        'radius'   : radius,
+                        'ntags'    : ntags,    # full node list for excitation lookup
+                        'seg_idx'  : si,       # 0-based segment index
+                    })
 
         # -- excitation --
         elif bname == 'excitation_input':
@@ -210,12 +231,16 @@ def nml_to_nec(nml_path):
             }
 
     # ── derived geometry quantities ───────────────────────────────────────────
-    lambda_m    = SPEED_OF_LIGHT / (freq_mhz * 1e6)
-    seg_desired = lambda_m / n_per_lambda
+    # Mesh at fmax — ensures segment density adequate at highest frequency.
+    # Over-meshes at low frequencies but ensures all resonances resolved.
+    mesh_freq_mhz = fmax_mhz if fmax_mhz > freq_mhz else freq_mhz
+    lambda_m      = SPEED_OF_LIGHT / (mesh_freq_mhz * 1e6)
+    seg_desired   = lambda_m / n_per_lambda
+    lambda_fmin_m = SPEED_OF_LIGHT / (freq_mhz * 1e6)   # for comments
 
     # ── wire ordering: feed wire first, then alphabetical ────────────────────
     feed_tag = excit.get('wireTag', '')
-    wires.sort(key=lambda w: (0 if w['tag'] == feed_tag else 1, w['tag']))
+    wires.sort(key=lambda w: (0 if w.get('wire_tag', w['tag']) == feed_tag else 1, w['tag']))
 
     # ── GW cards ─────────────────────────────────────────────────────────────
     gw_lines    = []
@@ -237,7 +262,9 @@ def nml_to_nec(nml_path):
             f"   ! {w['tag']}  ({w['n1']}->{w['n2']}  L={length:.4f}m  {ns} segs)"
         )
 
-        if w['tag'] == feed_tag:
+        # Excitation: match on parent wire tag and nodeTag position
+        parent_match = w.get('wire_tag', w['tag']) == feed_tag
+        if parent_match:
             exc_nec_tag = nec_tag
             feed_node   = excit.get('nodeTag', '')
             # source on segment 1 (near n1/start) or last segment (near n2/end)
@@ -300,7 +327,18 @@ def nml_to_nec(nml_path):
                f'  {v_re:.6f}  {v_im:.6f}')
 
     # ── FR card ──────────────────────────────────────────────────────────────
-    fr_card = f'FR  0  1  0  0  {freq_mhz:.6f}'
+    is_sweep = fmax_mhz > freq_mhz
+    if is_sweep:
+        if fstep_mhz > 0.0:
+            fr_npts = int(round((fmax_mhz - freq_mhz) / fstep_mhz)) + 1
+            fr_step = fstep_mhz
+        else:
+            fr_npts = max(nFreq, 2)
+            fr_step = (fmax_mhz - freq_mhz) / (fr_npts - 1)
+        fr_card = (f'FR  0  {fr_npts}  0  0  {freq_mhz:.6f}  {fr_step:.6f}'
+                   f'   ! sweep {freq_mhz} to {fmax_mhz} MHz  {fr_npts} pts')
+    else:
+        fr_card = f'FR  0  1  0  0  {freq_mhz:.6f}'
 
     # ── summary stats for comments ────────────────────────────────────────────
     total_segs = sum(
@@ -313,8 +351,11 @@ def nml_to_nec(nml_path):
     out_lines = [
         f'CM {title}',
         f'CM Generated by nml_to_nec.py  from: {os.path.basename(nml_path)}',
-        f'CM Frequency : {freq_mhz} MHz    lambda = {lambda_m:.5f} m',
-        f'CM Mesh      : {n_per_lambda} segs/lambda    seg_len = {seg_desired:.5f} m',
+        (f'CM Frequency : {freq_mhz} MHz to {fmax_mhz} MHz'
+         f'   lambda(fmax) = {lambda_m:.5f} m   lambda(fmin) = {lambda_fmin_m:.5f} m'
+         if is_sweep else
+         f'CM Frequency : {freq_mhz} MHz    lambda = {lambda_m:.5f} m'),
+        f'CM Mesh      : {n_per_lambda} segs/lambda at fmax   seg_len = {seg_desired:.5f} m',
         f'CM Ground    : {ground_type}',
         f'CM Wires     : {len(wires)}    total segments = {total_segs}',
         (f'CM Excitation: {feed_tag} node {excit.get("nodeTag","")} '

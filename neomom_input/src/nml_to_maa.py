@@ -121,6 +121,7 @@ def nml_to_maa(nml_path):
 
         elif bname == 'frequency_mhz':
             freq_mhz = float(kv.get('fmin', freq_mhz))
+            # MMANA handles its own sweep internally — fmin used for display
 
         elif bname == 'ground':
             ground_type = kv.get('ground_plane', ground_type).strip("'\"").lower()
@@ -146,13 +147,22 @@ def nml_to_maa(nml_path):
             # Strip quotes from each tag — write_nml writes 'A' 'B' 'C'
             ntags  = [t.strip("'\"").upper() for t in ntstr.split() if t.strip()]
             radius = float(kv.get('radius', '0.001')) * scale
+            # Expand polyline into N-1 two-node segments
+            # Wire (A,B,C,D,E) -> A->B, B->C, C->D, D->E
             if len(ntags) >= 2:
-                wires.append({
-                    'tag'   : tag,
-                    'n1'    : ntags[0],
-                    'n2'    : ntags[-1],
-                    'radius': radius,
-                })
+                n_segs = len(ntags) - 1
+                for si in range(n_segs):
+                    # Skip degenerate zero-length segments
+                    if ntags[si] == ntags[si + 1]:
+                        continue
+                    seg_tag = tag if n_segs == 1 else f'{tag}_s{si+1}'
+                    wires.append({
+                        'tag'      : seg_tag,
+                        'wire_tag' : tag,
+                        'n1'       : ntags[si],
+                        'n2'       : ntags[si + 1],
+                        'radius'   : radius,
+                    })
 
         elif bname == 'excitation_input':
             excit = {
@@ -164,7 +174,7 @@ def nml_to_maa(nml_path):
 
     # -- wire ordering: feed wire first, then alphabetical --
     feed_tag = excit.get('wireTag', '')
-    wires.sort(key=lambda w: (0 if w['tag'] == feed_tag else 1, w['tag']))
+    wires.sort(key=lambda w: (0 if w.get('wire_tag', w['tag']) == feed_tag else 1, w['tag']))
     wire_index = {w['tag']: i + 1 for i, w in enumerate(wires)}
 
     # ================================================================
@@ -200,7 +210,7 @@ def nml_to_maa(nml_path):
 
     if excit:
         wire_num  = wire_index.get(excit['wireTag'], 1)
-        feed_wire = next((w for w in wires if w['tag'] == excit['wireTag']), None)
+        feed_wire = next((w for w in wires if w.get('wire_tag', w['tag']) == excit['wireTag']), None)
 
         # Map NeoMoM node tag to MMANA position suffix:
         #   b = near start node (n1),  e = near end node (n2),  c = centre (default)

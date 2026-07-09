@@ -224,6 +224,185 @@ def compute_swr(Rin, Xin, Z0=50.0):
 
 
 # ------------------------------------------------------------------
+# EZNEC file reader
+# ------------------------------------------------------------------
+
+def read_eznec_file(filepath):
+    """
+    Parse an EZNEC Pro/2+ frequency sweep export file.
+
+    Expected format (CSV):
+        Line 1 : "EZNEC Pro/2+ ver. X.X"
+        Line 2 : "title", "date"
+        Line 3 : "Alt Z0: ", <value>
+        Line 4 : column headers (quoted)
+        Line 5+: freq, src#, R, X, SWR(50), SWR(altZ0)
+
+    Returns same (meta, data) format as read_Zin_file() so the GUI
+    and plot functions work identically for both file types.
+
+    Parameters
+    ----------
+    filepath : str
+
+    Returns
+    -------
+    meta : dict
+    data : dict of 1-D numpy arrays
+    """
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(f'Cannot find file: {filepath}')
+
+    with open(filepath, 'r', errors='ignore') as f:
+        lines = [l.rstrip('\n') for l in f.readlines()]
+
+    if len(lines) < 5:
+        raise ValueError(f'File too short to be a valid EZNEC export: {filepath}')
+
+    # ---- parse header lines ----
+    meta = {}
+    meta['source_type'] = 'eznec'
+
+    # Line 1 — version
+    meta['version'] = lines[0].strip().strip('"')
+
+    # Line 2 — title, date
+    parts2 = [p.strip().strip('"') for p in lines[1].split(',')]
+    meta['title'] = parts2[0] if parts2 else ''
+    meta['date']  = parts2[1] if len(parts2) > 1 else ''
+
+    # Line 3 — Alt Z0
+    try:
+        meta['z0_alt_ohm'] = float(lines[2].split(',')[1].strip())
+    except (IndexError, ValueError):
+        meta['z0_alt_ohm'] = 50.0
+
+    # Line 4 — column headers (skip)
+    # Line 5+ — data
+    rows = []
+    for line in lines[4:]:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            vals = [float(v) for v in line.split(',')]
+            if len(vals) >= 4:
+                rows.append(vals)
+        except ValueError:
+            continue
+
+    if not rows:
+        raise ValueError(f'No data rows found in: {filepath}')
+
+    arr = np.array(rows, dtype=float)
+
+    # Columns: freq, src#, R, X, SWR(50), SWR(altZ0)
+    freq_mhz = arr[:, 0]
+    Rin      = arr[:, 2]
+    Xin      = arr[:, 3]
+
+    # Compute full set from R and X
+    Zin_mag  = np.sqrt(Rin**2 + Xin**2)
+    Zin_cpx  = Rin + 1j * Xin
+    Yin_cpx  = np.where(Zin_mag > 0, 1.0 / Zin_cpx, 0j)
+    Gin      = np.real(Yin_cpx)
+    Bin      = np.imag(Yin_cpx)
+    Yin_mag  = np.abs(Yin_cpx)
+    SWR      = compute_swr(Rin, Xin, Z0=50.0)
+
+    data = {
+        'freq_mhz' : freq_mhz,
+        'Rin'      : Rin,
+        'Xin'      : Xin,
+        'Zin_mag'  : Zin_mag,
+        'Gin'      : Gin,
+        'Bin'      : Bin,
+        'Yin_mag'  : Yin_mag,
+        'SWR'      : SWR,
+    }
+
+    # Populate meta fields to match neomom format
+    meta['nfreq']     = len(freq_mhz)
+    meta['fstart_mhz'] = float(freq_mhz[0])
+    meta['fstop_mhz']  = float(freq_mhz[-1])
+    meta['fstep_mhz']  = float(freq_mhz[1] - freq_mhz[0]) if len(freq_mhz) > 1 else 0.0
+    meta['z0_ref_ohm'] = 50.0
+
+    # Derived quantities — same as neomom reader
+    meta['f_res_mhz']    = _find_zero_crossing(freq_mhz, Bin)
+    idx_swr              = int(np.argmin(SWR))
+    meta['swr_min']      = float(SWR[idx_swr])
+    meta['f_swr_min_mhz'] = float(freq_mhz[idx_swr])
+    meta['Rin_res']      = _interpolate_at(freq_mhz, Rin, meta['f_res_mhz'])
+
+    return meta, data
+
+
+def detect_and_read(filepath):
+    """
+    Auto-detect file type and call the correct reader.
+
+    Detection:
+      - First line contains 'EZNEC' -> read_eznec_file()
+      - Otherwise                   -> read_Zin_file()
+
+    Returns (meta, data) in the standard format.
+    """
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(f'Cannot find file: {filepath}')
+
+    with open(filepath, 'r', errors='ignore') as f:
+        first_line = f.readline()
+
+    if 'EZNEC' in first_line.upper():
+        return read_eznec_file(filepath)
+    else:
+        return read_Zin_file(filepath)
+
+
+# ------------------------------------------------------------------
+# SweepData factory functions
+# ------------------------------------------------------------------
+
+def sweep_from_file(filepath, name=None, color='#1f77b4', linestyle='-'):
+    """
+    Auto-detect file type, read it, and return a SweepData object.
+
+    Parameters
+    ----------
+    filepath  : str   path to NeoMoM _Zin.csv or EZNEC .txt
+    name      : str   display name; defaults to filename stem
+    color     : str   matplotlib color
+    linestyle : str   matplotlib line style
+
+    Returns
+    -------
+    SweepData
+    """
+    from sweep_data import SweepData
+    import os
+
+    meta, data = detect_and_read(filepath)
+
+    if name is None:
+        name = os.path.splitext(os.path.basename(filepath))[0]
+
+    source = meta.get('source_type', 'neomom')
+
+    return SweepData(
+        name      = name,
+        filepath  = filepath,
+        source    = source,
+        meta      = meta,
+        freq_mhz  = data['freq_mhz'],
+        Rin       = data['Rin'],
+        Xin       = data['Xin'],
+        color     = color,
+        linestyle = linestyle,
+    )
+
+
+# ------------------------------------------------------------------
 # Command-line self-test
 # ------------------------------------------------------------------
 if __name__ == '__main__':
