@@ -3,9 +3,10 @@
 /
 
 &Frequency_MHz
-   fmin  = 7.0
-   fmax  = 7.0
-   nFreq = 1
+   fmin  = 2.0
+   fmax  = 32.0
+   fstep = 0.02
+   nFreq = 0
 /
 
 &Ground
@@ -17,6 +18,7 @@
 &OPTIONS
    NBASISPERLAMBDA = 40
    Output_Currents = .FALSE.
+   sweep_mode = 'vna_sweep'
 /
 
 &node_input
@@ -25,8 +27,8 @@
    units = 'feet'
 
  node_list(1) = 'A', 0.0, 0.0, 0.0
- node_list(2) = 'B', 1.0, 0.0, 0.0
- node_list(3) = 'C', 2.0, 0.0, 0.0
+ node_list(2) = 'B', 60.0, 0.0, 0.0
+ node_list(3) = 'C', 120.0, 0.0, 0.0
 /
 
 &wire_primitive
