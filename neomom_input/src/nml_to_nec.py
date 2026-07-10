@@ -130,10 +130,7 @@ def nml_to_nec(nml_path):
 
     # ── defaults ──────────────────────────────────────────────────────────────
     title           = 'NeoMoM antenna'
-    freq_mhz        = 145.0    # fmin — mesh reference at single freq
-    fmax_mhz        = 145.0    # fmax — used for sweep FR card
-    fstep_mhz       = 0.0      # > 0 means use fstep, else use nFreq
-    nFreq           = 1        # number of frequency points
+    freq_mhz        = 145.0
     ground_type     = 'free_space'
     epsilon         = 1.0
     sigma           = 0.0
@@ -162,13 +159,7 @@ def nml_to_nec(nml_path):
 
         # -- frequency --
         elif bname == 'frequency_mhz':
-            freq_mhz  = float(kv.get('fmin',  freq_mhz))
-            fmax_mhz  = float(kv.get('fmax',  freq_mhz))
-            fstep_mhz = float(kv.get('fstep', 0.0))
-            try:
-                nFreq = int(kv.get('nfreq', 1))
-            except (ValueError, TypeError):
-                nFreq = 1
+            freq_mhz = float(kv.get('fmin', freq_mhz))
 
         # -- ground --
         elif bname == 'ground':
@@ -200,7 +191,9 @@ def nml_to_nec(nml_path):
             # Strip quotes from each individual tag — write_nml writes
             # nodeTags = 'A' 'B' 'C' so each token may have quotes
             ntags  = [t.strip("'\"").upper() for t in ntstr.split() if t.strip()]
-            radius = float(kv.get('radius', '0.001')) * scale
+            # Wire radius is always stored in metres in the .nml —
+            # independent of node coordinate units. Do NOT apply scale.
+            radius = float(kv.get('radius', '0.001'))
             # Expand polyline into N-1 two-node segments.
             # Wire (A,B,C,D,E) -> A->B, B->C, C->D, D->E
             # Each segment tagged as W1_s1, W1_s2, etc. for N>2 nodes.
@@ -231,12 +224,8 @@ def nml_to_nec(nml_path):
             }
 
     # ── derived geometry quantities ───────────────────────────────────────────
-    # Mesh at fmax — ensures segment density adequate at highest frequency.
-    # Over-meshes at low frequencies but ensures all resonances resolved.
-    mesh_freq_mhz = fmax_mhz if fmax_mhz > freq_mhz else freq_mhz
-    lambda_m      = SPEED_OF_LIGHT / (mesh_freq_mhz * 1e6)
-    seg_desired   = lambda_m / n_per_lambda
-    lambda_fmin_m = SPEED_OF_LIGHT / (freq_mhz * 1e6)   # for comments
+    lambda_m    = SPEED_OF_LIGHT / (freq_mhz * 1e6)
+    seg_desired = lambda_m / n_per_lambda
 
     # ── wire ordering: feed wire first, then alphabetical ────────────────────
     feed_tag = excit.get('wireTag', '')
@@ -281,26 +270,35 @@ def nml_to_nec(nml_path):
     #   1 = activate image plane at z=0 (required for any ground-plane run,
     #       both perfect and real — handles near-field coupling via image theory)
     #
-    # NEC-5 GN card  (IPERF / I1 field)
-    #   1 = perfectly conducting ground (PEC); epsilon/sigma fields ignored
-    #   2 = real ground, Sommerfeld/Norton approximation;
-    #         F1 = relative permittivity (epsilon_r)
-    #         F2 = conductivity (S/m)
+    # NEC-5 GN card  (IPERF / I1 field) — ground parameters
+    #  -1 = nullify any previously entered ground, set free-space conditions
+    #       (any F1..F4 values on the same card are ignored)
+    #   0 = (not used as standalone — see GE card)
+    #   1 = perfectly conducting ground (PEC)
+    #       epsilon and sigma fields are present but ignored by NEC
+    #   2 = real finitely conducting ground, Sommerfeld/Norton method
+    #         F1 = relative permittivity epsilon_r (dimensionless)
+    #              typical values: dry soil=3, average soil=13, wet soil=20, sea=80
+    #         F2 = conductivity sigma (S/m)
+    #              typical values: dry=0.001, average=0.005, wet=0.02, sea=4.0
     #
-    # Correct combinations:
-    #   Free space  : GE 0           — no GN card
-    #   Perfect PEC : GE 1 + GN 1   — image plane + perfect conductor
-    #   Real ground : GE 1 + GN 2   — image plane + Sommerfeld parameters
+    # Correct GE + GN combinations:
+    #   Free space  : GE  0              — no GN card needed
+    #   Free space  : GN -1              — explicit free space (overrides prior GN)
+    #   Perfect PEC : GE  1 + GN  1      — image plane + perfect conductor
+    #   Real ground : GE  1 + GN  2 ...  — image plane + Sommerfeld parameters
     #
-    # Note: using GE 0 with real ground (GN 2) is a common error — it
-    # suppresses the image plane so near-field ground coupling is missed.
+    # Note: using GE 0 with GN 2 is a common error — it suppresses the
+    # image plane so near-field ground coupling is missed.
     gt = ground_type
     if 'perfect' in gt or gt == 'pec':
         ge_card  = 'GE  1'                           # activate image plane
-        gn_cards = ['GN  1  0  0  0  0.  0.']        # perfectly conducting ground
+        gn_cards = ['GN  1  0  0  0  0.  0.'   # IPERF=1: perfect PEC ground
+                    '   ! GN IPERF I2 I3 I4 epsr sigma  (epsr/sigma ignored for PEC)']
     elif 'real' in gt:
         ge_card  = 'GE  1'                           # activate image plane
-        gn_cards = [f'GN  2  0  0  0  {epsilon:.4f}  {sigma:.6f}']  # Sommerfeld
+        gn_cards = [f'GN  2  0  0  0  {epsilon:.4f}  {sigma:.6f}'
+                    f'   ! GN IPERF=2: real ground  epsr={epsilon:.4f}  sigma={sigma:.6f} S/m']
     else:                                             # free_space
         ge_card  = 'GE  0'                           # no image plane
         gn_cards = []                                 # no GN card for free space
@@ -308,16 +306,32 @@ def nml_to_nec(nml_path):
     # ── RP card ───────────────────────────────────────────────────────────────
     # EZNEC does not support simultaneous az+el sweeps (full 3D sphere).
     # Generate an azimuth cut at theta=90° (horizon) — the most useful single
-    # cut for checking horizontal polarisation (Eh) on a vertical antenna.
+    # cut for checking Eh on a horizontal antenna above ground.
     # EZNEC can produce additional cuts interactively from its GUI after import.
     #
-    # RP  IOPT  NTHETA  NPHI  XNDA  THETA_START  PHI_START  DTHETA  DPHI
-    #   IOPT=0  : compute far-field
-    #   NTHETA=1 : single elevation angle
-    #   NPHI=73  : 0°→360° at 5° steps
-    #   XNDA=1000: power gain, no normalisation
-    #   THETA_START=90°: horizon (for ground-plane runs use 0° = zenith, NPHI=1)
-    rp_card = 'RP  0    1  73  1000  90.  0.  0.  5.   ! azimuth at theta=90 (horizon)'
+    # RP card column meanings:
+    # RP  IOPT  NTHETA  NPHI  XNDA  THETA0  PHI0  DTHETA  DPHI
+    #     |     |       |     |     |       |     |       |
+    #     |     |       |     |     |       |     |       +-- PHI step size (deg)
+    #     |     |       |     |     |       |     +---------- THETA step size (deg)
+    #     |     |       |     |     |       +---------------- PHI start angle (deg)
+    #     |     |       |     |     +------------------------ THETA start angle (deg)
+    #     |     |       |     |       (90° = horizon; 0° = zenith/overhead)
+    #     |     |       |     +------------------------------ XNDA output format:
+    #     |     |       |       1000 = power gain (dBi), no normalisation
+    #     |     |       |       0000 = normalised to max gain
+    #     |     |       +------------------------------------ NPHI: number of PHI steps
+    #     |     |         73 steps × 5° = 0° to 360° azimuth sweep
+    #     |     +------------------------------------------- NTHETA: number of THETA steps
+    #     |       1 = single elevation angle (azimuth cut)
+    #     +------------------------------------------------- IOPT output type:
+    #       0 = far-field (electric field + gain)
+    #       1 = near-field
+    #
+    # This card produces: azimuth pattern at theta=90° (horizon), 0°→360°, 5° steps
+    # To get elevation pattern instead: NTHETA=37, NPHI=1, THETA0=0, DTHETA=5, DPHI=0
+    rp_card = ('RP  0    1  73  1000  90.  0.  0.  5.'
+               '   ! azimuth cut: theta=90(horizon) phi=0-360 step=5deg power_gain')
 
     # ── EX card ──────────────────────────────────────────────────────────────
     v_rad  = math.radians(excit.get('phase_deg', 0.0))
@@ -327,18 +341,7 @@ def nml_to_nec(nml_path):
                f'  {v_re:.6f}  {v_im:.6f}')
 
     # ── FR card ──────────────────────────────────────────────────────────────
-    is_sweep = fmax_mhz > freq_mhz
-    if is_sweep:
-        if fstep_mhz > 0.0:
-            fr_npts = int(round((fmax_mhz - freq_mhz) / fstep_mhz)) + 1
-            fr_step = fstep_mhz
-        else:
-            fr_npts = max(nFreq, 2)
-            fr_step = (fmax_mhz - freq_mhz) / (fr_npts - 1)
-        fr_card = (f'FR  0  {fr_npts}  0  0  {freq_mhz:.6f}  {fr_step:.6f}'
-                   f'   ! sweep {freq_mhz} to {fmax_mhz} MHz  {fr_npts} pts')
-    else:
-        fr_card = f'FR  0  1  0  0  {freq_mhz:.6f}'
+    fr_card = f'FR  0  1  0  0  {freq_mhz:.6f}'
 
     # ── summary stats for comments ────────────────────────────────────────────
     total_segs = sum(
@@ -347,19 +350,62 @@ def nml_to_nec(nml_path):
             seg_desired)
         for w in wires)
 
+    # ── GN CM comment block ───────────────────────────────────────────────────
+    gn_cm = [
+        'CM',
+        'CM GE card — image plane control:',
+        'CM   GE 0 : no image plane (free space)',
+        'CM   GE 1 : activate image plane at z=0 (required for any ground run)',
+        'CM',
+        'CM GN card — ground parameters (IPERF field):',
+        'CM   GN -1 : nullify prior ground, set free space (all other fields ignored)',
+        'CM   GN  1 : perfectly conducting PEC (epsilon/sigma fields ignored)',
+        'CM   GN  2 : real ground, Sommerfeld/Norton',
+        'CM            F1 = relative permittivity epsilon_r',
+        'CM                 dry soil=3  average=13  wet=20  sea water=80',
+        'CM            F2 = conductivity sigma [S/m]',
+        'CM                 dry=0.001   average=0.005  wet=0.02  sea=4.0',
+        'CM',
+        'CM Correct GE+GN combinations:',
+        'CM   Free space  : GE 0        (no GN card)',
+        'CM   Perfect PEC : GE 1 + GN 1',
+        'CM   Real ground : GE 1 + GN 2 epsilon_r sigma',
+        'CM   Note: GE 0 + GN 2 is a common error — misses near-field ground coupling',
+    ]
+
+    # ── RP CM comment block ───────────────────────────────────────────────────
+    rp_cm = [
+        'CM',
+        'CM RP card — radiation pattern request:',
+        'CM   RP  IOPT  NTHETA  NPHI  XNDA  THETA0  PHI0  DTHETA  DPHI',
+        'CM       |     |       |     |     |       |     |       |',
+        'CM       |     |       |     |     |       |     |       +-- PHI increment (deg)',
+        'CM       |     |       |     |     |       |     +---------- THETA increment (deg)',
+        'CM       |     |       |     |     |       +---------------- PHI start (deg)',
+        'CM       |     |       |     |     +------------------------ THETA start (deg)',
+        'CM       |     |       |     |       0=zenith  90=horizon',
+        'CM       |     |       |     +------------------------------ XNDA output format',
+        'CM       |     |       |       1000=power gain dBi no norm  0000=normalised',
+        'CM       |     |       +------------------------------------ NPHI: phi steps',
+        'CM       |     +------------------------------------------- NTHETA: theta steps',
+        'CM       +------------------------------------------------- IOPT: 0=far-field',
+        'CM',
+        'CM   This card: azimuth cut at theta=90 (horizon), phi=0 to 360, step=5 deg',
+        'CM   Elevation cut instead: NTHETA=19 NPHI=1 THETA0=0 PHI0=0 DTHETA=5 DPHI=0',
+    ]
+
     # ── assemble file ─────────────────────────────────────────────────────────
     out_lines = [
         f'CM {title}',
         f'CM Generated by nml_to_nec.py  from: {os.path.basename(nml_path)}',
-        (f'CM Frequency : {freq_mhz} MHz to {fmax_mhz} MHz'
-         f'   lambda(fmax) = {lambda_m:.5f} m   lambda(fmin) = {lambda_fmin_m:.5f} m'
-         if is_sweep else
-         f'CM Frequency : {freq_mhz} MHz    lambda = {lambda_m:.5f} m'),
-        f'CM Mesh      : {n_per_lambda} segs/lambda at fmax   seg_len = {seg_desired:.5f} m',
+        f'CM Frequency : {freq_mhz} MHz    lambda = {lambda_m:.5f} m',
+        f'CM Mesh      : {n_per_lambda} segs/lambda    seg_len = {seg_desired:.5f} m',
         f'CM Ground    : {ground_type}',
         f'CM Wires     : {len(wires)}    total segments = {total_segs}',
         (f'CM Excitation: {feed_tag} node {excit.get("nodeTag","")} '
          f'-> NEC wire {exc_nec_tag} seg {exc_seg}'),
+        *gn_cm,
+        *rp_cm,
         'CE',
         *gw_lines,
         ge_card,

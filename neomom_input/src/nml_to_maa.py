@@ -121,7 +121,6 @@ def nml_to_maa(nml_path):
 
         elif bname == 'frequency_mhz':
             freq_mhz = float(kv.get('fmin', freq_mhz))
-            # MMANA handles its own sweep internally — fmin used for display
 
         elif bname == 'ground':
             ground_type = kv.get('ground_plane', ground_type).strip("'\"").lower()
@@ -146,7 +145,9 @@ def nml_to_maa(nml_path):
             ntstr  = kv.get('nodetags', '')
             # Strip quotes from each tag — write_nml writes 'A' 'B' 'C'
             ntags  = [t.strip("'\"").upper() for t in ntstr.split() if t.strip()]
-            radius = float(kv.get('radius', '0.001')) * scale
+            # Wire radius is always stored in metres in the .nml —
+            # independent of node coordinate units. Do NOT apply scale.
+            radius = float(kv.get('radius', '0.001'))
             # Expand polyline into N-1 two-node segments
             # Wire (A,B,C,D,E) -> A->B, B->C, C->D, D->E
             if len(ntags) >= 2:
