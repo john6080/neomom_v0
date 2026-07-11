@@ -9,80 +9,81 @@
 /
 
 &Ground
-   Ground_Plane = free_space
+   Ground_Plane = 'free_space'
    epsilon = 1.0
    sigma = 0.0
 /
 
 &OPTIONS
    NBASISPERLAMBDA = 40
+   Output_Currents = .FALSE.
 /
 
 &node_input
    zHeight = 0.0
    nNodes = 13
-   units = meters
+   units = 'meters'
 
- node_list(1) = N1, 0.0, -1.425, 0.0
- node_list(2) = N2, 0.0, 1.425, 0.0
- node_list(3) = N3, -1.023, -1.48, 0.0
- node_list(4) = N4, -1.023, 1.48, 0.0
- node_list(5) = N5, 0.56, -1.372, 0.0
- node_list(6) = N6, 0.56, 1.372, 0.0
- node_list(7) = N7, 1.683, -1.327, 0.0
- node_list(8) = N8, 1.683, 1.327, 0.0
- node_list(9) = N9, 2.959, -1.332, 0.0
- node_list(10) = N10, 2.959, 1.332, 0.0
- node_list(11) = N11, 4.172, -1.277, 0.0
- node_list(12) = N12, 4.172, 1.277, 0.0
- node_list(13) = A, 0.0, 0.0, 0.0
+ node_list(1) = 'N1', 0.0, -1.425, 0.0
+ node_list(2) = 'N2', 0.0, 1.425, 0.0
+ node_list(3) = 'N3', -1.023, -1.48, 0.0
+ node_list(4) = 'N4', -1.023, 1.48, 0.0
+ node_list(5) = 'N5', 0.56, -1.372, 0.0
+ node_list(6) = 'N6', 0.56, 1.372, 0.0
+ node_list(7) = 'N7', 1.683, -1.327, 0.0
+ node_list(8) = 'N8', 1.683, 1.327, 0.0
+ node_list(9) = 'N9', 2.959, -1.332, 0.0
+ node_list(10) = 'N10', 2.959, 1.332, 0.0
+ node_list(11) = 'N11', 4.172, -1.277, 0.0
+ node_list(12) = 'N12', 4.172, 1.277, 0.0
+ node_list(13) = 'A', 0.0, 0.0, 0.0
 /
 
 &wire_primitive
-   tag   = W1,
+   tag   = 'W1',
    nNodes = 3,
-   nodeTags = N1 A N2
+   nodeTags = 'N1' 'A' 'N2'
    radius     = 0.007
 /
 
 &wire_primitive
-   tag   = W2,
+   tag   = 'W2',
    nNodes = 2,
-   nodeTags = N3 N4
+   nodeTags = 'N3' 'N4'
    radius     = 0.007
 /
 
 &wire_primitive
-   tag   = W3,
+   tag   = 'W3',
    nNodes = 2,
-   nodeTags = N5 N6
+   nodeTags = 'N5' 'N6'
    radius     = 0.007
 /
 
 &wire_primitive
-   tag   = W4,
+   tag   = 'W4',
    nNodes = 2,
-   nodeTags = N7 N8
+   nodeTags = 'N7' 'N8'
    radius     = 0.007
 /
 
 &wire_primitive
-   tag   = W5,
+   tag   = 'W5',
    nNodes = 2,
-   nodeTags = N9 N10
+   nodeTags = 'N9' 'N10'
    radius     = 0.007
 /
 
 &wire_primitive
-   tag   = W6,
+   tag   = 'W6',
    nNodes = 2,
-   nodeTags = N11 N12
+   nodeTags = 'N11' 'N12'
    radius     = 0.007
 /
 
 &excitation_input
-   wireTag = W1
-   nodeTag = A
+   wireTag = 'W1'
+   nodeTag = 'A'
    voltage = 1.0
    phase_deg = 0.0
 /

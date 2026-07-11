@@ -21,65 +21,6 @@ from constants import FREQ_FIELDS, GROUND_FIELDS, OPTIONS_FIELDS
 # ----------------------------------------------------------------------
 
 # ── PyInstaller-aware helper-module locator ───────────────────────────────────
-# ============================================================
-# TOOLTIP — simple hover tooltip for any tkinter widget
-# ============================================================
-
-class _Tooltip:
-    """
-    Hover tooltip for any tkinter widget.
-    Usage: _Tooltip(widget, text)
-    """
-    def __init__(self, widget, text):
-        self._widget = widget
-        self._text   = text
-        self._tip    = None
-        widget.bind('<Enter>',  self._show)
-        widget.bind('<Leave>',  self._hide)
-        widget.bind('<Button>', self._hide)
-
-    def _show(self, event=None):
-        if self._tip:
-            return
-        x = self._widget.winfo_rootx() + 20
-        y = self._widget.winfo_rooty() + self._widget.winfo_height() + 4
-        self._tip = tw = tk.Toplevel(self._widget)
-        tw.wm_overrideredirect(True)
-        tw.wm_geometry(f'+{x}+{y}')
-        tk.Label(tw, text=self._text, justify='left',
-                 background='#ffffe0', relief='solid', borderwidth=1,
-                 font=('TkDefaultFont', 9)
-                 ).pack(ipadx=4, ipady=2)
-
-    def _hide(self, event=None):
-        if self._tip:
-            self._tip.destroy()
-            self._tip = None
-
-
-def add_tooltip(widget, text):
-    """Convenience wrapper — attach a hover tooltip to any widget."""
-    _Tooltip(widget, text)
-
-
-# Wire radius tooltip text — used in WiresFrame
-RADIUS_TOOLTIP = (
-    'Wire radius — always in metres, independent of node coordinate units.\n'
-    '\n'
-    'Common values:\n'
-    '  AWG 12  (2.05 mm)  →  0.001028 m\n'
-    '  AWG 14  (1.63 mm)  →  0.000815 m\n'
-    '  AWG 16  (1.29 mm)  →  0.000645 m\n'
-    '  AWG 18  (1.02 mm)  →  0.000511 m\n'
-    '  1 mm wire          →  0.001000 m\n'
-    '  2 mm wire          →  0.002000 m\n'
-    '  0.5 inch tube      →  0.006350 m\n'
-    '  1 inch tube        →  0.012700 m\n'
-    '\n'
-    'Formula: radius_m = diameter_mm / 2000'
-)
-
-
 def _find_helper_py(filename):
     """
     Locate a helper .py file whether running from source or as a
@@ -1086,7 +1027,6 @@ class WiresFrame(ttk.Frame):
         self.tree.heading("tag",    text="Tag")
         self.tree.heading("nodes",  text="Node Tags")
         self.tree.heading("radius", text="Radius (m)")
-        add_tooltip(self.tree, RADIUS_TOOLTIP)
         self.tree.heading("length", text="Length")
         self.tree.heading("wl",     text="Length (\u03bb)")
 
@@ -1112,12 +1052,9 @@ class WiresFrame(ttk.Frame):
         self.nodes_entry = ttk.Entry(editor, textvariable=self.nodes_var, width=20)
         self.nodes_entry.grid(row=0, column=3, sticky="w", padx=4, pady=4)
 
-        radius_lbl = ttk.Label(editor, text="Radius (m)")
-        radius_lbl.grid(row=0, column=4, sticky="e", padx=4, pady=4)
-        add_tooltip(radius_lbl, RADIUS_TOOLTIP)
+        ttk.Label(editor, text="Radius").grid(row=0, column=4, sticky="e", padx=4, pady=4)
         self.radius_entry = ttk.Entry(editor, textvariable=self.radius_var, width=12)
         self.radius_entry.grid(row=0, column=5, sticky="w", padx=4, pady=4)
-        add_tooltip(self.radius_entry, RADIUS_TOOLTIP)
 
         # Buttons
         btns = ttk.Frame(editor)
@@ -2051,7 +1988,7 @@ class GlobalsFrame(ttk.Frame):
                 try:
                     m.frequency.fstep = float(self.fstep_var.get())
                 except ValueError:
-                    m.frequency.fstep = 0.010   # safe default
+                    m.frequency.fstep = 0.020   # safe default
             else:
                 # pattern mode
                 try:
@@ -2145,7 +2082,7 @@ class GlobalsFrame(ttk.Frame):
         self.fmin_var  = tk.StringVar()
         self.fmax_var  = tk.StringVar()
         self.nfreq_var      = tk.StringVar()
-        self.fstep_var      = tk.StringVar(value='0.010')
+        self.fstep_var      = tk.StringVar(value='0.020')
         self.sweep_mode_var = tk.StringVar(value='pattern')  # 'pattern' or 'vna_sweep'
         self.launch_plot_var = tk.BooleanVar(value=True)
 
@@ -2466,6 +2403,12 @@ class GlobalsFrame(ttk.Frame):
         if mode == 'vna_sweep':
             self._pat_frame.grid_remove()
             self._vna_frame.grid()
+            # Restore default step size if empty or zero
+            try:
+                if not self.fstep_var.get() or float(self.fstep_var.get()) <= 0.0:
+                    self.fstep_var.set('0.020')
+            except ValueError:
+                self.fstep_var.set('0.020')
             self._update_point_count()
         else:
             self._vna_frame.grid_remove()

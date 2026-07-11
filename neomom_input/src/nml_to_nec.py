@@ -244,10 +244,9 @@ def nml_to_nec(nml_path):
     feed_tag = excit.get('wireTag', '')
     wires.sort(key=lambda w: (0 if w.get('wire_tag', w['tag']) == feed_tag else 1, w['tag']))
 
-    # ── GW cards ─────────────────────────────────────────────────────────────
-    gw_lines    = []
-    exc_nec_tag = 1
-    exc_seg     = 1
+    # ── GW cards — build wire geometry cards ─────────────────────────────────
+    gw_lines = []
+    wire_nsegs = []   # parallel list: number of segments per NEC wire
 
     for i, w in enumerate(wires):
         nec_tag = i + 1
@@ -255,6 +254,7 @@ def nml_to_nec(nml_path):
         n2      = nodes[w['n2']]
         length  = math.dist(n1, n2)
         ns      = neomom_nsegs(length, seg_desired)
+        wire_nsegs.append(ns)
 
         gw_lines.append(
             f"GW {nec_tag:3d} {ns:4d}"
@@ -264,18 +264,37 @@ def nml_to_nec(nml_path):
             f"   ! {w['tag']}  ({w['n1']}->{w['n2']}  L={length:.4f}m  {ns} segs)"
         )
 
-        # Excitation: match on parent wire tag and nodeTag position
-        parent_match = w.get('wire_tag', w['tag']) == feed_tag
-        if parent_match:
+    # ── Excitation wire/segment search ────────────────────────────────────────
+    # Separate from the GW loop so break does not abort card generation.
+    #
+    # For a polyline wire (A,B,C,D,E) expanded into NEC segments:
+    #   W1_s1: A->B   W1_s2: B->C   W1_s3: C->D   W1_s4: D->E
+    #
+    # An interior feed node (e.g. 'C') appears as:
+    #   n2 of W1_s2  AND  n1 of W1_s3
+    #
+    # NEC convention: prefer segment 1 of the downstream wire (n1 match).
+    # Record an n2 match as fallback but keep searching for an n1 match.
+    exc_nec_tag = 1   # default
+    exc_seg     = 1   # default
+    feed_node   = excit.get('nodeTag', '')
+
+    for i, w in enumerate(wires):
+        if w.get('wire_tag', w['tag']) != feed_tag:
+            continue
+        nec_tag = i + 1
+        ns      = wire_nsegs[i]
+        if feed_node == w['n1']:
+            # Feed at START of this NEC wire — segment 1, downstream preferred
             exc_nec_tag = nec_tag
-            feed_node   = excit.get('nodeTag', '')
-            # source on segment 1 (near n1/start) or last segment (near n2/end)
-            if   feed_node == w['n1']:
-                exc_seg = 1
-            elif feed_node == w['n2']:
-                exc_seg = ns
-            else:
-                exc_seg = 1        # default to segment 1
+            exc_seg     = 1
+            break   # downstream wire takes priority — stop searching
+        elif feed_node == w['n2']:
+            # Feed at END of this NEC wire — record, but keep looking
+            # in case next segment has this node as n1 (preferred)
+            exc_nec_tag = nec_tag
+            exc_seg     = ns
+        # else: nodeTag not at either endpoint — leave defaults
 
     # ── GE / GN cards ────────────────────────────────────────────────────────
     # NEC-5 GE card  (I1 field)
@@ -350,8 +369,41 @@ def nml_to_nec(nml_path):
     v_rad  = math.radians(excit.get('phase_deg', 0.0))
     v_re   = excit.get('voltage', 1.0) * math.cos(v_rad)
     v_im   = excit.get('voltage', 1.0) * math.sin(v_rad)
+
+    # CM block explaining every EX field — appears in the generated .nec file
+    ex_cm = [
+        'CM',
+        'CM EX card — structure excitation:',
+        'CM   EX  I1  I2  I3  I4  F1        F2',
+        'CM       |   |   |   |   |         |',
+        'CM       |   |   |   |   |         +-- F2: imaginary part of voltage [V]',
+        'CM       |   |   |   |   |              (= V * sin(phase_deg))',
+        'CM       |   |   |   |   +------------ F1: real part of voltage [V]',
+        'CM       |   |   |   |                  (= V * cos(phase_deg))',
+        'CM       |   |   |   +---------------- I4: print flag (0=suppress, 1=print',
+        'CM       |   |   |                         currents near source segment)',
+        'CM       |   |   +-------------------- I3: segment number within the wire',
+        'CM       |   |                              (1 = first/start segment)',
+        'CM       |   |                              (N = last/end segment)',
+        'CM       |   +------------------------ I2: wire tag number (from GW card)',
+        'CM       +---------------------------- I1: excitation type',
+        'CM            0 = voltage source (applied-E-field)  <-- NeoMoM default',
+        'CM            1 = incident plane wave, linear polarization',
+        'CM            2 = incident plane wave, right-hand elliptic polarization',
+        'CM            3 = incident plane wave, left-hand elliptic polarization',
+        'CM            4 = elementary current source',
+        'CM            5 = voltage source (current-slope-discontinuity)',
+        'CM',
+        'CM   NeoMoM always uses I1=0 (voltage source) with 1V at the feed node.',
+        'CM   F1=V*cos(phase), F2=V*sin(phase) for complex voltage excitation.',
+        'CM   For 1V at 0 degrees: F1=1.0, F2=0.0',
+    ]
+
     ex_card = (f'EX  0  {exc_nec_tag:3d}  {exc_seg:3d}  0'
-               f'  {v_re:.6f}  {v_im:.6f}')
+               f'  {v_re:.6f}  {v_im:.6f}'
+               f'   ! I1=voltage_src I2=wire_tag={exc_nec_tag}'
+               f' I3=seg={exc_seg} I4=no_print'
+               f' F1=V_re={v_re:.4f}V F2=V_im={v_im:.4f}V')
 
     # ── FR card ──────────────────────────────────────────────────────────────
     is_sweep = fmax_mhz > freq_mhz
@@ -432,6 +484,7 @@ def nml_to_nec(nml_path):
         (f'CM Excitation: {feed_tag} node {excit.get("nodeTag","")} '
          f'-> NEC wire {exc_nec_tag} seg {exc_seg}'),
         *gn_cm,
+        *ex_cm,
         *rp_cm,
         'CE',
         *gw_lines,
