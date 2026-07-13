@@ -4,7 +4,7 @@
 #
 # Repository layout:
 #
-#   plot_gui/
+#   neomom_plot/
 #   ├── linux/
 #   │   └── neomom_plot.spec      <- Linux version
 #   ├── windows/
@@ -17,21 +17,25 @@
 #       ├── plot_3d.py
 #       └── plot_panel.py
 #
-# Build command (from project root or scripts/):
+# Build command (from project root):
 #
 #   & "$env:USERPROFILE\venvs\neomom_plot\Scripts\pyinstaller.exe" `
-#       plot_gui\windows\neomom_plot.spec `
-#       --distpath plot_gui\build\dist `
-#       --workpath plot_gui\build\work
+#       neomom_plot\windows\neomom_plot.spec `
+#       --distpath neomom_plot\build\dist `
+#       --workpath neomom_plot\build\work
 #
 # Output:
-#   plot_gui\build\dist\neomom_plot.exe    <- the executable
+#   neomom_plot\build\dist\neomom_plot.exe
 #
 # Prerequisites:
-#   - Run from project root
 #   - venv at %USERPROFILE%\venvs\neomom_plot populated from
-#     requirements_plot.txt
+#     requirements_plot.txt  (includes cartopy >= 0.22)
 #   - tkinter included by default in official python.org installer
+#
+# Note on cartopy:
+#   cartopy >= 0.22 provides binary wheels — pip install cartopy
+#   should work directly without conda.
+#   If pip install fails, use: pip install cartopy --pre
 # ==============================================================
 
 import os
@@ -41,16 +45,15 @@ block_cipher = None
 
 # --------------------------------------------------------------
 # PATHS
-# SPECPATH is set automatically by PyInstaller to the directory
-# containing this .spec file (plot_gui/linux/)
+# SPECPATH is set by PyInstaller to the directory containing
+# this .spec file (neomom_plot/windows/)
 # --------------------------------------------------------------
 
 SRC = os.path.abspath(os.path.join(SPECPATH, '..', 'src'))
 
 # --------------------------------------------------------------
 # DATA FILES
-# Bundle all .py helpers so cross-module imports work correctly
-# inside the frozen one-file bundle.
+# Bundle all .py helpers for cross-module imports in frozen bundle
 # --------------------------------------------------------------
 
 all_py = [
@@ -72,7 +75,7 @@ a = Analysis(
     datas=all_py,
 
     hiddenimports=[
-        # tkinter submodules — not auto-detected by PyInstaller
+        # tkinter submodules
         'tkinter',
         'tkinter.ttk',
         'tkinter.filedialog',
@@ -83,13 +86,36 @@ a = Analysis(
         'matplotlib.backends.backend_tkagg',
         'mpl_toolkits.mplot3d',
 
-        # pandas and numpy internals that PyInstaller may miss
-        'pandas',
+        # numpy and pandas
         'numpy',
+        'pandas',
 
-        # Pillow tkinter bridge — Pillow is an indirect matplotlib
-        # dependency; PyInstaller does not auto-detect this module
+        # Pillow tkinter bridge
         'PIL._tkinter_finder',
+
+        # cartopy — map overlay feature
+        # Requires cartopy >= 0.22 (binary wheels available via pip)
+        'cartopy',
+        'cartopy.crs',
+        'cartopy.feature',
+        'cartopy.io',
+        'cartopy.io.shapereader',
+        'cartopy.mpl',
+        'cartopy.mpl.geoaxes',
+        'cartopy.mpl.ticker',
+        'cartopy.mpl.gridliner',
+
+        # pyproj — cartopy dependency for coordinate projections
+        'pyproj',
+        'pyproj.transformer',
+        'pyproj._transformer',
+        'pyproj.crs',
+        'pyproj._crs',
+
+        # shapely — cartopy geometry dependency
+        'shapely',
+        'shapely.geometry',
+        'shapely.ops',
     ],
 
     hookspath=[],
@@ -116,8 +142,6 @@ pyz = PYZ(
 
 # --------------------------------------------------------------
 # EXE — one-file bundle
-# a.binaries, a.zipfiles, a.datas included directly here
-# (no COLLECT block) — this is what makes it a one-file build.
 # --------------------------------------------------------------
 
 exe = EXE(
@@ -134,14 +158,11 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
 
-    # UPX compression — reduces exe size if upx is installed.
-    # Set to False if build machine does not have upx.
     upx=True,
     upx_exclude=[],
 
     runtime_tmpdir=None,
 
-    # False = GUI app, no console window on launch
     console=False,
 
     disable_windowed_traceback=False,

@@ -682,8 +682,12 @@ class CurViewerApp(tk.Tk):
         sh = self.winfo_screenheight()
 
         if platform.system() == "Windows":
+            # WIN_OS_SCALE must match Windows Settings > Display > Scale:
+            #   100% -> 1.0,  125% -> 1.25,  150% -> 1.5,  200% -> 2.0
+            WIN_OS_SCALE = 1.0   # ← set to your Windows display scaling
             scale      = 1.0
-            font_scale = 2.0
+            font_scale = 1.0 / WIN_OS_SCALE   # matplotlib fonts pre-divided;
+                                               # OS scaling restores target size
             self.tk.call('tk', 'scaling', scale)
         else:
             if sw >= 3500 and sh >= 2000:
@@ -698,7 +702,24 @@ class CurViewerApp(tk.Tk):
         self._font_scale = font_scale
         # Matplotlib figure DPI — keeps embedded plot text legible at the
         # same physical size as the surrounding Tk widgets.
-        self._fig_dpi = int(100 * font_scale)
+        if platform.system() == "Windows":
+            self._fig_dpi = 100   # OS doubles figure rendering — keep DPI at 100
+        else:
+            self._fig_dpi = int(100 * font_scale)
+
+        # Apply font_scale to matplotlib global rcParams so all
+        # hardcoded fontsize values in plot functions are scaled correctly.
+        # Base sizes: title=12, label=11, tick=9, legend=8, annot=8
+        import matplotlib
+        matplotlib.rcParams.update({
+            'font.size'          : round(9  * font_scale, 1),
+            'axes.titlesize'     : round(12 * font_scale, 1),
+            'axes.labelsize'     : round(11 * font_scale, 1),
+            'xtick.labelsize'    : round(9  * font_scale, 1),
+            'ytick.labelsize'    : round(9  * font_scale, 1),
+            'legend.fontsize'    : round(8  * font_scale, 1),
+            'figure.titlesize'   : round(12 * font_scale, 1),
+        })
 
         style = ttk.Style(self)
         style.theme_use("default")

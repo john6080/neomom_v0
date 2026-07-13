@@ -5,7 +5,7 @@
 &Frequency_MHz
    fmin  = 2.0
    fmax  = 32.0
-   fstep = 0.01
+   fstep = 0.02
    nFreq = 0
 /
 

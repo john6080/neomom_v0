@@ -1,11 +1,12 @@
 &RunTitle
-   title = '40 m center fed dipole'
+   title = '40 m center fed dipole — impedance sweep'
 /
 
 &Frequency_MHz
-   fmin  = 7.25
-   fmax  = 7.25
-   nFreq = 1
+   fmin  = 6.5
+   fmax  = 8.5
+   fstep = 0.01
+   nFreq = 0
 /
 
 &Ground
@@ -17,6 +18,7 @@
 &OPTIONS
    NBASISPERLAMBDA = 40
    Output_Currents = .FALSE.
+   sweep_mode = 'vna_sweep'
 /
 
 &node_input

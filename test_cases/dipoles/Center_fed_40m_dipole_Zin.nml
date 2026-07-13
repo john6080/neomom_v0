@@ -1,46 +1,47 @@
 &RunTitle
-   title = '40 m center fed dipole — impedance sweep'
+   title = '40m delta loop at 10m'
 /
 
 &Frequency_MHz
-   fmin  = 6.5
-   fmax  = 8.5
-   fstep = 0.010     ! 10 kHz steps — 201 points across 40m band
-   nFreq = 0         ! 0 signals: use fstep
+   fmin  = 5.0
+   fmax  = 35.0
+   fstep = 0.01
+   nFreq = 0
 /
 
 &Ground
-   Ground_Plane = 'free_space'
-   epsilon = 14.0
-   sigma = 0.005
+   Ground_Plane = 'real'
+   epsilon = 1.0
+   sigma = 0.0
 /
 
 &OPTIONS
-   NBASISPERLAMBDA  = 40
-   Output_Currents  = .FALSE.
-   sweep_mode       = 'impedance'   ! skip pattern_3d, write _Zin.csv
+   NBASISPERLAMBDA = 40
+   Output_Currents = .TRUE.
+   sweep_mode = 'vna_sweep'
 /
 
 &node_input
-   zHeight = 30.0
+   zHeight = 10.0
    nNodes = 3
-   units = 'feet'
+   units = 'meters'
 
- node_list(1) = 'A', -33.0, 0.0, 0.0
- node_list(2) = 'B', 0.0, 0.0, 0.0
- node_list(3) = 'C', 33.0, 0.0, 0.0
+ node_list(1) = 'A', -10.0, 0.0, 0.0
+ node_list(2) = 'B', 10.0, 0.0, 0.0
+ node_list(3) = 'C', 0.0, -20.0, 0.0
 /
 
 &wire_primitive
-   tag    = 'W1',
-   nNodes = 3,
-   nodeTags = 'A' 'B' 'C'
-   radius = 0.001
+   tag   = 'W1',
+   nNodes = 4,
+   nodeTags = 'C' 'B' 'A' 'C'
+   radius     = 0.001
 /
 
 &excitation_input
-   wireTag   = 'W1'
-   nodeTag   = 'B'
-   voltage   = 1.0
+   wireTag = 'W1'
+   nodeTag = 'C'
+   voltage = 1.0
    phase_deg = 0.0
 /
+
