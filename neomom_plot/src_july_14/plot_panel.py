@@ -256,17 +256,8 @@ def plot_elevation_polar_overlay(out_dict, meta, scale, phi_cut,
     scale      : scale string
     phi_cut    : desired phi angle (degrees)
     hemisphere : 'upper' (default) or 'full'
-
-    If meta['source'] == 'nec5' (set by nec_out_reader.read_nec_out()),
-    every line additionally gets small black dot markers and the title
-    is tagged "[NEC5 data]". Without this, a solo NEC5 plot renders
-    with the exact same colored lines as a solo NeoMoM plot -- fine
-    stylistically, but genuinely easy to mistake for the other dataset
-    at a glance, especially across multiple open plot windows. NeoMoM
-    plots (meta without that key) are completely unaffected.
     """
     COLORS = {'Ev': 'steelblue', 'Eh': 'darkorange', 'Etotal': 'green'}
-    is_nec5 = (meta.get('source') == 'nec5')
 
     fig, ax = plt.subplots(figsize=cfg.fig_polar, dpi=cfg.mpl_dpi,
                            subplot_kw={'projection': 'polar'},
@@ -294,19 +285,14 @@ def plot_elevation_polar_overlay(out_dict, meta, scale, phi_cut,
         thetas_rad = np.radians(thetas_deg)
         radii      = _normalize_radii_from_emag(E_mag_slice, global_emag, scale)
 
-        line_kwargs = dict(linewidth=cfg.lw_plot,
-                           color=COLORS.get(comp, 'gray'), label=comp)
-        if is_nec5:
-            line_kwargs.update(marker='o', markersize=3, markeredgewidth=0,
-                               markerfacecolor='black')
-        ax.plot(thetas_rad, radii, **line_kwargs)
+        ax.plot(thetas_rad, radii, linewidth=cfg.lw_plot,
+                color=COLORS.get(comp, 'gray'), label=comp)
         all_E.append(E_mag_slice)
 
     hemi_label = 'Upper hemisphere' if hemisphere == 'upper' \
                  else 'Full sphere'
-    nec5_tag = ' [NEC5]' if is_nec5 else ''
     fig.canvas.manager.set_window_title(
-        f"Elevation Cut (Polar) - phi={nearest_phi:.1f}° [{hemi_label}]{nec5_tag}")
+        f"Elevation Cut (Polar) - phi={nearest_phi:.1f}° [{hemi_label}]")
 
     ax.set_theta_zero_location('N')
     ax.set_theta_direction(-1)
@@ -327,14 +313,13 @@ def plot_elevation_polar_overlay(out_dict, meta, scale, phi_cut,
     _polar_grid_labels_global(ax, scale, global_emag, meta)
     ax.legend(loc='lower right', fontsize=cfg.font_legend)
 
-    title_str  = meta.get('title', 'Antenna Pattern')
-    freq       = meta.get('frequency_mhz', '?')
-    gain       = meta.get('gain_peak_dbi', '?')
-    gain_str   = f"{gain:.3g}" if isinstance(gain, float) else str(gain)
-    comp_str   = ' & '.join(out_dict.keys())
-    source_tag = '  [NEC5 data]' if is_nec5 else ''
+    title_str = meta.get('title', 'Antenna Pattern')
+    freq      = meta.get('frequency_mhz', '?')
+    gain      = meta.get('gain_peak_dbi', '?')
+    gain_str  = f"{gain:.3g}" if isinstance(gain, float) else str(gain)
+    comp_str  = ' & '.join(out_dict.keys())
     ax.set_title(
-        f"{title_str}  |  {freq} MHz  |  {comp_str}  |  {scale}{source_tag}\n"
+        f"{title_str}  |  {freq} MHz  |  {comp_str}  |  {scale}\n"
         f"Elevation cut at phi = {nearest_phi:.1f}°  [{hemi_label}]"
         f"   (peak gain: {gain_str} dBi)",
         pad=15, fontsize=cfg.font_title)
@@ -370,14 +355,8 @@ def plot_azimuth_polar_overlay(out_dict, meta, scale, theta_cut):
     All components share a COMMON normalisation reference so that
     the relative levels between Ev, Eh, and Etotal are physically
     correct (Eh will not appear as large as Ev if it is truly null).
-
-    See plot_elevation_polar_overlay() docstring: if meta['source'] ==
-    'nec5', lines get small black dot markers and the title is tagged
-    "[NEC5 data]" so a solo NEC5 plot is never confusable with a solo
-    NeoMoM plot. NeoMoM plots are completely unaffected.
     """
     COLORS = {'Ev': 'steelblue', 'Eh': 'darkorange', 'Etotal': 'green'}
-    is_nec5 = (meta.get('source') == 'nec5')
 
     fig, ax = plt.subplots(figsize=cfg.fig_polar, dpi=cfg.mpl_dpi,
                            subplot_kw={'projection': 'polar'},
@@ -406,19 +385,14 @@ def plot_azimuth_polar_overlay(out_dict, meta, scale, theta_cut):
         radii    = _normalize_radii_from_emag(
                        slice_df['E_mag'].values, global_emag, scale)
 
-        line_kwargs = dict(linewidth=cfg.lw_plot,
-                           color=COLORS.get(comp, 'gray'), label=comp)
-        if is_nec5:
-            line_kwargs.update(marker='o', markersize=3, markeredgewidth=0,
-                               markerfacecolor='black')
-        ax.plot(phis_rad, radii, **line_kwargs)
+        ax.plot(phis_rad, radii, linewidth=cfg.lw_plot,
+                color=COLORS.get(comp, 'gray'), label=comp)
         ax.plot([phis_rad[-1], phis_rad[0]],
                 [radii[-1],    radii[0]],
                 linewidth=cfg.lw_plot, color=COLORS.get(comp, 'gray'))
 
-    nec5_tag = ' [NEC5]' if is_nec5 else ''
     fig.canvas.manager.set_window_title(
-        f"Azimuth Cut (Polar) - theta={nearest_theta:.1f}°{nec5_tag}")
+        f"Azimuth Cut (Polar) - theta={nearest_theta:.1f}°")
 
     ax.set_theta_zero_location('N')
     ax.set_theta_direction(-1)
@@ -429,14 +403,13 @@ def plot_azimuth_polar_overlay(out_dict, meta, scale, theta_cut):
 
     ax.legend(loc='lower right', fontsize=cfg.font_legend)
 
-    title_str  = meta.get('title', 'Antenna Pattern')
-    freq       = meta.get('frequency_mhz', '?')
-    gain       = meta.get('gain_peak_dbi', '?')
-    gain_str   = f"{gain:.3g}" if isinstance(gain, float) else str(gain)
-    comp_str   = ' & '.join(out_dict.keys())
-    source_tag = '  [NEC5 data]' if is_nec5 else ''
+    title_str = meta.get('title', 'Antenna Pattern')
+    freq      = meta.get('frequency_mhz', '?')
+    gain      = meta.get('gain_peak_dbi', '?')
+    gain_str  = f"{gain:.3g}" if isinstance(gain, float) else str(gain)
+    comp_str  = ' & '.join(out_dict.keys())
     ax.set_title(
-        f"{title_str}  |  {freq} MHz  |  {comp_str}  |  {scale}{source_tag}\n"
+        f"{title_str}  |  {freq} MHz  |  {comp_str}  |  {scale}\n"
         f"Azimuth cut at theta = {nearest_theta:.1f}°"
         f"   (peak gain: {gain_str} dBi)",
         pad=15, fontsize=cfg.font_title)
@@ -455,307 +428,6 @@ def plot_azimuth_polar_overlay(out_dict, meta, scale, theta_cut):
                 solid_capstyle='butt',
                 zorder=5,
                 clip_on=False)
-
-    plt.show(block=False)
-
-
-# ----------------------------------------------------------------
-# SECTION 3c: Compare plots — same component(s), across TWO SOURCES
-# (e.g. NeoMoM vs NEC5).
-#
-# Additive to Section 3b: the single-source overlay functions above are
-# UNCHANGED and remain what's used whenever only one source is active,
-# so behavior for anyone not using NEC5 comparison is identical to
-# before this section existed.
-#
-# This whole section (plus nec_out_reader.py and the "Sources:" row in
-# neomom_plot.py) can be deleted together to fully remove NEC5
-# comparison support — nothing else in the codebase depends on it.
-# ----------------------------------------------------------------
-
-def _global_gain_peak_dbi(sources):
-    """
-    Max gain_peak_dbi across all active sources -- the physically
-    meaningful "0 dB" reference point for a CROSS-ENGINE comparison.
-
-    gain_peak_dbi is the one quantity that's actually comparable between
-    two different EM engines: it's referenced to an isotropic radiator,
-    independent of whatever internal convention each engine uses for
-    raw field magnitude (reference distance, drive voltage, etc).
-    Raw |E| is NOT safely comparable across engines for that reason --
-    see _calibrated_reference() below.
-    """
-    peaks = [float(s['meta']['gain_peak_dbi'])
-             for s in sources
-             if isinstance(s['meta'].get('gain_peak_dbi'), (int, float))]
-    return max(peaks) if peaks else 0.0
-
-
-def _calibrated_reference(source_peak_emag, source_gain_peak_dbi, global_peak_dbi):
-    """
-    Per-source "effective global_peak" to hand to
-    _normalize_radii_from_emag(), so that radii across MULTIPLE SOURCES
-    are anchored to actual absolute dBi gain -- comparable across
-    engines -- rather than to raw |E| field magnitude, which is NOT
-    comparable across engines (different EM tools normalize the raw
-    field differently even when their own dBi calibration is correct).
-
-    ------------------------------------------------------------------
-    BUG FIX (see conversation) — cross-source offset in compare plots
-    ------------------------------------------------------------------
-    An earlier version used ONE shared raw |E| peak across all sources
-    (_global_emag_peak_multi, since removed). That's only valid if both
-    sources' raw field data happens to share the same absolute
-    normalization -- generally false between two different engines --
-    and produced a constant dB offset between otherwise-matching curves
-    (right shape, wrong absolute level) whenever it wasn't. This
-    calibrates through each source's own gain_peak_dbi instead, which
-    IS engine-independent, so the derived offset is real.
-
-    Derivation: we want, for this source,
-        20*log10(E_mag / X) == 20*log10(E_mag / source_peak_emag)
-                                + (source_gain_peak_dbi - global_peak_dbi)
-    for every E_mag (the E_mag-dependent term cancels identically),
-    which solves to the single constant below.
-    """
-    if source_gain_peak_dbi is None:
-        return source_peak_emag  # no absolute reference available -- fall back to raw
-    return source_peak_emag * (10.0 ** ((global_peak_dbi - source_gain_peak_dbi) / 20.0))
-
-
-def _source_line_style(index, source, comp, colors):
-    """
-    Rendering style for one (source, component) series in a compare plot,
-    keyed on POSITION (index 0 = primary, e.g. NeoMoM; index > 0 =
-    comparison overlay, e.g. NEC5) rather than on the source's name, so
-    this generalizes past exactly "NeoMoM vs NEC5".
-
-    index == 0 (primary source): full-weight solid line, colored by
-    component -- exactly like every other plot in the app.
-
-    index > 0 (comparison source): small black dot markers, NO
-    connecting line, and NO per-component color -- deliberately. For a
-    quick eyeball validation the question is just "does the reference
-    data land on the model's curve", per component; a second full set
-    of colored/dashed lines only doubles the number of near-identical
-    curves you have to visually untangle. Uniform black dots read
-    unambiguously as "the other dataset" at a glance, and which
-    component a given dot belongs to is resolved by which colored line
-    it lands on, not by its own color.
-    """
-    if index == 0:
-        return dict(linewidth=cfg.lw_plot, alpha=1.0,
-                    linestyle=source.get('linestyle', 'solid'),
-                    marker='None', color=colors.get(comp, 'gray'),
-                    zorder=3)
-
-    return dict(linewidth=0, linestyle='None',
-                marker='o', markersize=2, markeredgewidth=0,
-                color='black', alpha=0.8, zorder=5)
-
-
-def plot_elevation_polar_compare(sources, phi_cut, hemisphere='upper'):
-    """
-    Elevation polar comparison across multiple sources (e.g. NeoMoM vs
-    NEC5), each possibly showing multiple components (Ev/Eh/Etotal).
-
-    Parameters
-    ----------
-    sources : list of dict, each with keys:
-        'name'      : str   e.g. 'NeoMoM' or 'NEC5' — used in legend/title
-        'out_dict'  : {component: out_df}  (from compute_out_dicts())
-        'meta'      : metadata dict for this source
-        'scale'     : scale string — must be the same across all sources
-        'linestyle' : matplotlib linestyle, e.g. 'solid' / 'dashed'
-    phi_cut, hemisphere : same meaning as plot_elevation_polar_overlay()
-
-    Color still encodes component (Ev/Eh/Etotal, matching the rest of
-    the app); linestyle encodes source. Legend labels read e.g.
-    "Etotal (NEC5)".
-    """
-    COLORS = {'Ev': 'steelblue', 'Eh': 'darkorange', 'Etotal': 'green'}
-    scale  = sources[0]['scale']
-
-    fig, ax = plt.subplots(figsize=cfg.fig_polar, dpi=cfg.mpl_dpi,
-                           subplot_kw={'projection': 'polar'},
-                           constrained_layout=True)
-    fig.get_layout_engine().set(w_pad=0.05, h_pad=0.05)
-
-    # Cross-engine calibration -- see _calibrated_reference() docstring.
-    # Each source gets its OWN reference derived from its OWN
-    # gain_peak_dbi; raw |E| is never compared directly across sources.
-    global_peak_dbi = _global_gain_peak_dbi(sources)
-
-    nearest_phi = None
-    for i, s in enumerate(sources):
-        source_peak_emag = _global_emag_peak(s['out_dict'], phi_cut=phi_cut,
-                                             hemisphere=hemisphere)
-        source_gain_peak_dbi = s['meta'].get('gain_peak_dbi')
-        ref = _calibrated_reference(source_peak_emag, source_gain_peak_dbi,
-                                    global_peak_dbi)
-
-        for j, (comp, out_df) in enumerate(s['out_dict'].items()):
-            thetas_deg, E_mag_slice, p_near = _build_elevation_cut_emag(
-                out_df, phi_cut, hemisphere)
-            if nearest_phi is None:
-                nearest_phi = p_near
-
-            thetas_rad = np.radians(thetas_deg)
-            radii = _normalize_radii_from_emag(E_mag_slice, ref, scale)
-            style = _source_line_style(i, s, comp, COLORS)
-
-            # Comparison sources (i > 0) render as uniform black dots
-            # with no per-component color -- one legend entry covers
-            # all of that source's components rather than three
-            # near-identical rows.
-            if i == 0:
-                label = f"{comp} ({s['name']})"
-            else:
-                label = s['name'] if j == 0 else '_nolegend_'
-
-            ax.plot(thetas_rad, radii, label=label, **style)
-
-    hemi_label = 'Upper hemisphere' if hemisphere == 'upper' else 'Full sphere'
-    fig.canvas.manager.set_window_title(
-        f"Elevation Cut (Compare) - phi={nearest_phi:.1f}° [{hemi_label}]")
-
-    ax.set_theta_zero_location('N')
-    ax.set_theta_direction(-1)
-
-    if hemisphere == 'upper':
-        ax.set_thetamin(-90)
-        ax.set_thetamax(90)
-        major_deg = np.arange(-90, 91, 30)
-    else:
-        ax.set_thetamin(-180)
-        ax.set_thetamax(180)
-        major_deg = np.arange(-180, 181, 30)
-
-    ax.set_thetagrids(major_deg)
-    _polar_ang_tick_params(ax)
-
-    primary_meta = sources[0]['meta']
-    # Ring labels must reflect the COMBINED reference, not just the
-    # primary source's own peak, so 'dBi' ticks are correct for whichever
-    # source is actually at the outer ring.
-    label_meta = dict(primary_meta)
-    label_meta['gain_peak_dbi'] = global_peak_dbi
-    _polar_grid_labels_global(ax, scale, global_peak_dbi, label_meta)
-    ax.legend(loc='lower right', fontsize=cfg.font_legend)
-
-    title_str = primary_meta.get('title', 'Antenna Pattern')
-    freq      = primary_meta.get('frequency_mhz', '?')
-    src_str   = ' vs '.join(s['name'] for s in sources)
-    peak_str  = '   '.join(
-        f"{s['name']} peak: {s['meta']['gain_peak_dbi']:.3g} dBi"
-        for s in sources
-        if isinstance(s['meta'].get('gain_peak_dbi'), (int, float)))
-    ax.set_title(
-        f"{title_str}  |  {freq} MHz  |  {src_str}  |  {scale}\n"
-        f"Elevation cut at phi = {nearest_phi:.1f}°  [{hemi_label}]"
-        f"   ({peak_str})",
-        pad=15, fontsize=cfg.font_title)
-
-    if hemisphere == 'upper':
-        minor_deg = np.arange(-90, 91, 10)
-    else:
-        minor_deg = np.arange(-180, 181, 10)
-    major_set = set(major_deg)
-    minor_deg = [d for d in minor_deg if d not in major_set]
-    minor_rad = np.deg2rad(minor_deg)
-
-    r_outer, tick_len = 1.0, 0.03
-    for ang in minor_rad:
-        ax.plot([ang, ang], [r_outer - tick_len, r_outer],
-                color='gray', linewidth=cfg.lw_minor,
-                solid_capstyle='butt', zorder=5, clip_on=False)
-
-    plt.show(block=False)
-
-
-def plot_azimuth_polar_compare(sources, theta_cut):
-    """
-    Azimuth polar comparison across multiple sources. Same contract as
-    plot_elevation_polar_compare() above — see that docstring.
-    """
-    COLORS = {'Ev': 'steelblue', 'Eh': 'darkorange', 'Etotal': 'green'}
-    scale  = sources[0]['scale']
-
-    fig, ax = plt.subplots(figsize=cfg.fig_polar, dpi=cfg.mpl_dpi,
-                           subplot_kw={'projection': 'polar'},
-                           constrained_layout=True)
-    fig.get_layout_engine().set(w_pad=0.05, h_pad=0.05)
-
-    # Cross-engine calibration -- see _calibrated_reference() docstring.
-    global_peak_dbi = _global_gain_peak_dbi(sources)
-
-    nearest_theta = None
-    for i, s in enumerate(sources):
-        source_peak_emag     = _global_emag_peak(s['out_dict'], theta_cut=theta_cut)
-        source_gain_peak_dbi = s['meta'].get('gain_peak_dbi')
-        ref = _calibrated_reference(source_peak_emag, source_gain_peak_dbi,
-                                    global_peak_dbi)
-
-        for j, (comp, out_df) in enumerate(s['out_dict'].items()):
-            theta_vals = out_df['theta_deg'].unique()
-            nt = theta_vals[np.argmin(np.abs(theta_vals - theta_cut))]
-            if nearest_theta is None:
-                nearest_theta = nt
-
-            slice_df = out_df[out_df['theta_deg'] == nt].copy()
-            slice_df = slice_df.sort_values('phi_deg')
-
-            phis_rad = np.radians(slice_df['phi_deg'].values)
-            radii = _normalize_radii_from_emag(
-                slice_df['E_mag'].values, ref, scale)
-            style = _source_line_style(i, s, comp, COLORS)
-
-            if i == 0:
-                label = f"{comp} ({s['name']})"
-            else:
-                label = s['name'] if j == 0 else '_nolegend_'
-
-            ax.plot(phis_rad, radii, label=label, **style)
-            if i == 0:
-                # Close the polar loop visually -- only meaningful for
-                # continuous lines, not for the comparison source's
-                # marker-only dots (each point is already drawn once).
-                ax.plot([phis_rad[-1], phis_rad[0]], [radii[-1], radii[0]],
-                        **style)
-
-    fig.canvas.manager.set_window_title(
-        f"Azimuth Cut (Compare) - theta={nearest_theta:.1f}°")
-
-    ax.set_theta_zero_location('N')
-    ax.set_theta_direction(-1)
-    ax.set_thetagrids(range(0, 360, 30))
-    _polar_ang_tick_params(ax)
-
-    primary_meta = sources[0]['meta']
-    label_meta = dict(primary_meta)
-    label_meta['gain_peak_dbi'] = global_peak_dbi
-    _polar_grid_labels_global(ax, scale, global_peak_dbi, label_meta)
-    ax.legend(loc='lower right', fontsize=cfg.font_legend)
-
-    title_str = primary_meta.get('title', 'Antenna Pattern')
-    freq      = primary_meta.get('frequency_mhz', '?')
-    src_str   = ' vs '.join(s['name'] for s in sources)
-    peak_str  = '   '.join(
-        f"{s['name']} peak: {s['meta']['gain_peak_dbi']:.3g} dBi"
-        for s in sources
-        if isinstance(s['meta'].get('gain_peak_dbi'), (int, float)))
-    ax.set_title(
-        f"{title_str}  |  {freq} MHz  |  {src_str}  |  {scale}\n"
-        f"Azimuth cut at theta = {nearest_theta:.1f}°   ({peak_str})",
-        pad=15, fontsize=cfg.font_title)
-
-    minor_deg = np.arange(0, 360, 10)
-    minor_rad = np.deg2rad(minor_deg)
-    r_outer, tick_len = 1.0, 0.03
-    for ang in minor_rad:
-        ax.plot([ang, ang], [r_outer - tick_len, r_outer],
-                color='gray', linewidth=cfg.lw_minor,
-                solid_capstyle='butt', zorder=5, clip_on=False)
 
     plt.show(block=False)
 

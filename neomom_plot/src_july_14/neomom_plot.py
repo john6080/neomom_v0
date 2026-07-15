@@ -61,46 +61,8 @@ def _save_prefs(prefs):
 from data_reader   import read_antenna_file
 from pattern_math  import apply_component_and_scale
 from plot_panel    import (plot_elevation_polar_overlay,
-                           plot_azimuth_polar_overlay,
-                           plot_elevation_polar_compare,
-                           plot_azimuth_polar_compare)
+                           plot_azimuth_polar_overlay)
 from display_config import cfg
-
-# ==================================================================
-# NEC5 COMPARISON FEATURE (optional, may be temporary)
-# ------------------------------------------------------------------
-# Everything tagged "NEC5 COMPARISON FEATURE" in this file, plus
-# nec_out_reader.py and the corresponding additions in plot_panel.py,
-# implements an optional side-by-side NeoMoM-vs-NEC5 overlay for
-# pattern validation. It's designed to lift out cleanly: if
-# nec_out_reader.py is ever deleted, the import below just fails
-# quietly, _NEC5_AVAILABLE becomes False, and every NEC5-specific UI
-# element (the NEC5 file row, the Sources: checkboxes) disables or
-# hides itself. Nothing else in the app depends on it.
-# ==================================================================
-try:
-    from nec_out_reader import read_nec_out
-    _NEC5_AVAILABLE = True
-except ImportError:
-    _NEC5_AVAILABLE = False
-
-
-def load_input_file(filepath):
-    """
-    Load either a neomom CSV or a NEC5 .out file, auto-detected by
-    extension, returning (meta, df) in the identical shape either way.
-    """
-    ext = os.path.splitext(filepath)[1].lower()
-    if ext == '.out':
-        if not _NEC5_AVAILABLE:
-            raise RuntimeError(
-                "nec_out_reader.py not found -- NEC5 file support is "
-                "unavailable.")
-        return read_nec_out(filepath)
-    return read_antenna_file(filepath)
-# ==================================================================
-# END NEC5 COMPARISON FEATURE (import/loader section)
-# ==================================================================
 
 # Scale Tkinter widget fonts for HiDPI display
 import tkinter.font as tkfont
@@ -236,14 +198,6 @@ class AntennaGUI:
                         bd=2,
                         padx=8, pady=2).pack(side='left', padx=6)
 
-        # ==========================================================
-        # NEC5 COMPARISON FEATURE — Sources row
-        # ==========================================================
-        self._build_sources_row(parent)
-        # ==========================================================
-        # END NEC5 COMPARISON FEATURE (Sources row)
-        # ==========================================================
-
         # --- Theta slider ---
         azim_ctrl_row = ttk.Frame(parent)
         azim_ctrl_row.pack(fill='x', padx=8, pady=4)
@@ -318,14 +272,6 @@ class AntennaGUI:
                         relief='raised',
                         bd=2,
                         padx=8, pady=2).pack(side='left', padx=6)
-
-        # ==========================================================
-        # NEC5 COMPARISON FEATURE — Sources row
-        # ==========================================================
-        self._build_sources_row(parent)
-        # ==========================================================
-        # END NEC5 COMPARISON FEATURE (Sources row)
-        # ==========================================================
 
         # --- Phi slider ---
         elev_frame = ttk.Frame(parent)
@@ -959,26 +905,12 @@ class AntennaGUI:
         plt.pause(0.05)
    
    
-    def __init__(self, root, out_dict, meta, df, neomom_filepath=None):
+    def __init__(self, root, out_dict, meta, df):
         self.root = root
         self.out_dict = out_dict
         self.meta = meta
         self.df = df
         self.hemisphere = 'upper'
-
-        # ==========================================================
-        # NEC5 COMPARISON FEATURE — second-source state
-        # ==========================================================
-        self.neomom_filepath = neomom_filepath
-        self.meta2 = None   # NEC5 metadata, once loaded
-        self.df2   = None   # NEC5 dataframe, once loaded
-        self.source_vars = {
-            'NeoMoM': tk.BooleanVar(value=True),
-            'NEC5':   tk.BooleanVar(value=False),
-        }
-        # ==========================================================
-        # END NEC5 COMPARISON FEATURE (state init)
-        # ==========================================================
 
 
         # 1) Define spacing + fonts FIRST
@@ -1050,20 +982,46 @@ class AntennaGUI:
         self.PADX_INDENT = 75
         self.PADY_ITEM = 4
 
-        # ==========================================================
-        # NEC5 COMPARISON FEATURE — Input Files box
-        # Sits above everything else: pick your data source(s) first,
-        # then everything below reflects what's loaded.
-        # ==========================================================
-        self._build_input_files_box()
-        # ==========================================================
-        # END NEC5 COMPARISON FEATURE (Input Files box)
-        # ==========================================================
+
 
         # -----------------------------------------
-        # Antenna metadata panel
+        # Antenna metadata panel (should be FIRST)
         # -----------------------------------------
-        self._build_info_box()
+        info_frame = _make_box(self.root, title='Antenna',
+                            font=self.fonts['meta1'], pad=4)
+
+        info_frame.pack(fill='x', padx=self.PADX_SECTION, pady=self.PADY_SECTION)
+
+
+        title_str = self.meta.get('title', 'Unknown')
+        freq_str  = self.meta.get('freq_str',  '?')
+        gain      = self.meta.get('gain_peak_dbi', '?')
+        gain_str  = f"{gain:.3g}" if isinstance(gain, float) else str(gain)
+        imp_str   = self.meta.get('impedance_str', '?')
+        swr_str   = self.meta.get('swr_str', '?')
+        gnd_str   = self.meta.get('ground_type', '?')
+        hgt_str   = self.meta.get('height_str', '?')
+        _h  = self.meta.get('height_above_ground')
+        _wl = self.meta.get('wavelength_m')
+        if isinstance(_h, float) and isinstance(_wl, float) and _wl > 0:
+            hgt_lam_str = f"{_h / _wl:.3f} \u03bb"
+        else:
+            hgt_lam_str = '?'
+
+        ttk.Label(info_frame,
+                text=f"{title_str}    {freq_str}    Peak gain: {gain_str} dBi",
+                font=self.fonts['meta1']).pack(**PAD)
+        
+        #ttk.Label(info_frame, text=..., font=...).pack(anchor='w', pady=2)
+
+        ttk.Label(info_frame,
+                text=f"Z = {imp_str}    SWR = {swr_str}",
+                font=self.fonts['meta2']).pack(anchor='center', pady=2)
+                #font=self.fonts['meta_r2']).pack(**PAD)
+
+        ttk.Label(info_frame,
+                text=f"Ground: {gnd_str}    Height: {hgt_str}  ({hgt_lam_str})",
+                font=self.fonts['meta3']).pack(**PAD)
 
         # -----------------------------------------
         # Control frame (mode selector + options panel)
@@ -1142,198 +1100,6 @@ class AntennaGUI:
         # -----------------------------------------
         self._apply_ground_plane_interlocks()
 
-    # ==================================================================
-    # NEC5 COMPARISON FEATURE — Input Files box + file loading
-    # ==================================================================
-
-    def _build_input_files_box(self):
-        frame = _make_box(self.root, title='Input Files',
-                          font=self.fonts['meta1'], pad=4)
-        frame.pack(fill='x', padx=self.PADX_SECTION, pady=self.PADY_SECTION)
-
-        # --- NeoMoM row ---
-        row1 = ttk.Frame(frame)
-        row1.pack(fill='x', padx=8, pady=3)
-        ttk.Label(row1, text="NeoMoM (.csv):", width=16,
-                 font=self.fonts['ui']).pack(side='left')
-        self.neomom_path_var = tk.StringVar(
-            value=self.neomom_filepath or '(none loaded)')
-        ttk.Entry(row1, textvariable=self.neomom_path_var, width=50,
-                 state='readonly').pack(side='left', padx=4)
-        ttk.Button(row1, text="Browse...",
-                  command=self._browse_neomom_file).pack(side='left', padx=4)
-
-        # --- NEC5 row ---
-        row2 = ttk.Frame(frame)
-        row2.pack(fill='x', padx=8, pady=3)
-        ttk.Label(row2, text="NEC5 (.out):", width=16,
-                 font=self.fonts['ui']).pack(side='left')
-        self.nec5_path_var = tk.StringVar(value='(none loaded)')
-        ttk.Entry(row2, textvariable=self.nec5_path_var, width=50,
-                 state='readonly').pack(side='left', padx=4)
-        nec5_browse_btn = ttk.Button(row2, text="Browse...",
-                                     command=self._browse_nec5_file)
-        nec5_browse_btn.pack(side='left', padx=4)
-        if not _NEC5_AVAILABLE:
-            nec5_browse_btn.config(state='disabled')
-
-        # --- status line (shows NEC5 title/freq/gain once loaded, or
-        #     why the feature is unavailable) ---
-        self.compare_status_var = tk.StringVar(
-            value='' if _NEC5_AVAILABLE else
-            'nec_out_reader.py not found — NEC5 comparison disabled.')
-        ttk.Label(frame, textvariable=self.compare_status_var,
-                 font=self.fonts['meta3'],
-                 foreground='#a05a00').pack(anchor='w', padx=8, pady=(0, 4))
-
-    def _browse_neomom_file(self):
-        prefs    = _load_prefs()
-        last_dir = prefs.get('last_dir', str(Path.home()))
-        path = filedialog.askopenfilename(
-            title="Select NeoMoM antenna CSV file",
-            initialdir=last_dir,
-            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")])
-        if not path:
-            return
-        try:
-            meta, df = read_antenna_file(path)
-        except Exception as e:
-            messagebox.showerror("Load error",
-                                 f"Could not load NeoMoM file:\n{e}")
-            return
-
-        self.meta = meta
-        self.df = df
-        self.neomom_filepath = path
-        self.neomom_path_var.set(path)
-        _save_prefs({'last_dir': str(Path(path).parent)})
-        self._refresh_after_neomom_load()
-
-    def _refresh_after_neomom_load(self):
-        """Recompute slider ranges, defaults, and the info box after a
-        new NeoMoM file is loaded (initial load or via Browse)."""
-        self.phi_vals   = sorted(self.df['phi_deg'].unique())
-        self.theta_vals = sorted(self.df['theta_deg'].unique())
-        self.phi_min    = float(self.phi_vals[0])
-        self.phi_max    = float(self.phi_vals[-1])
-        self.theta_min  = float(self.theta_vals[0])
-        self.theta_max  = float(self.theta_vals[-1])
-
-        peak_theta, peak_phi = self.meta.get('e_total_max', (25.0, 90.0))
-        self.phi_var.set(peak_phi)
-        self.theta_var.set(peak_theta)
-
-        self._build_info_box()
-        self._apply_ground_plane_interlocks()
-        self.status_var.set(
-            f"Loaded NeoMoM file: {os.path.basename(self.neomom_filepath)}")
-
-    def _browse_nec5_file(self):
-        if not _NEC5_AVAILABLE:
-            return
-        prefs    = _load_prefs()
-        last_dir = prefs.get('last_dir', str(Path.home()))
-        path = filedialog.askopenfilename(
-            title="Select NEC5 .out file",
-            initialdir=last_dir,
-            filetypes=[("NEC5 output files", "*.out"), ("All files", "*.*")])
-        if not path:
-            return
-        try:
-            meta2, df2 = read_nec_out(path)
-        except Exception as e:
-            messagebox.showerror("Load error",
-                                 f"Could not load NEC5 file:\n{e}")
-            return
-
-        self.meta2 = meta2
-        self.df2   = df2
-        self.nec5_path_var.set(path)
-
-        # Auto-enable the NEC5 source checkbox now that data exists
-        self.source_vars['NEC5'].set(True)
-        if hasattr(self, 'nec5_checkbox') and self.nec5_checkbox.winfo_exists():
-            self.nec5_checkbox.config(state='normal')
-
-        freq1 = self.meta.get('frequency_mhz')
-        freq2 = self.meta2.get('frequency_mhz')
-        warn = ''
-        if isinstance(freq1, float) and isinstance(freq2, float) and freq1 > 0:
-            if abs(freq1 - freq2) / freq1 > 0.01:
-                warn = (f"   \u26a0 frequency differs from NeoMoM "
-                        f"({freq1:.4g} vs {freq2:.4g} MHz)")
-
-        title2    = self.meta2.get('title', '?')
-        gain2     = self.meta2.get('gain_peak_dbi', '?')
-        gain2_str = f"{gain2:.3g}" if isinstance(gain2, float) else str(gain2)
-        self.compare_status_var.set(
-            f"NEC5 loaded: {title2}  |  {self.meta2.get('freq_str', '?')}  |  "
-            f"peak {gain2_str} dBi{warn}")
-        self.status_var.set(f"Loaded NEC5 file: {os.path.basename(path)}")
-
-    def _active_sources(self):
-        """
-        Returns [(name, df, meta, linestyle), ...] for every source that
-        is BOTH checked in the Sources: row AND actually loaded, in
-        NeoMoM-then-NEC5 order.
-        """
-        active = []
-        if self.source_vars['NeoMoM'].get():
-            active.append(('NeoMoM', self.df, self.meta, 'solid'))
-        if (self.source_vars.get('NEC5') is not None
-                and self.source_vars['NEC5'].get()
-                and self.df2 is not None):
-            active.append(('NEC5', self.df2, self.meta2, 'dashed'))
-        return active
-
-    # ==================================================================
-    # END NEC5 COMPARISON FEATURE (Input Files box + file loading)
-    # ==================================================================
-
-    def _build_info_box(self):
-        """
-        (Re)builds the 'Antenna' metadata box from self.meta. Safe to
-        call again after a new NeoMoM file is loaded via Browse — it
-        reuses the existing frame instead of creating a duplicate.
-        """
-        PAD = dict(padx=8, pady=4)
-
-        if not hasattr(self, 'info_frame') or not self.info_frame.winfo_exists():
-            self.info_frame = _make_box(self.root, title='Antenna',
-                                font=self.fonts['meta1'], pad=4)
-            self.info_frame.pack(fill='x', padx=self.PADX_SECTION,
-                                 pady=self.PADY_SECTION)
-        else:
-            for w in self.info_frame.winfo_children():
-                w.destroy()
-
-        title_str = self.meta.get('title', 'Unknown')
-        freq_str  = self.meta.get('freq_str',  '?')
-        gain      = self.meta.get('gain_peak_dbi', '?')
-        gain_str  = f"{gain:.3g}" if isinstance(gain, float) else str(gain)
-        imp_str   = self.meta.get('impedance_str', '?')
-        swr_str   = self.meta.get('swr_str', '?')
-        gnd_str   = self.meta.get('ground_type', '?')
-        hgt_str   = self.meta.get('height_str', '?')
-        _h  = self.meta.get('height_above_ground')
-        _wl = self.meta.get('wavelength_m')
-        if isinstance(_h, float) and isinstance(_wl, float) and _wl > 0:
-            hgt_lam_str = f"{_h / _wl:.3f} \u03bb"
-        else:
-            hgt_lam_str = '?'
-
-        ttk.Label(self.info_frame,
-                text=f"{title_str}    {freq_str}    Peak gain: {gain_str} dBi",
-                font=self.fonts['meta1']).pack(**PAD)
-
-        ttk.Label(self.info_frame,
-                text=f"Z = {imp_str}    SWR = {swr_str}",
-                font=self.fonts['meta2']).pack(anchor='center', pady=2)
-
-        ttk.Label(self.info_frame,
-                text=f"Ground: {gnd_str}    Height: {hgt_str}  ({hgt_lam_str})",
-                font=self.fonts['meta3']).pack(**PAD)
-
     # ----------------------------------------------------------------
     # Ground-plane interlock logic
     # ----------------------------------------------------------------
@@ -1374,44 +1140,6 @@ class AntennaGUI:
             # Free space → allow full sphere
             self.full_hemi_btn.config(state='normal')
 
-    # ==================================================================
-    # NEC5 COMPARISON FEATURE — Sources row builder
-    # ==================================================================
-
-    def _build_sources_row(self, parent):
-        """
-        'Sources:' checkbox row, shown only when nec_out_reader.py is
-        importable. Mirrors the styling of the existing Components row.
-        NEC5 checkbox stays disabled until a NEC5 file is actually loaded.
-        """
-        if not _NEC5_AVAILABLE:
-            return
-
-        src_row = ttk.Frame(parent)
-        src_row.pack(fill='x', padx=8, pady=4)
-        ttk.Label(src_row, text="Sources:", width=13).pack(side='left')
-
-        tk.Checkbutton(src_row, text="NeoMoM (solid)",
-                    variable=self.source_vars['NeoMoM'],
-                    indicatoron=0,
-                    font=self.fonts['ui'],
-                    relief='raised', bd=2,
-                    padx=8, pady=2).pack(side='left', padx=6)
-
-        self.nec5_checkbox = tk.Checkbutton(
-            src_row, text="NEC5 (dashed)",
-            variable=self.source_vars['NEC5'],
-            indicatoron=0,
-            font=self.fonts['ui'],
-            relief='raised', bd=2,
-            padx=8, pady=2,
-            state='normal' if self.df2 is not None else 'disabled')
-        self.nec5_checkbox.pack(side='left', padx=6)
-
-    # ==================================================================
-    # END NEC5 COMPARISON FEATURE (Sources row builder)
-    # ==================================================================
-
     # ----------------------------------------------------------------
     # Component + scale helper
     # ----------------------------------------------------------------
@@ -1433,103 +1161,39 @@ class AntennaGUI:
     # ----------------------------------------------------------------
 
     def _plot_elevation(self):
-        # ==============================================================
-        # NEC5 COMPARISON FEATURE — multi-source branch
-        # ==============================================================
-        active = self._active_sources()
-        if not active:
-            messagebox.showwarning(
-                "No sources selected",
-                "Please check at least one source (NeoMoM or NEC5).")
+        out_dict, scale = self._get_out_dict()
+        if out_dict is None:
             return
-
-        comp_flags = {c: v.get() for c, v in self.comp_vars.items()}
-        scale      = self.scale_var.get()
         phi        = self.phi_var.get()
         hemisphere = self.hemisphere_var.get()
-
-        sources = []
-        for name, df, meta, linestyle in active:
-            out_dict = compute_out_dicts(df, meta, scale, comp_flags)
-            if out_dict:
-                sources.append({'name': name, 'out_dict': out_dict,
-                                'meta': meta, 'scale': scale,
-                                'linestyle': linestyle})
-
-        if not sources:
-            messagebox.showwarning("No components selected",
-                                   "Please check at least one component.")
-            return
-
         self.status_var.set(
             f"Plotting elevation at phi={phi:.1f}° [{hemisphere}]...")
         self.root.update()
         try:
-            if len(sources) == 1:
-                # Exactly the pre-existing single-source call -- behavior
-                # is identical to before this feature existed whenever
-                # only one source (almost always NeoMoM) is active.
-                plot_elevation_polar_overlay(sources[0]['out_dict'],
-                                             sources[0]['meta'], scale,
-                                             phi, hemisphere=hemisphere)
-            else:
-                plot_elevation_polar_compare(sources, phi,
-                                             hemisphere=hemisphere)
+            plot_elevation_polar_overlay(out_dict, self.meta, scale,
+                                         phi, hemisphere=hemisphere)
             plt.pause(0.05)
             self.status_var.set(
                 f"Elevation plotted  phi={phi:.1f}°  [{hemisphere}]")
         except Exception as e:
             messagebox.showerror("Plot error", str(e))
             self.status_var.set("Error — see dialog.")
-        # ==============================================================
-        # END NEC5 COMPARISON FEATURE (multi-source branch)
-        # ==============================================================
 
     def _plot_azimuth(self):
-        # ==============================================================
-        # NEC5 COMPARISON FEATURE — multi-source branch
-        # ==============================================================
-        active = self._active_sources()
-        if not active:
-            messagebox.showwarning(
-                "No sources selected",
-                "Please check at least one source (NeoMoM or NEC5).")
+        out_dict, scale = self._get_out_dict()
+        if out_dict is None:
             return
-
-        comp_flags = {c: v.get() for c, v in self.comp_vars.items()}
-        scale = self.scale_var.get()
         theta = self.theta_var.get()
-
-        sources = []
-        for name, df, meta, linestyle in active:
-            out_dict = compute_out_dicts(df, meta, scale, comp_flags)
-            if out_dict:
-                sources.append({'name': name, 'out_dict': out_dict,
-                                'meta': meta, 'scale': scale,
-                                'linestyle': linestyle})
-
-        if not sources:
-            messagebox.showwarning("No components selected",
-                                   "Please check at least one component.")
-            return
-
         self.status_var.set(
             f"Plotting azimuth at theta={theta:.1f}°...")
         self.root.update()
         try:
-            if len(sources) == 1:
-                plot_azimuth_polar_overlay(sources[0]['out_dict'],
-                                           sources[0]['meta'], scale, theta)
-            else:
-                plot_azimuth_polar_compare(sources, theta)
+            plot_azimuth_polar_overlay(out_dict, self.meta, scale, theta)
             plt.pause(0.05)
             self.status_var.set(f"Azimuth plotted  theta={theta:.1f}°")
         except Exception as e:
             messagebox.showerror("Plot error", str(e))
             self.status_var.set("Error — see dialog.")
-        # ==============================================================
-        # END NEC5 COMPARISON FEATURE (multi-source branch)
-        # ==============================================================
 
     def _plot_both(self):
         out_dict, scale = self._get_out_dict()
@@ -1658,18 +1322,7 @@ if __name__ == '__main__':
         _save_prefs({'last_dir': str(Path(filepath).parent)})
 
     # 1. Load raw CSV
-    try:
-        meta, df = load_data(filepath)
-    except Exception as e:
-        # Friendly dialog instead of a raw traceback -- e.g. catches
-        # the neomom_Zin.csv-style mistake (wrong file type) at
-        # startup, not just via the in-app Browse button.
-        _err_root = tk.Tk()
-        _err_root.withdraw()
-        messagebox.showerror("Could not load file",
-                             f"Could not load '{filepath}':\n\n{e}")
-        _err_root.destroy()
-        sys.exit(1)
+    meta, df = load_data(filepath)
 
     # 2. Build out_dict using the same logic as the 3D plotter
     #    Enable all components by default
@@ -1686,5 +1339,5 @@ if __name__ == '__main__':
     
     # 3. Launch GUI with all required data
     root = tk.Tk()
-    app = AntennaGUI(root, out_dict, meta, df, neomom_filepath=filepath)
+    app = AntennaGUI(root, out_dict, meta, df)
     root.mainloop()

@@ -43,146 +43,6 @@ def parse_complex(value_str):
     return None
 
 
-def finalize_meta(meta):
-    """
-    Shared metadata post-processing: type coercion + derived display
-    strings for GUI / plot headers.
-
-    Factored out of read_antenna_file() so that other readers -- notably
-    nec_out_reader.read_nec_out() for NEC5 .out files -- can produce a
-    meta dict in this exact same shape. Anything downstream (neomom_plot.py,
-    plot_panel.py) only ever relies on this shape, never on which reader
-    produced it.
-
-    Mutates and returns the same dict for convenience.
-    """
-    # ---- Section 3: convert scalar metadata values to proper types ----
-    float_keys = [
-        'frequency_mhz', 'gain_peak_dbi', 'wavelength_m',
-        'theta_start', 'theta_stop', 'theta_step',
-        'phi_start',   'phi_stop',   'phi_step',
-        'swr',         'height_above_ground',
-    ]
-    int_keys = ['ntheta', 'nphi']
-
-    for key in float_keys:
-        if key in meta:
-            try:
-                meta[key] = float(meta[key])
-            except (ValueError, TypeError):
-                pass
-
-    for key in int_keys:
-        if key in meta:
-            try:
-                meta[key] = int(meta[key])
-            except (ValueError, TypeError):
-                pass
-
-    # ---- Section 4: derived display strings ----
-    # Input impedance: format as 'R ± jX Ω'
-    z = meta.get('input_impedance')
-    if isinstance(z, complex):
-        sign = '+' if z.imag >= 0 else '-'
-        meta['impedance_str'] = f"{z.real:.2f} {sign} j{abs(z.imag):.2f} Ω"
-    else:
-        meta['impedance_str'] = str(z) if z else '?'
-
-    # SWR: format to 3 significant figures
-    swr = meta.get('swr')
-    meta['swr_str'] = f"{swr:.3g}" if isinstance(swr, float) else '?'
-
-    # Height: format with units
-    h = meta.get('height_above_ground')
-    meta['height_str'] = f"{h:.4g} m" if isinstance(h, float) else '?'
-
-    # Frequency: format to reasonable precision
-    f = meta.get('frequency_mhz')
-    meta['freq_str'] = f"{f:.4g} MHz" if isinstance(f, float) else '?'
-
-    return meta
-
-
-def validate_pattern_data(meta, df, filepath):
-    """
-    Sanity-check that (meta, df) actually look like an antenna radiation
-    pattern dataset -- not some other file that happened to parse
-    without raising an exception (e.g. a neomom_Zin.csv impedance-vs-
-    frequency sweep: different data entirely, but if it happens to have
-    the same number of whitespace-separated columns per row, a naive
-    reader can "succeed" while silently mislabeling frequency/impedance
-    values as theta/phi/field data).
-
-    Shared between read_antenna_file() (CSV) and
-    nec_out_reader.read_nec_out() (NEC5 .out) so both enforce the same
-    bar. Raises ValueError with a specific, actionable message on
-    failure; never silently proceeds with data that doesn't look like a
-    real theta/phi sweep. Returns None (mutates nothing) on success.
-    """
-    fname = os.path.basename(filepath)
-    required_cols = ['theta_deg', 'phi_deg',
-                     're_Etheta', 'im_Etheta', 're_Ephi', 'im_Ephi']
-
-    missing = [c for c in required_cols if c not in df.columns]
-    if missing:
-        raise ValueError(
-            f"'{fname}' doesn't look like an antenna pattern file -- "
-            f"missing expected column(s): {', '.join(missing)}.")
-
-    if len(df) < 4:
-        raise ValueError(
-            f"'{fname}' has only {len(df)} data row(s) -- too few to be "
-            f"a theta/phi pattern sweep. Wrong file?")
-
-    theta = df['theta_deg']
-    phi   = df['phi_deg']
-
-    if theta.isna().any() or phi.isna().any():
-        raise ValueError(
-            f"'{fname}' has non-numeric or missing theta/phi values. "
-            f"This usually means the file's column layout doesn't "
-            f"match a pattern file (wrong number of fields per row?).")
-
-    if theta.min() < -0.5 or theta.max() > 180.5:
-        raise ValueError(
-            f"'{fname}': theta values range from {theta.min():.2f} to "
-            f"{theta.max():.2f}, outside the valid 0-180\u00b0 range for "
-            f"an elevation angle. This usually means '{fname}' isn't a "
-            f"radiation pattern file (e.g. an impedance-vs-frequency "
-            f"sweep instead) -- double check you picked the right file.")
-
-    if phi.min() < -180.5 or phi.max() > 360.5:
-        raise ValueError(
-            f"'{fname}': phi values range from {phi.min():.2f} to "
-            f"{phi.max():.2f}, outside any valid azimuth-angle "
-            f"convention (0-360\u00b0 or -180-180\u00b0). This usually "
-            f"means '{fname}' isn't a radiation pattern file -- double "
-            f"check you picked the right file.")
-
-    if theta.nunique() < 2 or phi.nunique() < 2:
-        raise ValueError(
-            f"'{fname}' only has a single distinct theta or phi value "
-            f"across all rows -- that's not a 2D pattern sweep. "
-            f"Wrong file?")
-
-    ntheta = meta.get('ntheta')
-    nphi   = meta.get('nphi')
-    if not (isinstance(ntheta, int) and isinstance(nphi, int)):
-        raise ValueError(
-            f"'{fname}' doesn't declare an ntheta x nphi grid size -- "
-            f"every genuine neomom pattern file does. This usually "
-            f"means '{fname}' is a different kind of file entirely "
-            f"(e.g. an impedance sweep) rather than a radiation "
-            f"pattern -- double check you picked the right file.")
-
-    expected = ntheta * nphi
-    if len(df) != expected:
-        raise ValueError(
-            f"'{fname}' declares a {ntheta} x {nphi} grid "
-            f"({expected} rows) but contains {len(df)} data rows. "
-            f"The file may be truncated or corrupted.")
-
-
 def read_antenna_file(filepath):
     """
     Parse an antenna pattern file with # comment/metadata header.
@@ -262,11 +122,52 @@ def read_antenna_file(filepath):
             meta[key] = value
 
     # ----------------------------------------------------------------
-    # SECTION 3 + 4: Type coercion + derived display strings.
-    # Factored into finalize_meta() so nec_out_reader.py (NEC5 .out
-    # files) can produce a meta dict in this exact same shape.
+    # SECTION 3: Convert scalar metadata values to proper types
     # ----------------------------------------------------------------
-    meta = finalize_meta(meta)
+    float_keys = [
+        'frequency_mhz', 'gain_peak_dbi', 'wavelength_m',
+        'theta_start', 'theta_stop', 'theta_step',
+        'phi_start',   'phi_stop',   'phi_step',
+        'swr',         'height_above_ground',
+    ]
+    int_keys = ['ntheta', 'nphi']
+
+    for key in float_keys:
+        if key in meta:
+            try:
+                meta[key] = float(meta[key])
+            except (ValueError, TypeError):
+                pass
+
+    for key in int_keys:
+        if key in meta:
+            try:
+                meta[key] = int(meta[key])
+            except (ValueError, TypeError):
+                pass
+
+    # ----------------------------------------------------------------
+    # SECTION 4: Derived display strings for GUI and plot headers
+    # ----------------------------------------------------------------
+    # Input impedance: format as 'R ± jX Ω'
+    z = meta.get('input_impedance')
+    if isinstance(z, complex):
+        sign = '+' if z.imag >= 0 else '-'
+        meta['impedance_str'] = f"{z.real:.2f} {sign} j{abs(z.imag):.2f} Ω"
+    else:
+        meta['impedance_str'] = str(z) if z else '?'
+
+    # SWR: format to 3 significant figures
+    swr = meta.get('swr')
+    meta['swr_str'] = f"{swr:.3g}" if isinstance(swr, float) else '?'
+
+    # Height: format with units
+    h = meta.get('height_above_ground')
+    meta['height_str'] = f"{h:.4g} m" if isinstance(h, float) else '?'
+
+    # Frequency: format to reasonable precision
+    f = meta.get('frequency_mhz')
+    meta['freq_str'] = f"{f:.4g} MHz" if isinstance(f, float) else '?'
 
     # ----------------------------------------------------------------
     # SECTION 5: Parse the data block with pandas
@@ -287,9 +188,15 @@ def read_antenna_file(filepath):
     )
 
     # ----------------------------------------------------------------
-    # SECTION 6: Validate that this actually looks like a pattern file
+    # SECTION 6: Validate row count against grid descriptors
     # ----------------------------------------------------------------
-    validate_pattern_data(meta, df, filepath)
+    if 'ntheta' in meta and 'nphi' in meta:
+        expected = meta['ntheta'] * meta['nphi']
+        actual   = len(df)
+        if actual != expected:
+            print(f"WARNING: Expected {expected} data rows "
+                  f"(nTheta={meta['ntheta']} x nPhi={meta['nphi']}) "
+                  f"but found {actual} rows.")
 
     return meta, df
 
