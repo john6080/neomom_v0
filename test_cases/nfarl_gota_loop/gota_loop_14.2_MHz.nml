@@ -1,0 +1,47 @@
+&RunTitle
+   title = 'NFARL GOAT Loop'
+/
+
+&Frequency_MHz
+   fmin  = 14.2
+   fmax  = 14.2
+   nFreq = 1
+/
+
+&Ground
+   Ground_Plane = 'real'
+   epsilon = 13.0
+   sigma = 0.005
+/
+
+&OPTIONS
+   NBASISPERLAMBDA = 40
+   Output_Currents = .FALSE.
+/
+
+&node_input
+   zHeight = 45.0
+   nNodes = 5
+   units = 'feet'
+
+ node_list(1) = 'A', 0.0, 0.0, 0.0
+ node_list(2) = 'B', 70.0, 0.0, 0.0
+ node_list(3) = 'C', 70.0, 70.0, 0.0
+ node_list(4) = 'D', 0.0, 70.0, 0.0
+ node_list(5) = 'F', 55.0, 0.0, 0.0
+/
+
+&wire_primitive
+   tag   = 'W1',
+   nNodes = 6,
+   nodeTags = 'A' 'F' 'B' 'C' 'D' 'A'
+   radius     = 0.001
+/
+
+&excitation_input
+   wireTag = 'W1'
+   nodeTag = 'F'
+   voltage = 1.0
+   phase_deg = 0.0
+/
+

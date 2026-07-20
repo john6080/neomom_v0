@@ -1,10 +1,10 @@
 &RunTitle
-   title = 'NFARL GOTA  Loop'
+   title = 'NFARL GOAT Loop'
 /
 
 &Frequency_MHz
-   fmin  = 7.2
-   fmax  = 7.2
+   fmin  = 7.15
+   fmax  = 7.15
    nFreq = 1
 /
 

@@ -3,14 +3,13 @@
 /
 
 &Frequency_MHz
-   fmin  = 2.0
-   fmax  = 32.0
-   fstep = 0.02
-   nFreq = 0
+   fmin  = 3.75
+   fmax  = 3.75
+   nFreq = 1
 /
 
 &Ground
-   Ground_Plane = 'free_space'
+   Ground_Plane = 'real'
    epsilon = 13.0
    sigma = 0.005
 /
@@ -18,7 +17,6 @@
 &OPTIONS
    NBASISPERLAMBDA = 40
    Output_Currents = .FALSE.
-   sweep_mode = 'vna_sweep'
 /
 
 &node_input
