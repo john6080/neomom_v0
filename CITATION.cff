@@ -1,0 +1,56 @@
+cff-version: 1.2.0
+message: >-
+  If NeoMoM contributes to your research, publication, article,
+  presentation, or antenna design, please cite this project and
+  acknowledge the original author.
+type: software
+title: NeoMoM Antenna Modeling Suite
+abstract: >-
+  NeoMoM is a modern, open-source wire Method of Moments (MoM) antenna
+  modeling suite for amateur radio operators. The computational engine is
+  written in Fortran and uses Rao-Wilton-Glisson (RWG) rooftop basis
+  functions. The suite includes graphical tools for antenna geometry input,
+  far-field pattern visualization with geographic map overlay, impedance and
+  SWR analysis, and current distribution viewing. NeoMoM is designed to
+  provide accurate results comparable to NEC5 while offering a modern,
+  accessible workflow for new users.
+authors:
+  - family-names: Shaeffer
+    given-names: John
+    alias: KZ4TS
+    affiliation: North Fulton Amateur Radio League (NFARL)
+version: 0.1.0
+date-released: '2026-07-27'
+license:
+  - Apache-2.0
+  - MIT
+repository-code: 'https://github.com/john6080/neomom_v0'
+keywords:
+  - antenna modeling
+  - method of moments
+  - amateur radio
+  - ham radio
+  - NEC
+  - wire antenna
+  - radiation pattern
+  - impedance analysis
+  - Fortran
+  - Python
+references:
+  - type: article
+    title: >-
+      Electromagnetic Scattering by Surfaces of Arbitrary Shape
+    authors:
+      - family-names: Rao
+        given-names: S. M.
+      - family-names: Wilton
+        given-names: D. R.
+      - family-names: Glisson
+        given-names: A. W.
+    journal: IEEE Transactions on Antennas and Propagation
+    volume: 30
+    issue: 3
+    year: 1982
+    notes: >-
+      Defines the Rao-Wilton-Glisson (RWG) basis functions used in
+      the NeoMoM computational engine.

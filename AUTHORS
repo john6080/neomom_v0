@@ -1,0 +1,41 @@
+NeoMoM Antenna Modeling Suite
+Authors and Contributors
+
+==============================================================================
+ORIGINAL AUTHOR
+==============================================================================
+
+John Shaeffer (KZ4TS)
+North Fulton Amateur Radio League (NFARL)
+Georgia, USA
+
+  Creator of the NeoMoM project. Author of the Fortran computational
+  engine, architect of the full suite, and designer of the GUI workflow,
+  data formats, and visualization approach. AI tools were used to assist
+  with Python GUI implementation under the author's direction and design.
+
+==============================================================================
+ACKNOWLEDGMENTS
+==============================================================================
+
+  NeoMoM builds on the foundational work of:
+
+  - S. M. Rao, D. R. Wilton, and A. W. Glisson — whose 1982 paper
+    defined the RWG basis functions used in the NeoMoM engine.
+
+  - The developers of NEC (Numerical Electromagnetics Code) at Lawrence
+    Livermore National Laboratory — whose code established the standard
+    for wire MoM antenna analysis that NeoMoM was validated against.
+
+  - Roy Lewallen (W7EL), author of EZNEC, whose work made antenna
+    modeling accessible to the amateur radio community for decades.
+
+  - The worldwide amateur radio community, whose enthusiasm for antenna
+    experimentation and sharing motivates this work.
+
+==============================================================================
+CONTRIBUTING
+==============================================================================
+
+  Contributions are welcome. See CONTRIBUTING.md for guidelines.
+  All contributors will be acknowledged here.
