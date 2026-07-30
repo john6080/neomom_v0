@@ -64,7 +64,6 @@ module nodes_wires_segments_m
    public :: NODE_TYPE, SEGMENT_TYPE, WIRE_PRIMITIVE_TYPE, wireprimitive_segment &
              , read_geometry_input, merge_nodes
 
-
 !------------------------------------------------------------------------------
 !  NODE_TYPE: a named point in 3-D space.
 !
@@ -83,7 +82,6 @@ module nodes_wires_segments_m
       real             :: v(3) = huge(1.0)  ! xyz coords [m]; huge = unset sentinel
       integer          :: iD = -99999       ! global index; -99999 = unset
    end type NODE_TYPE
-
 
 !------------------------------------------------------------------------------
 !  SEGMENT_TYPE: one MOM wire segment in the final mesh.
@@ -117,19 +115,18 @@ module nodes_wires_segments_m
       integer       :: iD = -huge(1)        ! global segment index; -huge = unset
       integer       :: iLeftNode            ! index of left endpoint in unique node array
       integer       :: iRightNode           ! index of right endpoint in unique node array
-      real          ::                      &
-         Length  = 0.0            &  ! segment length [m]
-         , radius = 0.0           &  ! wire radius [m] (from parent wire primitive)
+      real          :: &
+         Length = 0.0 &  ! segment length [m]
+         , radius = 0.0 &  ! wire radius [m] (from parent wire primitive)
          , vNodes(3, 2) = huge(1.0) &  ! (3,2): col1=left coords, col2=right coords [m]
-         , uHat(3)  = huge(1.0)   &  ! unit vector left→right; huge = unset sentinel
-         , vCtr(3)  = huge(1.0)   &  ! segment midpoint [m]; huge = unset
-         , div      = huge(1.0)      ! 1/Length; used in EFIE charge term
+         , uHat(3) = huge(1.0) &  ! unit vector left→right; huge = unset sentinel
+         , vCtr(3) = huge(1.0) &  ! segment midpoint [m]; huge = unset
+         , div = huge(1.0)      ! 1/Length; used in EFIE charge term
       character(len=16) :: wireTag = ''     ! parent wire primitive label, e.g. 'w1'
 
    contains
       procedure :: seg_parameters_from_iLeft_iRight_nodes
    end type SEGMENT_TYPE
-
 
 !------------------------------------------------------------------------------
 !  WIRE_PRIMITIVE_TYPE: a user-defined polyline wire before meshing.
@@ -146,13 +143,13 @@ module nodes_wires_segments_m
 !  nodes     -- node array populated by wireprimitive_segment() (pre-merge).
 !------------------------------------------------------------------------------
    type :: WIRE_PRIMITIVE_TYPE
-      character(len=16)              :: tag    = ''      ! wire label
+      character(len=16)              :: tag = ''      ! wire label
       integer                        :: nNodes = 0       ! number of endpoint tags
       character(len=8), allocatable  :: nodeTags(:)      ! ordered endpoint tag list
       real                           :: radius = 0.001   ! wire radius [m]
       logical                        :: closed = .false. ! closed loop flag
       type(SEGMENT_TYPE), allocatable :: Segments(:)     ! mesh segments (set by wireprimitive_segment)
-      type(NODE_TYPE),    allocatable :: nodes(:)        ! pre-merge node list
+      type(NODE_TYPE), allocatable :: nodes(:)        ! pre-merge node list
    end type
 
 contains
@@ -186,8 +183,8 @@ contains
 
       type(NODE_TYPE), intent(in)               :: nodes_in(:)
       type(NODE_TYPE), allocatable, intent(out) :: nodes_out(:)
-      integer,         allocatable, intent(out) :: map(:)
-      real,            intent(in)               :: tol   ! coincidence tolerance [m]
+      integer, allocatable, intent(out) :: map(:)
+      real, intent(in)               :: tol   ! coincidence tolerance [m]
 
       integer :: i, j, m, n
       logical :: found
@@ -225,7 +222,6 @@ contains
       nodes_out = nodes_out(:m)  ! trim to actual unique count
 
    end subroutine merge_nodes
-
 
 !==============================================================================
 !  wireprimitive_segment: mesh all wire primitives into uniform segments.
@@ -275,18 +271,18 @@ contains
 
             ! Locate the starting and ending node primitives by tag name
             nodeTag = wire_primitives(iPrim)%nodeTags(iTag)
-            vStart  = vNodeTagged(node_primitives, nodeTag)
+            vStart = vNodeTagged(node_primitives, nodeTag)
 
             kGlobalNode = kGlobalNode + 1
             nodeStart%iD = kGlobalNode
-            nodeStart%v  = vStart
+            nodeStart%v = vStart
             call append_node(nodesThisPrim, nodeStart)
 
             nodeTag = wire_primitives(iPrim)%nodeTags(iTag + 1)
             vEnd = vNodeTagged(node_primitives, nodeTag)
 
             vLen = vEnd - vStart
-            len  = norm2(vLen)
+            len = norm2(vLen)
             uHat = vLen/len
 
             ! Determine segment count: nearest integer, then force even
@@ -297,15 +293,15 @@ contains
             seglen = len/real(nSeg)       ! uniform segment length for this span
 
             do i = 1, nSeg
-               kGlobalSeg  = kGlobalSeg + 1
+               kGlobalSeg = kGlobalSeg + 1
                kGlobalNode = kGlobalNode + 1
                seg%iD = kGlobalSeg
 
-               nodeEnd%v  = nodeStart%v + seglen*uHat
+               nodeEnd%v = nodeStart%v + seglen*uHat
                nodeEnd%iD = kGlobalNode
 
-               seg%radius     = wire_primitives(iPrim)%radius
-               seg%iLeftNode  = nodeStart%iD  ! pre-merge global node index
+               seg%radius = wire_primitives(iPrim)%radius
+               seg%iLeftNode = nodeStart%iD  ! pre-merge global node index
                seg%iRightNode = nodeEnd%iD
                seg%vNodes(:, 1) = nodeStart%v
                seg%vNodes(:, 2) = nodeEnd%v   ! = nodeStart%v + seglen*uHat
@@ -320,12 +316,11 @@ contains
 
          ! Attach the completed segment and node lists to the wire primitive
          wire_primitives(iPrim)%Segments = SegsThisPrim
-         wire_primitives(iPrim)%nodes    = nodesThisPrim
+         wire_primitives(iPrim)%nodes = nodesThisPrim
 
       end do ! iPrim
 
    end subroutine wireprimitive_segment
-
 
 !==============================================================================
 !  vNodeTagged: look up a node primitive by its tag string.
@@ -340,7 +335,7 @@ contains
 
       use vector_and_utility_m
       type(NODE_TYPE), intent(in) :: node_Primitives(:)
-      character(*),   intent(in)  :: cTagIn
+      character(*), intent(in)  :: cTagIn
 
       real      :: v(3)
       integer   :: inode
@@ -365,7 +360,6 @@ contains
 
    end function vNodeTagged
 
-
 !==============================================================================
 !  read_geometry_input: top-level geometry reader.
 !
@@ -379,18 +373,20 @@ contains
 !  wireprimitive_segment() so it can be re-created at each frequency if the
 !  desired segment length (lambda/10, lambda/20, ...) changes with frequency.
 !==============================================================================
-   subroutine read_geometry_input(iU, node_Primitives, wire_primitives, zHeight)
+   subroutine read_geometry_input(iU, node_Primitives, wire_primitives, zHeight, &
+                                  cInputUnits, inputUnitsCv)
 
       integer, intent(in)  :: iU
       type(NODE_TYPE), allocatable, intent(out) :: node_Primitives(:)
       type(WIRE_PRIMITIVE_TYPE), allocatable, intent(out) :: wire_primitives(:)
-      real, intent(out) :: zHeight   ! global z-offset applied to all nodes [m]
+      real, intent(out)             :: zHeight       ! global z-offset [m]
+      character(len=*), intent(out) :: cInputUnits   ! canonical units name
+      real, intent(out)             :: inputUnitsCv  ! metres per input unit
 
-      call read_nodes(iU, node_Primitives, zHeight)
+      call read_nodes(iU, node_Primitives, zHeight, cInputUnits, inputUnitsCv)
       call read_wire_primitives(iU, wire_primitives)
 
    end subroutine read_geometry_input
-
 
 !==============================================================================
 !  read_nodes: read the &node_input namelist.
@@ -411,7 +407,7 @@ contains
 !  node_list is a fixed-size local scratch array; the module supports up to
 !  1000 nodes.  The caller receives an allocatable array of exactly nNodes.
 !==============================================================================
-   subroutine read_nodes(iU, node_Primitives, zHeight)
+   subroutine read_nodes(iU, node_Primitives, zHeight, cInputUnits, inputUnitsCv)
 
       use units_m
       use vector_and_utility_m
@@ -419,6 +415,8 @@ contains
       integer, intent(in)                                   :: iU
       type(NODE_TYPE), allocatable, intent(out)             :: node_Primitives(:)
       real, intent(out)                                     :: zHeight
+      character(len=*), intent(out)                         :: cInputUnits   ! e.g. 'FEET'
+      real, intent(out)                                     :: inputUnitsCv  ! metres per unit
 
       integer            :: ios, nNodes, i
       character(len=8)   :: units
@@ -439,19 +437,22 @@ contains
 
       call unitsIn%init(units)   ! set unitsCv from units string
 
+      ! Return units info for data_out geometry report
+      cInputUnits = unitsIn%cUnits
+      inputUnitsCv = unitsIn%unitsCv
+
       ! Convert user coordinates to metres, then apply global z-offset
       do i = 1, nNodes
-         node_Primitives(i)%v = node_Primitives(i)%v * unitsIn%unitsCv
+         node_Primitives(i)%v = node_Primitives(i)%v*unitsIn%unitsCv
       end do
 
-      zHeight = zHeight * unitsIn%unitsCv   ! convert the offset too
+      zHeight = zHeight*unitsIn%unitsCv   ! convert the offset too
 
       do i = 1, nNodes
          node_Primitives(i)%v(3) = node_Primitives(i)%v(3) + zHeight
       end do
 
    end subroutine read_nodes
-
 
 !==============================================================================
 !  read_wire_primitives: read successive &wire_primitive namelists.
@@ -495,11 +496,11 @@ contains
 
       do   ! read loop: terminates on EOF or missing &wire_primitive block
          ! Reset defaults before each read so previous values don't bleed through
-         tag        = ''
-         nNodes     = 0
-         nodeTags   = ''
-         radius     = 0.001
-         closed     = .false.
+         tag = ''
+         nNodes = 0
+         nodeTags = ''
+         radius = 0.001
+         closed = .false.
          segLenHint = 0.0
 
          read (u, nml=wire_primitive, iostat=ios, iomsg=msg)
@@ -508,7 +509,7 @@ contains
          ! Auto-detect closed loop: first and last tag identical
          if (nodeTags(1) == nodeTags(nNodes)) closed = .TRUE.
 
-         tmp%tag    = tag
+         tmp%tag = tag
          tmp%nNodes = nNodes
          tmp%radius = radius
          tmp%closed = closed
@@ -525,7 +526,6 @@ contains
       prim = list
 
    end subroutine read_wire_primitives
-
 
 !==============================================================================
 !  Growable-list helpers: append_node, append_segment, append_primitive.
@@ -571,7 +571,6 @@ contains
       call move_alloc(tmp, list)
    end subroutine
 
-
 !==============================================================================
 !  seg_parameters_from_iLeft_iRight_nodes: compute segment geometry.
 !
@@ -597,12 +596,12 @@ contains
    subroutine seg_parameters_from_iLeft_iRight_nodes(seg, Nodes)
 
       class(SEGMENT_TYPE), intent(inout) :: seg
-      type(NODE_TYPE),     intent(in)    :: Nodes(:)
+      type(NODE_TYPE), intent(in)    :: Nodes(:)
 
       integer :: iLeftNode, iRightNode
       real    :: V(3, 2), vlen(3)
 
-      iLeftNode  = seg%iLeftNode
+      iLeftNode = seg%iLeftNode
       iRightNode = seg%iRightNode
 
       seg%vNodes(:, 1) = nodes(iLeftNode)%v
@@ -615,9 +614,9 @@ contains
       vlen = seg%vNodes(:, 2) - seg%vNodes(:, 1)
 
       seg%length = norm2(vLen)
-      seg%vCtr   = 0.5*(v(:, 1) + v(:, 2))
-      seg%uHat   = vlen/seg%length
-      seg%div    = 1.0/seg%length   ! ∇·J coefficient for EFIE charge term
+      seg%vCtr = 0.5*(v(:, 1) + v(:, 2))
+      seg%uHat = vlen/seg%length
+      seg%div = 1.0/seg%length   ! ∇·J coefficient for EFIE charge term
 
    end subroutine seg_parameters_from_iLeft_iRight_nodes
 

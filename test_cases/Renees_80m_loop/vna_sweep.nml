@@ -1,5 +1,5 @@
 &RunTitle
-   title = 'EFHW, 40m, free space, 5-35 MHz'
+   title = 'Renee 80 m loop'
 /
 
 &Frequency_MHz
@@ -11,8 +11,8 @@
 
 &Ground
    Ground_Plane = 'free_space'
-   epsilon = 1.0
-   sigma = 0.0
+   epsilon = 14.0
+   sigma = 0.005
 /
 
 &OPTIONS
@@ -23,11 +23,12 @@
 
 &node_input
    zHeight = 0.0
-   nNodes = 2
+   nNodes = 3
    units = 'feet'
 
- node_list(1) = 'A', 0.0, 0.0, 0.0
- node_list(2) = 'B', 65.0, 0.0, 0.0
+ node_list(1) = 'A', 0.0, 0.0, 70.0
+ node_list(2) = 'B', 90.2, 0.0, 70.0
+ node_list(3) = 'C', 49.0, 79.0, 60.0
 /
 
 &wire_primitive
@@ -37,9 +38,23 @@
    radius     = 0.001
 /
 
+&wire_primitive
+   tag   = 'W2',
+   nNodes = 2,
+   nodeTags = 'B' 'C'
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = 'W3',
+   nNodes = 2,
+   nodeTags = 'C' 'A'
+   radius     = 0.001
+/
+
 &excitation_input
    wireTag = 'W1'
-   nodeTag = 'B'
+   nodeTag = 'A'
    voltage = 1.0
    phase_deg = 0.0
 /

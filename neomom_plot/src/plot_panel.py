@@ -129,6 +129,14 @@ def plot_elevation_polar(out_df, meta, component, scale, phi_cut,
     thetas_deg, E_scaled, nearest_phi = _build_elevation_cut(
         out_df, phi_cut, hemisphere)
 
+    # Re-normalize to the peak within THIS cut so the plot fills
+    # the outer ring and relative lobe sizes are clearly visible.
+    # E_scaled is globally normalized (0-1 over full sphere) so
+    # a weak-direction cut would otherwise appear undersized.
+    cut_peak = np.max(np.abs(E_scaled))
+    if cut_peak > 0:
+        E_scaled = E_scaled / cut_peak
+
     fig, ax = plt.subplots(figsize=cfg.fig_polar, dpi=cfg.mpl_dpi,
                            subplot_kw={'projection': 'polar'})
     fig.canvas.manager.set_window_title(
@@ -937,12 +945,20 @@ def _global_emag_peak(out_dict, theta_cut=None, phi_cut=None,
             sl  = out_df[out_df['theta_deg'] == nt]
 
         elif phi_cut is not None:
-            # Elevation cut — slice at fixed phi (+ hemisphere mask)
-            pv  = out_df['phi_deg'].unique()
-            np_ = pv[np.argmin(np.abs(pv - phi_cut))]
-            sl  = out_df[out_df['phi_deg'] == np_]
+            # Elevation cut — slice at fixed phi PLUS back-azimuth phi+180°
+            # Both halves are shown in the plot so the peak must
+            # account for both directions.
+            pv      = out_df['phi_deg'].unique()
+            np_     = pv[np.argmin(np.abs(pv - phi_cut))]
+            p_back  = (phi_cut + 180.0) % 360.0
+            p_back  = pv[np.argmin(np.abs(pv - p_back))]
+            sl_fwd  = out_df[out_df['phi_deg'] == np_]
+            sl_back = out_df[out_df['phi_deg'] == p_back]
             if hemisphere == 'upper':
-                sl = sl[sl['theta_deg'] <= 90.0]
+                sl_fwd  = sl_fwd [sl_fwd ['theta_deg'] <= 90.0]
+                sl_back = sl_back[sl_back['theta_deg'] <= 90.0]
+            import pandas as _pd
+            sl = _pd.concat([sl_fwd, sl_back])
 
         else:
             sl = out_df
@@ -1062,19 +1078,24 @@ def _build_elevation_cut(out_df, phi_cut, hemisphere='upper'):
     right_all = out_df[out_df['phi_deg'] == nearest_phi].copy()
     right_all = right_all.sort_values('theta_deg')
 
+    # Both upper and full hemisphere: left side uses phi+180° data.
+    # For upper hemisphere this shows the back-azimuth pattern
+    # correctly — elevation cuts at phi=60° and phi=240° will
+    # show different amplitudes as expected for a directional antenna.
+    p_back = (nearest_phi + 180.0) % 360.0
+    p_back = phi_vals[np.argmin(np.abs(phi_vals - p_back))]
+    left_all = out_df[out_df['phi_deg'] == p_back].copy()
+    left_all = left_all.sort_values('theta_deg')
+
     if hemisphere == 'upper':
         right = right_all[right_all['theta_deg'] <= 90.0]
-        left  = right_all[(right_all['theta_deg'] > 0) &
-                          (right_all['theta_deg'] <= 90.0)]
+        left  = left_all[(left_all['theta_deg'] > 0) &
+                         (left_all['theta_deg'] <= 90.0)]
         left_thetas = -left['theta_deg'].values[::-1]
         left_E      =  left['E_scaled'].values[::-1]
     else:
         right = right_all
-        p_back   = (nearest_phi + 180.0) % 360.0
-        p_back   = phi_vals[np.argmin(np.abs(phi_vals - p_back))]
-        left_all = out_df[out_df['phi_deg'] == p_back].copy()
-        left_all = left_all.sort_values('theta_deg')
-        left     = left_all[left_all['theta_deg'] > 0]
+        left  = left_all[left_all['theta_deg'] > 0]
         left_thetas = -left['theta_deg'].values[::-1]
         left_E      =  left['E_scaled'].values[::-1]
 
@@ -1097,19 +1118,21 @@ def _build_elevation_cut_emag(out_df, phi_cut, hemisphere='upper'):
     right_all = out_df[out_df['phi_deg'] == nearest_phi].copy()
     right_all = right_all.sort_values('theta_deg')
 
+    # Both upper and full hemisphere: left side uses phi+180° data.
+    p_back = (nearest_phi + 180.0) % 360.0
+    p_back = phi_vals[np.argmin(np.abs(phi_vals - p_back))]
+    left_all = out_df[out_df['phi_deg'] == p_back].copy()
+    left_all = left_all.sort_values('theta_deg')
+
     if hemisphere == 'upper':
         right = right_all[right_all['theta_deg'] <= 90.0]
-        left  = right_all[(right_all['theta_deg'] > 0) &
-                          (right_all['theta_deg'] <= 90.0)]
+        left  = left_all[(left_all['theta_deg'] > 0) &
+                         (left_all['theta_deg'] <= 90.0)]
         left_thetas = -left['theta_deg'].values[::-1]
         left_E      =  left['E_mag'].values[::-1]
     else:
         right = right_all
-        p_back   = (nearest_phi + 180.0) % 360.0
-        p_back   = phi_vals[np.argmin(np.abs(phi_vals - p_back))]
-        left_all = out_df[out_df['phi_deg'] == p_back].copy()
-        left_all = left_all.sort_values('theta_deg')
-        left     = left_all[left_all['theta_deg'] > 0]
+        left  = left_all[left_all['theta_deg'] > 0]
         left_thetas = -left['theta_deg'].values[::-1]
         left_E      =  left['E_mag'].values[::-1]
 

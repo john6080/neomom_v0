@@ -733,6 +733,106 @@ contains
       call out(cLine)
 
       ! ================================================================
+      ! WIRE GEOMETRY
+      ! ================================================================
+      call out(SEP)
+      call out('  WIRE GEOMETRY')
+      call out(THIN)
+
+      associate (wp2 => this%mesh%wire_primitives, &
+                 np => this%mesh%node_primitives, &
+                 cv => this%mesh%inputUnitsCv, &
+                 cu => this%mesh%cInputUnits)
+
+         ! ---- Node primitives — input units ----
+         if (cv /= 1.0) then
+            write (cLine, '(4x,a,t12,a,t26,a,t40,a)') &
+               'Node', &
+               'x ('//trim(cu)//')', 'y ('//trim(cu)//')', 'z ('//trim(cu)//')'
+            call out(cLine)
+            do i = 1, size(np)
+               block
+                  real :: vi(3)
+                  vi = np(i)%v/cv
+                  write (cLine, '(4x,a,t12,3f14.4)') &
+                     trim(np(i)%tag), vi(1), vi(2), vi(3)
+                  call out(cLine)
+               end block
+            end do
+            call out(THIN)
+         end if
+
+         ! ---- Node primitives — metres ----
+         write (cLine, '(4x,a,t12,a,t26,a,t40,a)') &
+            'Node', 'x (m)', 'y (m)', 'z (m)'
+         call out(cLine)
+         do i = 1, size(np)
+            write (cLine, '(4x,a,t12,3f14.4)') &
+               trim(np(i)%tag), np(i)%v(1), np(i)%v(2), np(i)%v(3)
+            call out(cLine)
+         end do
+
+         ! ---- Wire primitives ----
+         ! Each wire shows: tag, node tags (one per line after first), radius
+         call out(THIN)
+         if (cv /= 1.0) then
+            write (cLine, '(4x,a,t14,a,t24,a,t38,a,t52,a)') &
+               'Wire', 'Node tags', 'Radius (m)', &
+               'Length ('//trim(cu)//')', 'Length (lambda)'
+         else
+            write (cLine, '(4x,a,t14,a,t24,a,t38,a,t52,a)') &
+               'Wire', 'Node tags', 'Radius (m)', &
+               'Length (m)', 'Length (lambda)'
+         end if
+         call out(cLine)
+
+         do iB = 1, size(wp2)
+            associate (wire => wp2(iB))
+               block
+                  integer          :: j, kn
+                  real             :: vm1(3), vm2(3), seg_m, total_m, total_u
+                  character(len=8) :: tag1, tag2
+
+                  ! Compute total wire length [m] by summing span lengths
+                  total_m = 0.0
+                  do j = 1, wire%nNodes - 1
+                     tag1 = wire%nodeTags(j)
+                     tag2 = wire%nodeTags(j + 1)
+                     vm1 = 0.0; vm2 = 0.0
+                     do kn = 1, size(np)
+                        if (trim(np(kn)%tag) == trim(tag1)) vm1 = np(kn)%v
+                        if (trim(np(kn)%tag) == trim(tag2)) vm2 = np(kn)%v
+                     end do
+                     seg_m = sqrt(sum((vm2 - vm1)**2))
+                     total_m = total_m + seg_m
+                  end do
+                  total_u = total_m/cv   ! convert to input units
+
+                  ! First line: wire tag, first node, radius, length, length/lambda
+                  if (cv /= 1.0) then
+                     write (cLine, '(4x,a,t14,a,t24,es12.5,2x,f12.4,2x,f10.5)') &
+                        trim(wire%tag), trim(wire%nodeTags(1)), &
+                        wire%radius, total_u, total_m/this%freq%lambda
+                  else
+                     write (cLine, '(4x,a,t14,a,t24,es12.5,2x,f12.4,2x,f10.5)') &
+                        trim(wire%tag), trim(wire%nodeTags(1)), &
+                        wire%radius, total_m, total_m/this%freq%lambda
+                  end if
+                  call out(cLine)
+
+                  ! Remaining nodes indented below, no repeated length
+                  do j = 2, wire%nNodes
+                     write (cLine, '(4x,a,t14,a)') &
+                        '', trim(wire%nodeTags(j))
+                     call out(cLine)
+                  end do
+               end block
+            end associate
+         end do
+
+      end associate
+
+      ! ================================================================
       ! GROUND
       ! ================================================================
       call out(SEP)
@@ -1181,7 +1281,8 @@ contains
 
          ! ---- 5. Node and wire primitives ----
          call read_geometry_input(iGeo, this%mesh%node_primitives, &
-                                  this%mesh%wire_primitives, zHeight)
+                                  this%mesh%wire_primitives, zHeight, &
+                                  this%mesh%cInputUnits, this%mesh%inputUnitsCv)
 
          this%heightAboveGround = zHeight   ! [sic] typo in field name
 

@@ -1,0 +1,65 @@
+&RunTitle
+   title = 'J Pole: DBJ-1 (original)'
+/
+
+&Frequency_MHz
+   fmin  = 146.0
+   fmax  = 146.0
+   nFreq = 1
+/
+
+&Ground
+   Ground_Plane = 'free_space'
+   epsilon = 14.0
+   sigma = 0.005
+/
+
+&OPTIONS
+   NBASISPERLAMBDA = 40
+   Output_Currents = .FALSE.
+/
+
+&node_input
+   zHeight = 0.0
+   nNodes = 9
+   units = 'inches'
+
+ node_list(1) = 'LB', 0.0, -0.25, 0.0
+ node_list(2) = 'LF', 0.0, -0.25, 1.6
+ node_list(3) = 'LGB', 0.0, -0.25, 17.0
+ node_list(4) = 'LGTOP', 0.0, -0.25, 17.25
+ node_list(5) = 'LTOP', 0.0, -0.25, 69.0
+ node_list(6) = 'F', 0.0, 0.0, 1.6
+ node_list(7) = 'RB', 0.0, 0.25, 0.0
+ node_list(8) = 'RF', 0.0, 0.25, 1.6
+ node_list(9) = 'RTOP', 0.0, 0.25, 69.0
+/
+
+&wire_primitive
+   tag   = 'W1',
+   nNodes = 6,
+   nodeTags = 'LGB' 'LF' 'LB' 'RB' 'RF' 'RTOP'
+   radius     = 0.0005
+/
+
+&wire_primitive
+   tag   = 'W2',
+   nNodes = 2,
+   nodeTags = 'LGTOP' 'LTOP'
+   radius     = 0.0005
+/
+
+&wire_primitive
+   tag   = 'W3',
+   nNodes = 3,
+   nodeTags = 'LF' 'F' 'RF'
+   radius     = 0.0005
+/
+
+&excitation_input
+   wireTag = 'W3'
+   nodeTag = 'F'
+   voltage = 1.0
+   phase_deg = 0.0
+/
+

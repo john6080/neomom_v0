@@ -103,6 +103,10 @@ Module mesh_m
       logical :: bOutputCurrents = .FALSE. ! write currents flag
       real    :: size = 0.0     ! bounding-box diagonal [m]
 
+      ! Input coordinate units — preserved for data_out geometry report
+      character(len=16) :: cInputUnits = 'm'   ! units string from &node_input
+      real              :: inputUnitsCv = 1.0    ! metres per input unit
+
    contains
 
       procedure :: assemble_mesh        ! full geometry → basis pipeline
@@ -360,25 +364,23 @@ contains
 
       ! Step 2: bounding box diagonal (diagnostic)
       vSize_max = -huge(1.); vSize_min = +huge(1.)
-      
+
       do i = 1, size(this%node_Primitives)
          vSize_min = min(vSize_min, this%node_primitives(i)%v)
          vSize_max = max(vSize_max, this%node_primitives(i)%v)
       end do
-      
+
       !Need Z image size for cases that are not free_space
-      
-      not_free_space = ( this%Reflection_Coef%cGround_Plane /= cFreeSpace )
-      
-      if(not_free_space) then
-        do i = 1, size(this%node_Primitives)
-           vSize_min = min(vSize_min, - this%node_primitives(i)%v)
-           vSize_max = max(vSize_max, - this%node_primitives(i)%v)
-        end do
-      endif
-      
-      
-      
+
+      not_free_space = (this%Reflection_Coef%cGround_Plane /= cFreeSpace)
+
+      if (not_free_space) then
+         do i = 1, size(this%node_Primitives)
+            vSize_min = min(vSize_min, -this%node_primitives(i)%v)
+            vSize_max = max(vSize_max, -this%node_primitives(i)%v)
+         end do
+      end if
+
       this%size = norm2(vSize_max - vSize_min)
 
       ! Step 3: flatten per-primitive arrays
