@@ -944,6 +944,23 @@ class NodesFrame(ttk.Frame):
 
 from neomom_model import Wire  # ← REQUIRED
 
+# Standard AWG (American Wire Gauge) sizes, bare copper.
+# (AWG, diameter_mm, radius_mm) -- covers the practical range for wire
+# antennas. Radius values follow the standard AWG formula:
+#   diameter(inches) = 0.005 * 92^((36-AWG)/39)
+_AWG_TABLE_MM = [
+    (6,  4.115, 2.058),
+    (8,  3.264, 1.632),
+    (10, 2.588, 1.294),
+    (12, 2.053, 1.026),
+    (14, 1.628, 0.814),
+    (16, 1.291, 0.646),
+    (18, 1.024, 0.512),
+    (20, 0.812, 0.406),
+    (22, 0.644, 0.322),
+    (24, 0.511, 0.255),
+]
+
 # start WiresFrame
 class WiresFrame(ttk.Frame):
     """
@@ -1004,6 +1021,7 @@ class WiresFrame(ttk.Frame):
         # ------------------------------------------------------------
         self.rowconfigure(0, weight=1)   # Treeview expands
         self.rowconfigure(1, weight=0)   # Editor stays visible
+        self.rowconfigure(2, weight=0)   # Radius units warning banner
         self.columnconfigure(0, weight=1)
 
         # ------------------------------------------------------------
@@ -1056,6 +1074,9 @@ class WiresFrame(ttk.Frame):
         self.radius_entry = ttk.Entry(editor, textvariable=self.radius_var, width=12)
         self.radius_entry.grid(row=0, column=5, sticky="w", padx=4, pady=4)
 
+        ttk.Button(editor, text="Gauge Table...",
+                  command=self.show_gauge_table).grid(row=0, column=6, sticky="w", padx=(8, 4), pady=4)
+
         # Buttons
         btns = ttk.Frame(editor)
         btns.grid(row=1, column=0, columnspan=6, pady=6)
@@ -1069,10 +1090,19 @@ class WiresFrame(ttk.Frame):
         self.bind_all("<Return>",    lambda e: self._apply_edit())
         self.bind_all("<Delete>",    lambda e: self._delete_wire())
 
+        # ============================================================
+        # Radius-units warning banner (row 2) -- styled to match the
+        # existing zHeight/MAA warning banners elsewhere in the app.
+        # ============================================================
+        self._build_radius_warning_banner()
+
         self._reset_editor()
 
         # Initial load
         self.load_from_model()
+
+        # Populate banner text and raise the gauge reference table
+        self.refresh_radius_defaults()
 
     # ============================================================
     # Model → GUI
@@ -1232,11 +1262,105 @@ class WiresFrame(ttk.Frame):
             return 0.0
 
     # ============================================================
+    # Radius units warning banner
+    # ============================================================
+    def _build_radius_warning_banner(self):
+        """
+        Inline yellow banner reminding that wire radius is entered in
+        millimeters, NOT the node-coordinate units (feet/inches/meters).
+        Styling matches the existing zHeight/MAA warning banners
+        elsewhere in this app (gold #FFD700, amber icon/text).
+        """
+        self._radius_warn_frame = tk.Frame(self, bg="#FFD700", relief="flat")
+        self._radius_warn_frame.grid(row=2, column=0, sticky="ew", padx=8, pady=(2, 2))
+
+        warn_icon = tk.Label(self._radius_warn_frame, text="\u2139", bg="#FFD700",
+                             font=("TkDefaultFont", 13, "bold"), fg="#7a5000")
+        warn_icon.pack(side="left", padx=(6, 2), pady=4)
+
+        self._radius_warn_label = tk.Label(
+            self._radius_warn_frame,
+            text="",   # filled in by refresh_radius_defaults()
+            bg="#FFD700", fg="#3a2500",
+            font=("TkDefaultFont", 9),
+            justify="left", anchor="w"
+        )
+        self._radius_warn_label.pack(side="left", padx=(0, 8), pady=4, fill="x", expand=True)
+
+        tk.Button(
+            self._radius_warn_frame, text="\u2715", bg="#FFD700",
+            relief="flat", bd=0, fg="#7a5000",
+            font=("TkDefaultFont", 10, "bold"),
+            cursor="hand2",
+            command=self._dismiss_radius_warning
+        ).pack(side="right", padx=(0, 6), pady=4)
+
+    def _dismiss_radius_warning(self):
+        """User clicked \u2715 -- hide the banner until it's next refreshed
+        (e.g. by switching away from and back to the Wires tab)."""
+        self._radius_warn_frame.grid_remove()
+
+    # ============================================================
+    # AWG wire gauge reference table (popup)
+    # ============================================================
+    def show_gauge_table(self):
+        """Show (or raise) the AWG wire-gauge -> radius reference popup."""
+        win = getattr(self, "_gauge_win", None)
+
+        if win is not None and win.winfo_exists():
+            win.lift()
+            return
+
+        win = tk.Toplevel(self)
+        win.title("Wire Gauge Reference (AWG)")
+        win.geometry("260x360")
+        win.resizable(False, False)
+
+        def on_close():
+            self._gauge_win = None
+            win.destroy()
+        win.protocol("WM_DELETE_WINDOW", on_close)
+
+        tk.Label(win, text="Standard AWG Wire Sizes",
+                font=("TkDefaultFont", 11, "bold")).pack(pady=(10, 4))
+        tk.Label(win, text="(bare copper \u2014 insulated wire is slightly larger)",
+                font=("TkDefaultFont", 8), fg="#555555").pack(pady=(0, 8))
+
+        table = ttk.Treeview(win, columns=("awg", "rad"),
+                             show="headings", height=len(_AWG_TABLE_MM))
+        table.heading("awg", text="AWG")
+        table.heading("rad", text="Radius (mm)")
+        table.column("awg", width=80,  anchor="center")
+        table.column("rad", width=140, anchor="center")
+        table.pack(padx=10, pady=(0, 10), fill="both", expand=True)
+
+        for awg, dia_mm, rad_mm in _AWG_TABLE_MM:
+            table.insert("", "end", values=(awg, f"{rad_mm:.3f}"))
+
+        self._gauge_win = win
+
+    # ============================================================
     # Required by MomNMLApp._on_tab_changed
     # ============================================================
     def refresh_radius_defaults(self):
-        """Placeholder for compatibility with tab-change handler."""
-        pass
+        """
+        Refreshes the radius-units warning banner text (node input units
+        can change on the Globals/Nodes tab at any time) and makes sure
+        the AWG gauge reference table is visible. Called whenever the
+        Wires tab becomes active.
+        """
+        try:
+            units = str(self.model.node_input_meta.units).strip()
+        except AttributeError:
+            units = ""
+        units_display = units.capitalize() if units else "node input units"
+
+        self._radius_warn_label.config(
+            text=f"Note: wire radius is in mm; node coordinates are in {units_display}."
+        )
+        self._radius_warn_frame.grid()   # re-show even if previously dismissed
+
+        self.show_gauge_table()
 
 #end class WiresFrame
 # start ExcitationsFrame
