@@ -26,6 +26,134 @@ from sweep_data  import SweepData, next_color, next_linestyle
 
 
 # ------------------------------------------------------------------
+# Port-extension dialog -- shown when importing a VNA .s1p file
+# ------------------------------------------------------------------
+class PortExtensionDialog(tk.Toplevel):
+    """
+    Modal dialog to collect feedline parameters for a VNA measurement,
+    so the sweep can be rotated (and optionally loss-corrected) back
+    to the antenna terminals before plotting alongside model data.
+
+    Set self.result to (length_m, vf, loss_db_per_100m) on OK,
+    or None on Cancel / window close.
+    """
+
+    # A few common coax velocity factors, for the dropdown
+    VF_PRESETS = [
+        ('Custom',            None),
+        ('RG-58 (0.66)',      0.66),
+        ('RG-8X (0.78)',      0.78),
+        ('RG-213 (0.66)',     0.66),
+        ('LMR-400 (0.85)',    0.85),
+        ('Foam coax (0.80)',  0.80),
+        ('Hardline (0.90)',   0.90),
+    ]
+
+    def __init__(self, parent, filename):
+        super().__init__(parent)
+        self.title('VNA Import — Feedline Correction')
+        self.resizable(False, False)
+        self.transient(parent)
+        self.result = None
+
+        pad = dict(padx=8, pady=4)
+
+        ttk.Label(self, text=f'Importing: {filename}',
+                  font=('TkDefaultFont', 9, 'bold')).grid(
+            row=0, column=0, columnspan=3, sticky='w', **pad)
+
+        ttk.Label(self, text=(
+            'This is raw VNA data, measured through your feedline (and\n'
+            'balun, if any) -- not yet referenced to the antenna terminals.\n'
+            'Enter cable length to rotate (de-embed) it back to the feed-\n'
+            'point, so it can be compared directly to model predictions.\n'
+            'Leave length at 0 to skip correction and plot the raw sweep.'
+        ), justify='left', foreground='#555555').grid(
+            row=1, column=0, columnspan=3, sticky='w', **pad)
+
+        ttk.Separator(self).grid(row=2, column=0, columnspan=3,
+                                  sticky='ew', pady=4)
+
+        # Cable length
+        ttk.Label(self, text='Cable length [m]:').grid(
+            row=3, column=0, sticky='e', **pad)
+        self._len_var = tk.StringVar(value='0.0')
+        ttk.Entry(self, textvariable=self._len_var, width=10).grid(
+            row=3, column=1, sticky='w', **pad)
+
+        # Velocity factor
+        ttk.Label(self, text='Velocity factor:').grid(
+            row=4, column=0, sticky='e', **pad)
+        self._vf_var = tk.StringVar(value='0.66')
+        vf_entry = ttk.Entry(self, textvariable=self._vf_var, width=10)
+        vf_entry.grid(row=4, column=1, sticky='w', **pad)
+
+        self._vf_preset_var = tk.StringVar(value='RG-58 (0.66)')
+        vf_combo = ttk.Combobox(
+            self, textvariable=self._vf_preset_var, state='readonly',
+            width=16, values=[p[0] for p in self.VF_PRESETS[1:]])
+        vf_combo.grid(row=4, column=2, sticky='w', **pad)
+        vf_combo.bind('<<ComboboxSelected>>', self._on_vf_preset)
+
+        # Loss
+        ttk.Label(self, text='Matched loss [dB/100m]:').grid(
+            row=5, column=0, sticky='e', **pad)
+        self._loss_var = tk.StringVar(value='0.0')
+        ttk.Entry(self, textvariable=self._loss_var, width=10).grid(
+            row=5, column=1, sticky='w', **pad)
+        ttk.Label(self, text='(0 = phase-only correction)',
+                  foreground='#888888', font=('TkDefaultFont', 8)).grid(
+            row=5, column=2, sticky='w', **pad)
+
+        ttk.Separator(self).grid(row=6, column=0, columnspan=3,
+                                  sticky='ew', pady=4)
+
+        btns = ttk.Frame(self)
+        btns.grid(row=7, column=0, columnspan=3, pady=(4, 8))
+        ttk.Button(btns, text='OK', command=self._on_ok).pack(
+            side='left', padx=4)
+        ttk.Button(btns, text='Skip correction',
+                   command=self._on_skip).pack(side='left', padx=4)
+        ttk.Button(btns, text='Cancel', command=self._on_cancel).pack(
+            side='left', padx=4)
+
+        self.protocol('WM_DELETE_WINDOW', self._on_cancel)
+        self.grab_set()
+        self.wait_window(self)
+
+    def _on_vf_preset(self, event=None):
+        for label, vf in self.VF_PRESETS:
+            if label == self._vf_preset_var.get() and vf is not None:
+                self._vf_var.set(str(vf))
+                return
+
+    def _on_ok(self):
+        try:
+            length_m = float(self._len_var.get())
+            vf       = float(self._vf_var.get())
+            loss     = float(self._loss_var.get())
+        except ValueError:
+            messagebox.showerror(
+                'Invalid input', 'Length, velocity factor, and loss must be numbers.')
+            return
+        if length_m < 0 or not (0.0 < vf <= 1.0) or loss < 0:
+            messagebox.showerror(
+                'Invalid input',
+                'Length and loss must be >= 0; velocity factor must be in (0, 1].')
+            return
+        self.result = (length_m, vf, loss)
+        self.destroy()
+
+    def _on_skip(self):
+        self.result = (0.0, 0.66, 0.0)
+        self.destroy()
+
+    def _on_cancel(self):
+        self.result = None
+        self.destroy()
+
+
+# ------------------------------------------------------------------
 # Display scaling
 # ------------------------------------------------------------------
 def _get_scale():
@@ -283,6 +411,7 @@ class NeoMoMZin(tk.Tk):
             filetypes=[
                 ('NeoMoM Zin CSV', '*_Zin.csv'),
                 ('EZNEC sweep',    '*.txt'),
+                ('VNA Touchstone', '*.s1p;*.s2p'),
                 ('CSV files',      '*.csv'),
                 ('All files',      '*.*'),
             ]
@@ -293,17 +422,35 @@ class NeoMoMZin(tk.Tk):
     def _load_file(self, path):
         # Detect a friendly name from the source type
         fname = os.path.splitext(os.path.basename(path))[0]
+        ext   = os.path.splitext(path)[1].lower()
+        is_vna = ext in ('.s1p', '.s2p')
 
-        # Guess source for default name
-        try:
-            with open(path, 'r', errors='ignore') as f:
-                first = f.readline()
-            if 'EZNEC' in first.upper():
-                default_name = f'EZNEC — {fname}'
-            else:
-                default_name = f'NeoMoM — {fname}'
-        except Exception:
-            default_name = fname
+        port_ext_kwargs = {}
+
+        if is_vna:
+            default_name = f'VNA — {fname}'
+            dlg = PortExtensionDialog(self, os.path.basename(path))
+            if dlg.result is None:
+                return   # user cancelled
+            length_m, vf, loss = dlg.result
+            port_ext_kwargs = dict(
+                port_ext_length_m=length_m,
+                port_ext_vf=vf,
+                port_ext_loss_db_per_100m=loss,
+            )
+            if length_m > 0:
+                default_name += f'  ({length_m:.1f}m corrected)'
+        else:
+            # Guess source for default name
+            try:
+                with open(path, 'r', errors='ignore') as f:
+                    first = f.readline()
+                if 'EZNEC' in first.upper():
+                    default_name = f'EZNEC — {fname}'
+                else:
+                    default_name = f'NeoMoM — {fname}'
+            except Exception:
+                default_name = fname
 
         try:
             color = next_color(self._datasets)
@@ -311,7 +458,8 @@ class NeoMoMZin(tk.Tk):
             ds    = sweep_from_file(path,
                                     name=default_name,
                                     color=color,
-                                    linestyle=ls)
+                                    linestyle=ls,
+                                    **port_ext_kwargs)
         except Exception as e:
             messagebox.showerror('Load error', str(e))
             return
