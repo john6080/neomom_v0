@@ -810,11 +810,11 @@ contains
 
                   ! First line: wire tag, first node, radius, length, length/lambda
                   if (cv /= 1.0) then
-                     write (cLine, '(4x,a,t14,a,t24,es12.5,2x,f12.4,2x,f10.5)') &
+                     write (cLine, '(4x,a,t14,a,t24,es12.2,2x,f12.4,2x,f10.5)') &
                         trim(wire%tag), trim(wire%nodeTags(1)), &
                         wire%radius, total_u, total_m/this%freq%lambda
                   else
-                     write (cLine, '(4x,a,t14,a,t24,es12.5,2x,f12.4,2x,f10.5)') &
+                     write (cLine, '(4x,a,t14,a,t24,es12.2,2x,f12.4,2x,f10.5)') &
                         trim(wire%tag), trim(wire%nodeTags(1)), &
                         wire%radius, total_m, total_m/this%freq%lambda
                   end if

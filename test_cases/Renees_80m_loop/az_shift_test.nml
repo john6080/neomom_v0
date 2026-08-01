@@ -1,10 +1,10 @@
 &RunTitle
-   title = 'Renee 80 m loop'
+   title = 'short dipole test'
 /
 
 &Frequency_MHz
-   fmin  = 7.2
-   fmax  = 7.2
+   fmin  = 1.5
+   fmax  = 1.5
    nFreq = 1
 /
 
@@ -21,32 +21,17 @@
 
 &node_input
    zHeight = 0.0
-   nNodes = 3
-   units = 'feet'
+   nNodes = 2
+   units = 'meters'
 
- node_list(1) = 'A', 0.0, 45.1, 70.0
- node_list(2) = 'B', 0.0, -45.1, 70.0
- node_list(3) = 'C', -78.0, -5.0, 60.0
+ node_list(1) = 'A', 0.0, 0.0, 0.0
+ node_list(2) = 'B', 10.0, 5.0, 0.0
 /
 
 &wire_primitive
    tag   = 'W1',
    nNodes = 2,
    nodeTags = 'A' 'B'
-   radius     = 0.001
-/
-
-&wire_primitive
-   tag   = 'W2',
-   nNodes = 2,
-   nodeTags = 'B' 'C'
-   radius     = 0.001
-/
-
-&wire_primitive
-   tag   = 'W3',
-   nNodes = 2,
-   nodeTags = 'C' 'A'
    radius     = 0.001
 /
 

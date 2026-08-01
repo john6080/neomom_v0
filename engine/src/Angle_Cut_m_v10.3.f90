@@ -191,13 +191,15 @@ contains
 
          theta = 0.0;  phi = 0.0;  iAng = 0
 
-         do iTheta = 1, nTheta
+        do iPhi = 1, nPhi
+
+          phi  = (iPhi - 1) * this%phi_del
+
+          do iTheta = 1, nTheta
 
             theta = (iTheta - 1) * this%theta_del
 
-            do iPhi = 1, nPhi
-
-               phi  = (iPhi - 1) * this%phi_del
+           
                iAng = iAng + 1
 
                thr(iAng) = theta

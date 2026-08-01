@@ -3,9 +3,9 @@
 /
 
 &Frequency_MHz
-   fmin  = 5.0
+   fmin  = 3.0
    fmax  = 30.0
-   fstep = 0.05
+   fstep = 0.02
    nFreq = 0
 /
 
@@ -26,9 +26,9 @@
    nNodes = 3
    units = 'feet'
 
- node_list(1) = 'A', 0.0, 0.0, 70.0
- node_list(2) = 'B', 90.2, 0.0, 70.0
- node_list(3) = 'C', 49.0, 79.0, 60.0
+ node_list(1) = 'A', 0.0, 45.1, 70.0
+ node_list(2) = 'B', 0.0, -45.1, 70.0
+ node_list(3) = 'C', -78.0, -5.0, 60.0
 /
 
 &wire_primitive

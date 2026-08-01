@@ -10,7 +10,7 @@
 /
 
 &Ground
-   Ground_Plane = 'real'
+   Ground_Plane = 'free_space'
    epsilon = 14.0
    sigma = 0.005
 /

@@ -1,34 +1,33 @@
 &RunTitle
-   title = 'Renee 80 m loop'
+   title = 'open chain test - 2 junctions no closure'
 /
 
 &Frequency_MHz
-   fmin  = 3.0
-   fmax  = 30.0
-   fstep = 0.02
-   nFreq = 0
+   fmin  = 3.8
+   fmax  = 3.8
+   nFreq = 1
 /
 
 &Ground
-   Ground_Plane = 'real'
+   Ground_Plane = 'free_space'
    epsilon = 14.0
    sigma = 0.005
 /
 
 &OPTIONS
    NBASISPERLAMBDA = 40
-   Output_Currents = .FALSE.
-   sweep_mode = 'vna_sweep'
+   Output_Currents = .TRUE.
 /
 
 &node_input
    zHeight = 0.0
-   nNodes = 3
-   units = 'feet'
+   nNodes = 4
+   units = 'meters'
 
- node_list(1) = 'A', 0.0, 45.1, 70.0
- node_list(2) = 'B', 0.0, -45.1, 70.0
- node_list(3) = 'C', -78.0, -5.0, 60.0
+ node_list(1) = 'A', 0.0, 13.74648, 21.336
+ node_list(2) = 'B', 0.0, -13.74648, 21.336
+ node_list(3) = 'C', -23.7744, -1.524, 18.288
+ node_list(4) = 'D', -14.15054211, -8.07285348, 44.21470122
 /
 
 &wire_primitive
@@ -48,7 +47,7 @@
 &wire_primitive
    tag   = 'W3',
    nNodes = 2,
-   nodeTags = 'C' 'A'
+   nodeTags = 'C' 'D'
    radius     = 0.001
 /
 

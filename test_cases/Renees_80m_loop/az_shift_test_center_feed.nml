@@ -1,16 +1,15 @@
 &RunTitle
-   title = 'Renee 80 m loop'
+   title = 'short dipole test - center fed'
 /
 
 &Frequency_MHz
-   fmin  = 3.0
-   fmax  = 30.0
-   fstep = 0.02
-   nFreq = 0
+   fmin  = 1.5
+   fmax  = 1.5
+   nFreq = 1
 /
 
 &Ground
-   Ground_Plane = 'real'
+   Ground_Plane = 'free_space'
    epsilon = 14.0
    sigma = 0.005
 /
@@ -18,17 +17,16 @@
 &OPTIONS
    NBASISPERLAMBDA = 40
    Output_Currents = .FALSE.
-   sweep_mode = 'vna_sweep'
 /
 
 &node_input
    zHeight = 0.0
    nNodes = 3
-   units = 'feet'
+   units = 'meters'
 
- node_list(1) = 'A', 0.0, 45.1, 70.0
- node_list(2) = 'B', 0.0, -45.1, 70.0
- node_list(3) = 'C', -78.0, -5.0, 60.0
+ node_list(1) = 'A', 0.0, 0.0, 0.0
+ node_list(2) = 'B', 5.0, 2.5, 0.0
+ node_list(3) = 'C', 10.0, 5.0, 0.0
 /
 
 &wire_primitive
@@ -45,16 +43,9 @@
    radius     = 0.001
 /
 
-&wire_primitive
-   tag   = 'W3',
-   nNodes = 2,
-   nodeTags = 'C' 'A'
-   radius     = 0.001
-/
-
 &excitation_input
-   wireTag = 'W1'
-   nodeTag = 'A'
+   wireTag = 'W2'
+   nodeTag = 'B'
    voltage = 1.0
    phase_deg = 0.0
 /

@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D   # noqa: F401
 from matplotlib import cm
 
-from pattern_math import reshape_to_grid
+from pattern_math import reshape_to_grid, reshape_column_to_grid
 from plot_panel import make_title
 from display_config import cfg
 
@@ -127,12 +127,11 @@ def plot_3d_pattern(out_dict, meta, scale,
         # -----------------------------------------------------------
         # 2. Geometry uses linear E_mag ONLY
         # -----------------------------------------------------------
-        theta_unique = np.sort(out_df['theta_deg'].unique())
-        phi_unique   = np.sort(out_df['phi_deg'].unique())
-        nTheta_full  = len(theta_unique)
-        nPhi_full    = len(phi_unique)
-
-        E_mag_full = out_df['E_mag'].values.reshape(nTheta_full, nPhi_full)
+        _theta_check, _phi_check, E_mag_full = reshape_column_to_grid(out_df, 'E_mag')
+        # Sanity check: E_mag grid must line up with the E_scaled grid
+        # reshaped above (same theta/phi axes, same row-major assumption).
+        assert np.array_equal(_theta_check, theta_vals_full)
+        assert np.array_equal(_phi_check, phi_vals)
 
         if hemisphere == 'upper':
             E_mag = E_mag_full[mask, :]
@@ -395,12 +394,9 @@ def plot_3d_pattern_topdown(out_dict, meta, scale,
             theta_vals = theta_vals_full
             grid_scaled = grid_scaled_full
 
-        theta_unique = np.sort(out_df['theta_deg'].unique())
-        phi_unique   = np.sort(out_df['phi_deg'].unique())
-        nTheta_full  = len(theta_unique)
-        nPhi_full    = len(phi_unique)
-
-        E_mag_full = out_df['E_mag'].values.reshape(nTheta_full, nPhi_full)
+        _theta_check, _phi_check, E_mag_full = reshape_column_to_grid(out_df, 'E_mag')
+        assert np.array_equal(_theta_check, theta_vals_full)
+        assert np.array_equal(_phi_check, phi_vals)
 
         if hemisphere == 'upper':
             E_mag = E_mag_full[mask, :]

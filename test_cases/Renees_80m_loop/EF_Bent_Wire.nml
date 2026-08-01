@@ -1,10 +1,10 @@
 &RunTitle
-   title = 'Renee 80 m loop'
+   title = 'bent V junction test'
 /
 
 &Frequency_MHz
-   fmin  = 3.8
-   fmax  = 3.8
+   fmin  = 1.5
+   fmax  = 1.5
    nFreq = 1
 /
 
@@ -16,17 +16,17 @@
 
 &OPTIONS
    NBASISPERLAMBDA = 40
-   Output_Currents = .FALSE.
+   Output_Currents = .TRUE.
 /
 
 &node_input
    zHeight = 0.0
    nNodes = 3
-   units = 'feet'
+   units = 'meters'
 
- node_list(1) = 'A', 0.0, 45.1, 70.0
- node_list(2) = 'B', 0.0, -45.1, 70.0
- node_list(3) = 'C', -78.0, -5.0, 60.0
+ node_list(1) = 'A', 0.0, 0.0, 0.0
+ node_list(2) = 'B', 5.0, 5.0, 0.0
+ node_list(3) = 'C', 10.0, 0.0, 0.0
 /
 
 &wire_primitive
@@ -40,13 +40,6 @@
    tag   = 'W2',
    nNodes = 2,
    nodeTags = 'B' 'C'
-   radius     = 0.001
-/
-
-&wire_primitive
-   tag   = 'W3',
-   nNodes = 2,
-   nodeTags = 'C' 'A'
    radius     = 0.001
 /
 

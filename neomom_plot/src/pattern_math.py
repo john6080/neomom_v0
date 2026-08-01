@@ -211,15 +211,28 @@ def apply_component_and_scale(df, component, scale, meta):
 # while phi sweeps, then theta increments) based on the Fortran
 # output order we confirmed in the data sample.
 
-def reshape_to_grid(out_df, meta):
+def reshape_column_to_grid(out_df, column):
     """
-    Reshape the E_scaled column into a 2D numpy array.
+    Reshape any single column of out_df into a 2D (nTheta, nPhi) array.
+
+    This is the ONE place in the codebase that encodes the "rows are
+    theta-major" assumption (theta held constant while phi sweeps, then
+    theta increments) -- matching the Fortran engine's CSV row order.
+    Every caller that needs a (theta, phi) grid -- E_scaled for color,
+    E_mag for 3D surface radius, or anything else -- should go through
+    this function rather than reshaping inline, so a future change to
+    the Fortran row order only needs a fix in one place.
+
+    Parameters
+    ----------
+    out_df : DataFrame with 'theta_deg', 'phi_deg', and `column`
+    column : str, name of the column to reshape (e.g. 'E_scaled', 'E_mag')
 
     Returns
     -------
-    theta_vals : 1D array of unique theta values (degrees)
-    phi_vals   : 1D array of unique phi values (degrees)
-    grid       : 2D array shape (nTheta, nPhi) of E_scaled values
+    theta_vals : 1D array of unique theta values (degrees), sorted
+    phi_vals   : 1D array of unique phi values (degrees), sorted
+    grid       : 2D array shape (nTheta, nPhi) of `column` values
     """
     theta_vals = np.sort(out_df['theta_deg'].unique())
     phi_vals   = np.sort(out_df['phi_deg'].unique())
@@ -227,18 +240,33 @@ def reshape_to_grid(out_df, meta):
     nTheta = len(theta_vals)
     nPhi   = len(phi_vals)
 
-    # Reshape relies on data being ordered theta-major.
-    # The try/except catches any shape mismatch cleanly.
     try:
-        grid = out_df['E_scaled'].values.reshape(nTheta, nPhi)
+        grid = out_df[column].values.reshape(nTheta, nPhi)
     except ValueError as e:
         raise ValueError(
-            f"Cannot reshape {len(out_df)} rows into "
+            f"Cannot reshape {len(out_df)} rows of '{column}' into "
             f"({nTheta} theta x {nPhi} phi) grid. "
             f"Data may not be theta-major ordered. Original error: {e}"
         )
 
     return theta_vals, phi_vals, grid
+
+
+def reshape_to_grid(out_df, meta):
+    """
+    Reshape the E_scaled column into a 2D numpy array.
+
+    Thin wrapper around reshape_column_to_grid() kept for backward
+    compatibility with existing callers (plot_panel.py heatmap, etc.).
+    `meta` is accepted but unused -- retained for call-signature compatibility.
+
+    Returns
+    -------
+    theta_vals : 1D array of unique theta values (degrees)
+    phi_vals   : 1D array of unique phi values (degrees)
+    grid       : 2D array shape (nTheta, nPhi) of E_scaled values
+    """
+    return reshape_column_to_grid(out_df, 'E_scaled')
 
 
 # ----------------------------------------------------------------

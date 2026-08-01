@@ -1,5 +1,5 @@
 &RunTitle
-   title = 'NFARL GOAT Loop'
+   title = 'Renee 80 m loop'
 /
 
 &Frequency_MHz
@@ -10,7 +10,7 @@
 
 &Ground
    Ground_Plane = 'real'
-   epsilon = 13.0
+   epsilon = 14.0
    sigma = 0.005
 /
 
@@ -20,27 +20,39 @@
 /
 
 &node_input
-   zHeight = 45.0
-   nNodes = 5
+   zHeight = 0.0
+   nNodes = 3
    units = 'feet'
 
- node_list(1) = 'A', 0.0, 0.0, 0.0
- node_list(2) = 'B', 70.0, 0.0, 0.0
- node_list(3) = 'C', 70.0, 70.0, 0.0
- node_list(4) = 'D', 0.0, 70.0, 0.0
- node_list(5) = 'F', 55.0, 0.0, 0.0
+ node_list(1) = 'A', 0.0, 45.1, 70.0
+ node_list(2) = 'B', 0.0, -45.1, 70.0
+ node_list(3) = 'C', -78.0, -5.0, 60.0
 /
 
 &wire_primitive
    tag   = 'W1',
-   nNodes = 6,
-   nodeTags = 'A' 'F' 'B' 'C' 'D' 'A'
+   nNodes = 2,
+   nodeTags = 'A' 'B'
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = 'W2',
+   nNodes = 2,
+   nodeTags = 'B' 'C'
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = 'W3',
+   nNodes = 2,
+   nodeTags = 'C' 'A'
    radius     = 0.001
 /
 
 &excitation_input
    wireTag = 'W1'
-   nodeTag = 'F'
+   nodeTag = 'A'
    voltage = 1.0
    phase_deg = 0.0
 /

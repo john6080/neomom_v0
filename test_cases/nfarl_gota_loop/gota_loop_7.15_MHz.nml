@@ -1,5 +1,5 @@
 &RunTitle
-   title = 'NFARL GOAT Loop'
+   title = 'NFARL GOTA Loop'
 /
 
 &Frequency_MHz
@@ -8,27 +8,20 @@
    nFreq = 1
 /
 
-&Ground
-   Ground_Plane = 'real'
-   epsilon = 13.0
-   sigma = 0.005
-/
+&Ground  Ground_Plane = 'real', epsilon = 13.0, sigma = 0.005 /
 
 &OPTIONS
    NBASISPERLAMBDA = 40
    Output_Currents = .FALSE.
 /
 
-&node_input
-   zHeight = 45.0
-   nNodes = 5
-   units = 'feet'
+&node_input    zHeight = 45.0    nNodes = 5    units = 'feet'
 
- node_list(1) = 'A', 0.0, 0.0, 0.0
- node_list(2) = 'B', 70.0, 0.0, 0.0
+ node_list(1) = 'A', 0.0 , 0.0 , 0.0
+ node_list(2) = 'B', 70.0, 0.0 , 0.0
  node_list(3) = 'C', 70.0, 70.0, 0.0
- node_list(4) = 'D', 0.0, 70.0, 0.0
- node_list(5) = 'F', 55.0, 0.0, 0.0
+ node_list(4) = 'D', 0.0 , 70.0, 0.0
+ node_list(5) = 'F', 55.0, 0.0 , 0.0
 /
 
 &wire_primitive

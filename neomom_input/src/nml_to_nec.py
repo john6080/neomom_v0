@@ -362,8 +362,30 @@ def nml_to_nec(nml_path):
     #
     # This card produces: azimuth pattern at theta=90° (horizon), 0°→360°, 5° steps
     # To get elevation pattern instead: NTHETA=37, NPHI=1, THETA0=0, DTHETA=5, DPHI=0
-    rp_card = ('RP  0    1  73  1000  90.  0.  0.  5.'
-               '   ! azimuth cut: theta=90(horizon) phi=0-360 step=5deg power_gain')
+    #rp_card = ('RP  0    1  73  1000  90.  0.  0.  5.'
+    #           '   ! azimuth cut: theta=90(horizon) phi=0-360 step=5deg power_gain')
+
+# ── RP card ───────────────────────────────────────────────────────────────
+    # Full sphere for free space, upper hemisphere for any ground plane —
+    # matches neomom's own AngleCut%theta_max convention in
+    # Antenna_system_m.f90::pattern_3d (theta_max=180 free space, 90 w/ ground).
+    has_ground   = 'free' not in ground_type.lower()
+    theta_max    = 90.0 if has_ground else 180.0
+    d_ang        = 5.0                     # angle increment [deg]
+
+    n_theta = int(round(theta_max / d_ang)) + 1
+    n_phi   = int(round(360.0 / d_ang)) + 1
+
+    rp_card = (f'RP  0  {n_theta:4d}  {n_phi:4d}  1000  0.  0.  {d_ang:.1f}  {d_ang:.1f}'
+               f'   ! {"upper-hemisphere" if has_ground else "full-sphere"} pattern:'
+               f' theta=0-{theta_max:.0f} phi=0-360 step={d_ang:.1f}deg power_gain')
+
+
+
+
+
+
+
 
     # ── EX card ──────────────────────────────────────────────────────────────
     v_rad  = math.radians(excit.get('phase_deg', 0.0))
