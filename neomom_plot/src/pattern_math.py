@@ -77,10 +77,14 @@ EPSILON = 1e-30
 
 def scale_linear(E_mag, meta=None):
     """
-    Linear scale. Normalized to 1.0 at peak.
-    meta not used but accepted for uniform call signature.
+    Linear scale. Normalized to 1.0 at pattern peak.
+    Uses _peak_emag_no_zenith from meta if available to exclude
+    the theta=0 singularity from the normalization reference.
     """
-    peak = E_mag.max()
+    if meta is not None and '_peak_emag_no_zenith' in meta:
+        peak = meta['_peak_emag_no_zenith']
+    else:
+        peak = float(E_mag.max())
     if peak == 0:
         return E_mag.copy()
     return E_mag / peak
@@ -91,9 +95,12 @@ def scale_db_peak(E_mag, meta=None):
     dB relative to pattern peak.
     Peak = 0 dB.  Deep nulls clipped to -999 dB floor.
     20*log10 because E is a field quantity (not power).
-    EPSILON applied to E_mag before log to prevent log(0) warnings.
+    Uses _peak_emag_no_zenith from meta if available.
     """
-    peak = E_mag.max()
+    if meta is not None and '_peak_emag_no_zenith' in meta:
+        peak = meta['_peak_emag_no_zenith']
+    else:
+        peak = float(E_mag.max())
     if peak == 0:
         return pd.Series(np.full(len(E_mag), -999.0))
     db = 20.0 * np.log10((E_mag + EPSILON) / peak)
@@ -167,7 +174,28 @@ def apply_component_and_scale(df, component, scale, meta):
 
     out        = FIELD_COMPONENTS[component](df)        # adds E_mag
     scale_func = AMPLITUDE_SCALES[scale]
-    out['E_scaled'] = scale_func(out['E_mag'], meta)    # adds E_scaled
+
+    # Compute the global peak EXCLUDING theta=0 (zenith singularity).
+    # At theta=0 the polar coordinate system is degenerate — all phi
+    # directions converge to a single point and the engine can produce
+    # numerical artifacts there that corrupt global normalization.
+    # Use theta>0 rows to find the true pattern peak, then normalize
+    # ALL rows (including theta=0) to that peak.
+    theta_col = 'theta_deg' if 'theta_deg' in out.columns else None
+    if theta_col is not None:
+        mask_valid = out[theta_col] > 0.0
+        peak_emag  = out.loc[mask_valid, 'E_mag'].max()
+    else:
+        peak_emag = out['E_mag'].max()
+
+    if peak_emag == 0.0:
+        peak_emag = out['E_mag'].max()   # fallback
+
+    # Inject a corrected peak into meta for scale functions
+    meta_with_peak = dict(meta)
+    meta_with_peak['_peak_emag_no_zenith'] = float(peak_emag)
+
+    out['E_scaled'] = scale_func(out['E_mag'], meta_with_peak)  # adds E_scaled
 
     return out
 

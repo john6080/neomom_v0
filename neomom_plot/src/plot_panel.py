@@ -129,13 +129,8 @@ def plot_elevation_polar(out_df, meta, component, scale, phi_cut,
     thetas_deg, E_scaled, nearest_phi = _build_elevation_cut(
         out_df, phi_cut, hemisphere)
 
-    # Re-normalize to the peak within THIS cut so the plot fills
-    # the outer ring and relative lobe sizes are clearly visible.
-    # E_scaled is globally normalized (0-1 over full sphere) so
-    # a weak-direction cut would otherwise appear undersized.
-    cut_peak = np.max(np.abs(E_scaled))
-    if cut_peak > 0:
-        E_scaled = E_scaled / cut_peak
+    # E_scaled is globally normalized (excluding theta=0 singularity).
+    # Do NOT renormalize locally — that hides directivity.
 
     fig, ax = plt.subplots(figsize=cfg.fig_polar, dpi=cfg.mpl_dpi,
                            subplot_kw={'projection': 'polar'})
@@ -143,7 +138,9 @@ def plot_elevation_polar(out_df, meta, component, scale, phi_cut,
         f"Elevation Cut (Polar) - phi={nearest_phi:.1f}° [{hemisphere}]")
 
     thetas_rad = np.radians(thetas_deg)
-    radii      = _normalize_radii(E_scaled, scale)
+    radii      = _normalize_radii(
+        E_scaled, scale,
+        peak_override=meta.get('gain_peak_dbi') if scale == 'dBi' else None)
 
     ax.plot(thetas_rad, radii, linewidth=cfg.lw_plot, color='steelblue')
 
@@ -217,7 +214,9 @@ def plot_azimuth_polar(out_df, meta, component, scale, theta_cut):
         f"Azimuth Cut (Polar) - theta={nearest_theta:.1f}°")
 
     phis_rad = np.radians(slice_df['phi_deg'].values)
-    radii    = _normalize_radii(slice_df['E_scaled'].values, scale)
+    radii    = _normalize_radii(
+        slice_df['E_scaled'].values, scale,
+        peak_override=meta.get('gain_peak_dbi') if scale == 'dBi' else None)
 
     ax.plot(phis_rad, radii, linewidth=cfg.lw_plot, color='darkorange')
     ax.plot([phis_rad[-1], phis_rad[0]],
@@ -289,9 +288,13 @@ def plot_elevation_polar_overlay(out_dict, meta, scale, phi_cut,
     # This is the key fix: every component is normalised to the same
     # reference, preserving physical relative levels.
     # ------------------------------------------------------------------
-    global_emag = _global_emag_peak(out_dict,
-                                    phi_cut=phi_cut,
-                                    hemisphere=hemisphere)
+    # Use TRUE global peak across entire pattern — not just the
+    # peak within this phi cut. Normalising to the cut-local peak
+    # makes every cut fill the outer ring regardless of direction,
+    # hiding the antenna's directivity.  The global peak ensures
+    # that a phi=330° cut (weak direction) shows smaller lobes
+    # than a phi=243° cut (peak direction).
+    global_emag = _global_emag_peak(out_dict)
 
     for comp, out_df in out_dict.items():
         thetas_deg, E_mag_slice, p_near = _build_elevation_cut_emag(
@@ -857,9 +860,16 @@ def _normalize_radii(E_scaled, scale, peak_override=None):
     """
     Convert E_scaled values to radii in [0, 1] for single-component
     polar plots.  Overlay plots use _normalize_radii_from_emag instead.
+
+    E_scaled is globally normalized by apply_component_and_scale
+    with theta=0 excluded from the peak reference:
+      Linear  : E_scaled in [0, 1]    (1.0 = global peak)
+      ARRL    : E_scaled in [-40, 0]  (0 = global peak)
+      dB peak : E_scaled in [-inf, 0] (0 = global peak)
+      dBi     : E_scaled in absolute dBi
     """
     if scale == 'Linear':
-        return np.clip(E_scaled ** 2, 0, 1)
+        return np.clip(E_scaled ** 2, 0.0, 1.0)
 
     elif scale == 'ARRL':
         r_outer = _arrl_radius(0.0)
@@ -867,17 +877,17 @@ def _normalize_radii(E_scaled, scale, peak_override=None):
         r_raw   = _arrl_radius(np.clip(E_scaled, -50.0, 0.0))
         return (r_raw - r_floor) / (r_outer - r_floor)
 
-    elif scale in ('dB peak', 'dBi'):
-        floor = -40.0
-        if scale == 'dB peak':
-            peak = 0.0
-        elif peak_override is not None:
+    elif scale == 'dB peak':
+        return np.clip((E_scaled + 40.0) / 40.0, 0.0, 1.0)
+
+    elif scale == 'dBi':
+        if peak_override is not None:
             peak = peak_override
         else:
             peak = float(np.max(E_scaled))
-        return np.clip((E_scaled - (peak - 40)) / 40.0, 0, 1)
+        return np.clip((E_scaled - (peak - 40.0)) / 40.0, 0.0, 1.0)
 
-    return E_scaled
+    return np.clip(E_scaled, 0.0, 1.0)
 
 
 def _normalize_radii_from_emag(E_mag, global_peak, scale):

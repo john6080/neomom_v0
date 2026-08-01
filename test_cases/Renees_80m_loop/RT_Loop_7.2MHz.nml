@@ -16,7 +16,7 @@
 
 &OPTIONS
    NBASISPERLAMBDA = 40
-   Output_Currents = .FALSE.
+   Output_Currents = .TRUE.
 /
 
 &node_input
