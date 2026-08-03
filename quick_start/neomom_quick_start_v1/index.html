@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NeoMoM — Quick Start</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="page">
+
+  <h1>NeoMoM Quick Start</h1>
+  <p class="subtitle">A four-part antenna simulation suite: build a geometry, run the solver, and view the results.</p>
+
+  <div class="nav">
+    <a href="01_input.html">1 · neomom_input</a>
+    <a href="02_plot.html">2 · neomom_plot</a>
+    <a href="03_zin.html">3 · neomom_Zin</a>
+    <a href="04_current.html">4 · neomom_current</a>
+  </div>
+
+  <h2>Install</h2>
+  <p>Each release zip contains all five programs together in one folder — the solver engine plus the four viewer/editor apps — along with a <code>models/</code> folder of example antennas.</p>
+
+  <h3>Linux</h3>
+  <div class="step-item"><div class="step-num">1</div><div class="step-text">Unzip <code>neomom_linux.zip</code> to wherever you want the suite to live, e.g. <code>~/bin/neomom</code>.</div></div>
+  <div class="step-item"><div class="step-num">2</div><div class="step-text">Mark the five programs executable — on Linux they have no file extension:</div></div>
+  <pre>cd ~/bin/neomom
+chmod +x neomom neomom_input neomom_plot neomom_Zin neomom_current</pre>
+  <div class="step-item"><div class="step-num">3</div><div class="step-text">Add the folder to your <code>PATH</code> so you can launch any of them by name from a terminal:</div></div>
+  <pre>echo 'export PATH="$HOME/bin/neomom:$PATH"' >> ~/.bashrc
+source ~/.bashrc</pre>
+  <div class="step-item"><div class="step-num">4</div><div class="step-text">Verify it worked — this should pop open the geometry editor window:</div></div>
+  <pre>neomom_input</pre>
+
+  <h3>Windows</h3>
+  <div class="step-item"><div class="step-num">1</div><div class="step-text">Unzip <code>neomom_windows.zip</code> to wherever you want the suite to live, e.g. <code>C:\Users\&lt;you&gt;\neomom</code>.</div></div>
+  <div class="step-item"><div class="step-num">2</div><div class="step-text">No <code>chmod</code> step needed — Windows <code>.exe</code> files are already runnable as-is.</div></div>
+  <div class="step-item"><div class="step-num">3</div><div class="step-text">Double-click any of the five <code>.exe</code> files directly from Explorer, or pin shortcuts to the Start menu / taskbar. To launch them by name from a Command Prompt instead, add the folder to your <code>PATH</code>: <strong>System Properties → Environment Variables → Path → New</strong>, then paste the folder path.</div></div>
+  <div class="step-item"><div class="step-num">4</div><div class="step-text">Verify it worked by double-clicking <code>neomom_input.exe</code>.</div></div>
+
+  <div class="note">
+    <strong>What's what:</strong> <code>neomom</code> is the Fortran solver engine — it has no window; it runs from the command line (or is launched for you by <code>neomom_input</code>). The other four are the GUIs covered in this guide.
+  </div>
+
+  <h2>The four apps, in the order you'll typically use them</h2>
+  <table>
+    <tr><th>#</th><th>App</th><th>What it's for</th></tr>
+    <tr><td>1</td><td><a href="01_input.html">neomom_input</a></td><td>Build the wire geometry, set frequency/ground/excitation, run the solver</td></tr>
+    <tr><td>2</td><td><a href="02_plot.html">neomom_plot</a></td><td>View the radiation pattern (2D cuts, 3D surface, map overlay, NEC5 comparison)</td></tr>
+    <tr><td>3</td><td><a href="03_zin.html">neomom_Zin</a></td><td>View impedance / SWR sweeps</td></tr>
+    <tr><td>4</td><td><a href="04_current.html">neomom_current</a></td><td>Inspect current distribution along the wires</td></tr>
+  </table>
+
+  <p style="font-size:13px; color:var(--text-muted); margin-top:32px;">
+    Each app's panel below is a labeled wireframe built directly from its real field and button names — not a literal screenshot. Real screenshots can be swapped in later if you'd like a closer visual match.
+  </p>
+
+</div>
+</body>
+</html>

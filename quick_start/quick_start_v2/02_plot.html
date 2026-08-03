@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>neomom_plot — Quick Start</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="page">
+
+  <div class="nav">
+    <a href="00_start_here.html">← Install</a>
+    <a href="01_input.html">1 · neomom_input</a>
+    <a href="02_plot.html">2 · neomom_plot</a>
+    <a href="03_zin.html">3 · neomom_Zin</a>
+    <a href="04_current.html">4 · neomom_current</a>
+  </div>
+
+  <h1>neomom_plot</h1>
+  <p class="subtitle">Window title: <strong>Antenna Pattern Viewer</strong>. View a radiation pattern, optionally alongside a NEC5 comparison.</p>
+
+  <h2>1 &middot; Load a file</h2>
+  <div class="step">
+    <div class="panel-mock">
+      <div class="win-title">Antenna Pattern Viewer — Input Files</div>
+      <div class="mock-row"><div class="pin">1</div><span class="mlabel">NeoMoM (.csv)</span><span class="minput">10m_Dipole_at_10m.csv</span><span class="mbtn">Browse…</span></div>
+      <div class="mock-row"><div class="pin">2</div><span class="mlabel">NEC5 (.out)</span><span class="minput">(none loaded)</span><span class="mbtn">Browse…</span></div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">If neomom_input launched this for you automatically (Launch plot: Yes), the CSV is already loaded. Otherwise <strong>Browse…</strong> to the pattern CSV your solver run produced.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">Optional: load a NEC5 <code>.out</code> file here too, to overlay it against your NeoMoM result for comparison — see step 5 below.</div></div>
+    </div>
+  </div>
+
+  <h2>2 &middot; Antenna info box</h2>
+  <div class="step">
+    <div class="panel-mock">
+      <div class="win-title">Antenna Pattern Viewer — Antenna</div>
+      <div class="mock-row"><span class="mlabel">Title</span><span class="minput">10m Dipole @ 10m</span></div>
+      <div class="mock-row"><span class="mlabel">Frequency</span><span class="minput">14.15 MHz</span></div>
+      <div class="mock-row"><span class="mlabel">Peak gain</span><span class="minput">7.8 dBi</span></div>
+      <div class="mock-row"><span class="mlabel">Impedance</span><span class="minput">68.4 + j12.1 Ω</span></div>
+      <div class="mock-row"><span class="mlabel">SWR</span><span class="minput">1.4</span></div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">This box just reflects the metadata header from the loaded file — a quick sanity check that you loaded the run you meant to, at the frequency you expected.</div></div>
+    </div>
+  </div>
+
+  <h2>3 &middot; Pick a visualization mode</h2>
+  <div class="step">
+    <div class="panel-mock">
+      <div class="win-title">Antenna Pattern Viewer — Visualization Mode</div>
+      <div class="mock-row"><span class="minput">○ 2D – Azimuth</span></div>
+      <div class="mock-row"><span class="minput">○ 2D – Elevation</span></div>
+      <div class="mock-row"><div class="pin">1</div><span class="minput">◉ 3D – Standard</span></div>
+      <div class="mock-row"><span class="minput">○ 3D – Top-Down</span></div>
+      <div class="mock-row"><span class="minput">○ Map Overlay</span></div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">Five modes are available. <strong>3D – Standard</strong> gives the full 3D lobe; <strong>2D – Azimuth/Elevation</strong> give classic polar cuts; <strong>Top-Down</strong> is a bird's-eye compass view; <strong>Map Overlay</strong> plots the footprint on a real map, centered on a lat/lon you provide.</div></div>
+    </div>
+  </div>
+
+  <h2>4 &middot; Set options and plot</h2>
+  <div class="step">
+    <div class="panel-mock">
+      <div class="win-title">Antenna Pattern Viewer — Options (3D Standard)</div>
+      <div class="mock-row"><div class="pin">1</div><span class="mlabel">Components</span><span class="minput">☑ Etotal &nbsp; ☐ Ev &nbsp; ☐ Eh</span></div>
+      <div class="mock-row"><div class="pin">2</div><span class="mlabel">Surface</span><span class="minput">Linear</span></div>
+      <div class="mock-row"><div class="pin">2</div><span class="mlabel">Scale</span><span class="minput">ARRL</span></div>
+      <div class="mock-row"><div class="pin">3</div><span class="mbtn">Plot 3D</span></div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">Pick which field component(s) to show — <code>Etotal</code> is the usual choice; <code>Ev</code>/<code>Eh</code> isolate vertical/horizontal polarization.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">Surface shading and the color/ring scale — <strong>ARRL</strong> matches the classic ARRL Antenna Book ring convention if that's what you're used to reading.</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text">Each mode opens its own independent plot window — you can have several open side by side to compare, for example, elevation and 3D views at once.</div></div>
+    </div>
+  </div>
+
+  <h2>5 &middot; Optional — compare against NEC5</h2>
+  <div class="step">
+    <div class="panel-mock">
+      <div class="win-title">Antenna Pattern Viewer — Sources</div>
+      <div class="mock-row"><div class="pin">1</div><span class="minput">☑ NeoMoM (solid)</span></div>
+      <div class="mock-row"><div class="pin">1</div><span class="minput">☑ NEC5 (dashed)</span></div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">Once both a NeoMoM CSV and a NEC5 <code>.out</code> are loaded (step 1), check both Sources boxes. 2D plots then overlay NeoMoM as solid color-coded lines with NEC5 as black dot markers, each independently normalized to its own peak gain so the comparison isn't skewed by the two engines' different internal field-scale conventions.</div></div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Bottom bar:</strong> <strong>Close All Plots</strong> clears every open plot window at once — handy once you've opened several while comparing modes.
+  </div>
+
+  <div class="footer-nav">
+    <a href="01_input.html">← neomom_input</a>
+    <a href="03_zin.html">Next: neomom_Zin →</a>
+  </div>
+
+</div>
+</body>
+</html>

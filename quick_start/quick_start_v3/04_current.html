@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>neomom_current — Quick Start</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="page">
+
+  <div class="nav">
+    <a href="00_start_here.html">← Install</a>
+    <a href="01_input.html">1 · neomom_input</a>
+    <a href="02_plot.html">2 · neomom_plot</a>
+    <a href="03_zin.html">3 · neomom_Zin</a>
+    <a href="04_current.html">4 · neomom_current</a>
+  </div>
+
+  <h1>neomom_current</h1>
+  <p class="subtitle">Window title: <strong>NeoMoM Current Viewer</strong>. Needs a <code>.cur</code> file — only produced when Output Currents was set to Yes in neomom_input.</p>
+
+  <div class="step">
+    <div class="shot-wrap">
+      <img src="img/current_main.png" alt="neomom_current main window showing the 3D current magnitude tab with the dipole wire colored by current, and the toolbar">
+      <div class="shot-caption">Toolbar (Open… / Zin axis controls) above the tabs: 3D |I| · 3D Phase · 2D Plot</div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text"><strong>Open…</strong> (or <strong>File → Open .cur file…</strong>) loads the <code>.cur</code> file from your solver run.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text"><strong>3D |I|</strong> (shown here) — the wire geometry in 3D, color-coded by current magnitude, so you can see at a glance where the current is concentrated: brightest at the center feed, tapering toward the open ends, exactly as expected for a center-fed dipole.</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text"><strong>3D Phase</strong> — same geometry, colored by current phase instead of magnitude.</div></div>
+      <div class="step-item"><div class="step-num">4</div><div class="step-text"><strong>2D Plot</strong> — current and impedance plotted against arc-length, one trace per wire.</div></div>
+    </div>
+  </div>
+
+  <h2>2D Plot tab controls</h2>
+  <div class="step">
+    <div class="panel-mock">
+      <div class="win-title">NeoMoM Current Viewer — 2D Plot</div>
+      <div class="mock-row"><div class="pin">1</div><span class="mlabel">Zin axis (Ω)</span><span class="minput">min: -500&nbsp;&nbsp;max: 500</span><span class="mbtn">Redraw Zin</span></div>
+      <div class="mock-row"><div class="pin">2</div><span class="minput">☐ Scale x-axis by wavelength (λ)</span></div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">If the default Zin y-axis range clips your data, set new min/max and click <strong>Redraw Zin</strong>.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">Check this box to switch the x-axis from physical arc-length to electrical length in wavelengths — often more useful for comparing wires of different physical lengths at the same frequency.</div></div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Note:</strong> the 2D Plot controls above are shown as a wireframe — that tab only builds its toolbar once you switch to it, after a file is already loaded.
+  </div>
+
+  <h2>Export</h2>
+  <p style="font-size:14px;"><strong>File → Save all plots as PNG…</strong> exports every open tab's plot as a PNG in one step, into a folder you choose.</p>
+
+  <div class="footer-nav">
+    <a href="03_zin.html">← neomom_Zin</a>
+    <a href="00_start_here.html">Back to start →</a>
+  </div>
+
+</div>
+</body>
+</html>

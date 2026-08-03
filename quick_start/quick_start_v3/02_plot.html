@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>neomom_plot — Quick Start</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="page">
+
+  <div class="nav">
+    <a href="00_start_here.html">← Install</a>
+    <a href="01_input.html">1 · neomom_input</a>
+    <a href="02_plot.html">2 · neomom_plot</a>
+    <a href="03_zin.html">3 · neomom_Zin</a>
+    <a href="04_current.html">4 · neomom_current</a>
+  </div>
+
+  <h1>neomom_plot</h1>
+  <p class="subtitle">Window title: <strong>Antenna Pattern Viewer</strong>. View a radiation pattern, optionally alongside a NEC5 comparison.</p>
+
+  <div class="step">
+    <div class="shot-wrap">
+      <img src="img/plot_main.png" alt="neomom_plot main window with a loaded antenna CSV, showing Input Files, Antenna info, Visualization Mode, and Options panels">
+      <div class="shot-caption">Top to bottom: Input Files · Antenna info · Visualization Mode · Options · Close All Plots</div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text"><strong>Input Files</strong> — if neomom_input launched this for you automatically (Launch plot: Yes), the CSV is already loaded, as shown here. Otherwise <strong>Browse…</strong> to the pattern CSV your solver run produced. A NEC5 <code>.out</code> file can be loaded alongside it for comparison — see step 5.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text"><strong>Antenna</strong> — reflects the metadata header from the loaded file: a quick sanity check that you loaded the run you meant to, at the frequency you expected.</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text"><strong>Visualization Mode</strong> — five modes: <strong>2D – Azimuth/Elevation</strong> for classic polar cuts, <strong>3D – Standard</strong> for the full 3D lobe, <strong>3D – Top-Down</strong> for a bird's-eye compass view, and <strong>Map Overlay</strong> for the footprint plotted on a real map.</div></div>
+      <div class="step-item"><div class="step-num">4</div><div class="step-text"><strong>Options</strong> — this panel changes to match the selected mode. Shown here for 2D – Azimuth: pick field <strong>Components</strong> (<code>Etotal</code> is the usual choice), a color/ring <strong>Scale</strong>, and a cut angle, then click the Plot button. Each mode opens its own independent plot window, so you can have several open side by side.</div></div>
+    </div>
+  </div>
+
+  <h2>5 &middot; Optional — compare against NEC5</h2>
+  <div class="step">
+    <div class="panel-mock">
+      <div class="win-title">Antenna Pattern Viewer — Sources</div>
+      <div class="mock-row"><div class="pin">1</div><span class="minput">☑ NeoMoM (solid)</span></div>
+      <div class="mock-row"><div class="pin">1</div><span class="minput">☑ NEC5 (dashed)</span></div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">Once both a NeoMoM CSV and a NEC5 <code>.out</code> are loaded, check both Sources boxes. 2D plots then overlay NeoMoM as solid color-coded lines with NEC5 as black dot markers, each independently normalized to its own peak gain so the comparison isn't skewed by the two engines' different internal field-scale conventions.</div></div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Note:</strong> the Sources box above is a wireframe rather than a screenshot — it only appears once a NEC5 <code>.out</code> file is loaded, which needs the optional <code>nec_out_reader.py</code> module (not present in the environment used to capture these screenshots, so the app correctly disabled that feature — see the message under Input Files in the real screenshot above).
+  </div>
+
+  <div class="footer-nav">
+    <a href="01_input.html">← neomom_input</a>
+    <a href="03_zin.html">Next: neomom_Zin →</a>
+  </div>
+
+</div>
+</body>
+</html>

@@ -207,21 +207,30 @@ def apply_component_and_scale(df, component, scale, meta):
 #   rows    = theta values
 #   columns = phi values
 #
-# The DataFrame rows are ordered theta-major (theta held constant
-# while phi sweeps, then theta increments) based on the Fortran
-# output order we confirmed in the data sample.
+# NOTE: this used to assume the DataFrame rows were theta-major
+# (theta held constant while phi sweeps, then theta increments),
+# matching the old Fortran engine's CSV row order, and reshaped with
+# a plain .values.reshape(nTheta, nPhi). That broke silently when the
+# CSV loop order was changed to phi-major to match NEC5 -- .reshape()
+# doesn't know or care what order the rows are in, so it kept
+# "succeeding" while quietly pairing every value with the wrong
+# (theta, phi). Now we pivot on the actual theta_deg/phi_deg values
+# instead, so the grid is correct regardless of row order.
 
 def reshape_column_to_grid(out_df, column):
     """
     Reshape any single column of out_df into a 2D (nTheta, nPhi) array.
 
-    This is the ONE place in the codebase that encodes the "rows are
-    theta-major" assumption (theta held constant while phi sweeps, then
-    theta increments) -- matching the Fortran engine's CSV row order.
-    Every caller that needs a (theta, phi) grid -- E_scaled for color,
-    E_mag for 3D surface radius, or anything else -- should go through
-    this function rather than reshaping inline, so a future change to
-    the Fortran row order only needs a fix in one place.
+    This is the ONE place in the codebase that builds a (theta, phi)
+    grid. Every caller that needs one -- E_scaled for color, E_mag for
+    3D surface radius, or anything else -- should go through this
+    function rather than reshaping inline, so any future change to
+    the CSV row order only needs a fix (if any) in one place.
+
+    Builds the grid via pandas.pivot() keyed on the actual theta_deg /
+    phi_deg values rather than row position, so it's correct regardless
+    of whether the source rows are theta-major or phi-major -- no
+    assumption about loop/row order at all.
 
     Parameters
     ----------
@@ -237,17 +246,32 @@ def reshape_column_to_grid(out_df, column):
     theta_vals = np.sort(out_df['theta_deg'].unique())
     phi_vals   = np.sort(out_df['phi_deg'].unique())
 
-    nTheta = len(theta_vals)
-    nPhi   = len(phi_vals)
-
     try:
-        grid = out_df[column].values.reshape(nTheta, nPhi)
+        pivot = out_df.pivot(index='theta_deg', columns='phi_deg',
+                             values=column)
     except ValueError as e:
+        # pandas raises this if (theta_deg, phi_deg) pairs repeat --
+        # a real data problem (duplicate rows), not an ordering issue.
         raise ValueError(
-            f"Cannot reshape {len(out_df)} rows of '{column}' into "
-            f"({nTheta} theta x {nPhi} phi) grid. "
-            f"Data may not be theta-major ordered. Original error: {e}"
+            f"Cannot build a (theta, phi) grid for '{column}': {e}. "
+            f"This usually means the file has duplicate (theta, phi) "
+            f"rows."
         )
+
+    pivot = pivot.reindex(index=theta_vals, columns=phi_vals)
+
+    if pivot.isna().any().any():
+        n_missing = int(pivot.isna().sum().sum())
+        n_total   = len(theta_vals) * len(phi_vals)
+        raise ValueError(
+            f"Cannot build a complete ({len(theta_vals)} theta x "
+            f"{len(phi_vals)} phi) grid for '{column}' -- "
+            f"{n_missing} of {n_total} (theta, phi) combinations are "
+            f"missing from the data. File may be truncated or the "
+            f"sweep isn't a full rectangular grid."
+        )
+
+    grid = pivot.values
 
     return theta_vals, phi_vals, grid
 

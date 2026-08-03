@@ -139,18 +139,14 @@ Step "Harvesting package"
 
 if (Test-Path $PackageDir) { Remove-Item $PackageDir -Recurse -Force }
 
-New-Item -ItemType Directory -Force -Path "$PackageDir\neomom"         | Out-Null
-New-Item -ItemType Directory -Force -Path "$PackageDir\neomom_input"   | Out-Null
-New-Item -ItemType Directory -Force -Path "$PackageDir\neomom_plot"    | Out-Null
-New-Item -ItemType Directory -Force -Path "$PackageDir\neomom_Zin"     | Out-Null
-New-Item -ItemType Directory -Force -Path "$PackageDir\neomom_current" | Out-Null
-New-Item -ItemType Directory -Force -Path "$PackageDir\models"         | Out-Null
+New-Item -ItemType Directory -Force -Path "$PackageDir"        | Out-Null
+New-Item -ItemType Directory -Force -Path "$PackageDir\models" | Out-Null
 
-Copy-Item $EngineExe "$PackageDir\neomom\"
-Copy-Item $InputExe  "$PackageDir\neomom_input\"
-Copy-Item $PlotExe   "$PackageDir\neomom_plot\"
-Copy-Item $ZinExe    "$PackageDir\neomom_Zin\"
-Copy-Item $CurExe    "$PackageDir\neomom_current\"
+Copy-Item $EngineExe "$PackageDir\"
+Copy-Item $InputExe  "$PackageDir\"
+Copy-Item $PlotExe   "$PackageDir\"
+Copy-Item $ZinExe    "$PackageDir\"
+Copy-Item $CurExe    "$PackageDir\"
 
 if (Test-Path $ModelsDir) {
     Copy-Item "$ModelsDir\*" "$PackageDir\models\" -Recurse
@@ -177,10 +173,10 @@ Ok "Package ready: $PackageZip"
 
 Write-Host ""
 Write-Host "Build complete." -ForegroundColor Green
-Write-Host "  Engine  : $PackageDir\neomom\neomom.exe"
-Write-Host "  Input   : $PackageDir\neomom_input\neomom_input.exe"
-Write-Host "  Plot    : $PackageDir\neomom_plot\neomom_plot.exe"
-Write-Host "  Zin     : $PackageDir\neomom_Zin\neomom_Zin.exe"
-Write-Host "  Current : $PackageDir\neomom_current\neomom_current.exe"
+Write-Host "  Engine  : $PackageDir\neomom.exe"
+Write-Host "  Input   : $PackageDir\neomom_input.exe"
+Write-Host "  Plot    : $PackageDir\neomom_plot.exe"
+Write-Host "  Zin     : $PackageDir\neomom_Zin.exe"
+Write-Host "  Current : $PackageDir\neomom_current.exe"
 Write-Host "  Archive : $PackageZip"
 Write-Host ""

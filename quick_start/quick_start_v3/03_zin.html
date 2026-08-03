@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>neomom_Zin — Quick Start</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="page">
+
+  <div class="nav">
+    <a href="00_start_here.html">← Install</a>
+    <a href="01_input.html">1 · neomom_input</a>
+    <a href="02_plot.html">2 · neomom_plot</a>
+    <a href="03_zin.html">3 · neomom_Zin</a>
+    <a href="04_current.html">4 · neomom_current</a>
+  </div>
+
+  <h1>neomom_Zin</h1>
+  <p class="subtitle">Window title: <strong>NeoMoM — Impedance Sweep Viewer</strong>. Needs a frequency sweep, not a single-frequency pattern run.</p>
+
+  <div class="note">
+    <strong>Before you get here:</strong> back in neomom_input's Globals tab, the Mode must be set to <strong>VNA Sweep</strong> (not Pattern Sweep) with a Step size, so the solver produces an impedance-vs-frequency file across the band rather than one radiation pattern at a single frequency.
+  </div>
+
+  <div class="step">
+    <div class="shot-wrap">
+      <img src="img/zin_main.png" alt="neomom_Zin main window with a loaded impedance sweep, showing R/X vs frequency plot, dataset list, and toolbar">
+      <div class="shot-caption">Left: Datasets list. Right: toolbar (R/X, G/B, SWR tabs + Ham Bands + Z₀) above the plot.</div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text"><strong>Import file…</strong> (or <strong>File → Open / Import…</strong>) loads a sweep CSV; it then appears in the <strong>Datasets</strong> list on the left, shown here with one loaded. Import more than one to overlay several sweeps on the same plot — useful for comparing design variants, or comparing model against a real antenna analyzer measurement. <strong>Clear all</strong> resets the list.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">Three tabs across the top of the plot: <strong>R / X</strong> (shown here — resistance/reactance vs frequency), <strong>G / B</strong> (conductance/susceptance), and <strong>SWR</strong>.</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text"><strong>Ham Bands</strong> overlays shaded amateur band edges on the plot, so you can see at a glance where your sweep crosses into or out of a band.</div></div>
+      <div class="step-item"><div class="step-num">4</div><div class="step-text">On the SWR tab, set <strong>Z₀</strong> to your feedline's characteristic impedance (50 Ω is the usual default) — SWR is computed relative to this reference.</div></div>
+    </div>
+  </div>
+
+  <div class="footer-nav">
+    <a href="02_plot.html">← neomom_plot</a>
+    <a href="04_current.html">Next: neomom_current →</a>
+  </div>
+
+</div>
+</body>
+</html>

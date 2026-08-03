@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>neomom_current — Quick Start</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="page">
+
+  <div class="nav">
+    <a href="index.html">← Install</a>
+    <a href="01_input.html">1 · neomom_input</a>
+    <a href="02_plot.html">2 · neomom_plot</a>
+    <a href="03_zin.html">3 · neomom_Zin</a>
+    <a href="04_current.html">4 · neomom_current</a>
+  </div>
+
+  <h1>neomom_current</h1>
+  <p class="subtitle">Window title: <strong>NeoMoM Current Viewer</strong>. Needs a <code>.cur</code> file — only produced when Output Currents was set to Yes in neomom_input.</p>
+
+  <h2>1 &middot; Open a file</h2>
+  <div class="step">
+    <div class="panel-mock">
+      <div class="win-title">NeoMoM Current Viewer — toolbar</div>
+      <div class="mock-row"><div class="pin">1</div><span class="mbtn">Open…</span><span class="minput" style="color:#9ca3af;">No file loaded</span></div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">Click <strong>Open…</strong> (or <strong>File → Open .cur file…</strong>) and select the <code>.cur</code> file from your solver run.</div></div>
+    </div>
+  </div>
+
+  <h2>2 &middot; Three views, one per tab</h2>
+  <div class="step">
+    <div class="panel-mock">
+      <div class="win-title">NeoMoM Current Viewer</div>
+      <div class="mtabs">
+        <div class="mtab active">3D |I|</div><div class="mtab">3D Phase</div><div class="mtab">2D Plot</div>
+      </div>
+      <div class="mock-row"><span class="minput" style="text-align:center;">3D wire geometry, colored by current magnitude along its length</span></div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text"><strong>3D |I|</strong> — the wire geometry in 3D, color-coded by current magnitude, so you can see at a glance where the current is concentrated.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text"><strong>3D Phase</strong> — same geometry, colored by current phase instead of magnitude.</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text"><strong>2D Plot</strong> — current and impedance plotted against arc-length, one trace per wire — see below.</div></div>
+    </div>
+  </div>
+
+  <h2>3 &middot; 2D Plot tab</h2>
+  <div class="step">
+    <div class="panel-mock">
+      <div class="win-title">NeoMoM Current Viewer — 2D Plot</div>
+      <div class="mock-row"><div class="pin">1</div><span class="mlabel">Zin axis (Ω)</span><span class="minput">min: -500&nbsp;&nbsp;max: 500</span><span class="mbtn">Redraw Zin</span></div>
+      <div class="mock-row"><div class="pin">2</div><span class="minput">☐ Scale x-axis by wavelength (λ)</span></div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">If the default Zin y-axis range clips your data, set new min/max and click <strong>Redraw Zin</strong>.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">Check this box to switch the x-axis from physical arc-length to electrical length in wavelengths — often more useful for comparing wires of different physical lengths at the same frequency.</div></div>
+    </div>
+  </div>
+
+  <h2>4 &middot; Export</h2>
+  <div class="step">
+    <div class="panel-mock">
+      <div class="win-title">File menu</div>
+      <div class="mock-row"><div class="pin">1</div><span class="minput">Save all plots as PNG…</span></div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">Exports every open tab's plot as a PNG in one step — into a folder you choose.</div></div>
+    </div>
+  </div>
+
+  <div class="footer-nav">
+    <a href="03_zin.html">← neomom_Zin</a>
+    <a href="index.html">Back to start →</a>
+  </div>
+
+</div>
+</body>
+</html>

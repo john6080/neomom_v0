@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>neomom_input — Quick Start</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="page">
+
+  <div class="nav">
+    <a href="00_start_here.html">← Install</a>
+    <a href="01_input.html">1 · neomom_input</a>
+    <a href="02_plot.html">2 · neomom_plot</a>
+    <a href="03_zin.html">3 · neomom_Zin</a>
+    <a href="04_current.html">4 · neomom_current</a>
+  </div>
+
+  <h1>neomom_input</h1>
+  <p class="subtitle">Build the geometry, set run parameters, and launch the solver. Walkthrough: a 10&nbsp;m center-fed dipole, 10&nbsp;m above ground.</p>
+
+  <h2>1 &middot; Globals tab</h2>
+  <div class="step">
+    <div class="shot-wrap">
+      <img src="img/input_globals.png" alt="neomom_input Globals tab showing Run Title, Frequency, Ground, Solver Options, and Run Controls">
+      <div class="shot-caption">Boxes top to bottom: Run Title · Frequency · Ground · Solver Options · Run Controls</div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text"><strong>Run Title</strong> — give the run a name; this becomes the title on your pattern plots later.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text"><strong>Frequency</strong> — set Start and Stop to the same value for a single-frequency run, and leave Mode on <strong>Pattern Sweep</strong> (use <strong>VNA Sweep</strong> instead for an impedance-vs-frequency sweep to use in neomom_Zin).</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text"><strong>Ground</strong> — pick a ground model. <strong>Real</strong> ground needs Epsilon (dielectric constant) and Sigma (conductivity, S/m); typical soil values shown.</div></div>
+      <div class="step-item"><div class="step-num">4</div><div class="step-text"><strong>Solver Options</strong> — set mesh density and turn on Output Currents if you want to inspect current distribution in neomom_current afterward.</div></div>
+      <div class="step-item"><div class="step-num">5</div><div class="step-text"><strong>Run Controls</strong> — with Launch plot set to Yes, neomom_plot opens automatically with your results as soon as the solver finishes.</div></div>
+    </div>
+  </div>
+
+  <h2>2 &middot; Nodes tab — place the wire endpoints</h2>
+  <div class="step">
+    <div class="shot-wrap">
+      <img src="img/input_nodes.png" alt="neomom_input Nodes tab showing the node table and Tag/X/Y/Z entry row">
+      <div class="shot-caption">Table top, entry row + Units/Z Height above it, Add/Apply/Delete below</div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">Confirm <strong>Units</strong> is set to <strong>Meters</strong> (the coordinates here assume meters).</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">Fill in the Tag/X/Y/Z row and click <strong>Add</strong> three times to place: <code>N1 (-5, 0, 10)</code>, <code>N2 (0, 0, 10)</code> — the feed point at center — and <code>N3 (5, 0, 10)</code>. This lays the dipole along the X axis, 10&nbsp;m above ground.</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text">Click a row in the table to load it into the entry fields; edit and <strong>Apply</strong>, or select and <strong>Delete</strong> to remove it.</div></div>
+    </div>
+  </div>
+
+  <h2>3 &middot; Wires tab — connect the nodes</h2>
+  <div class="step">
+    <div class="shot-wrap">
+      <img src="img/input_wires.png" alt="neomom_input Wires tab, with the AWG wire gauge reference table that opens automatically on this tab">
+      <div class="shot-caption">The AWG gauge reference table (shown here) opens automatically whenever this tab is active</div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text"><strong>Tag / Node Tags</strong> — name the wire and list the node tags it passes through in order: <code>N1 → N2 → N3</code> strings the whole dipole together through the center feed point in one wire.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text"><strong>Radius</strong> — set the wire radius in meters, or click <strong>Gauge Table…</strong> to look up a radius by AWG wire size instead of converting by hand. This reference table pops up automatically the moment you land on this tab.</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text">Click <strong>Add</strong> to create the wire.</div></div>
+    </div>
+  </div>
+
+  <h2>4 &middot; Excitations tab — add the feed</h2>
+  <div class="step">
+    <div class="shot-wrap">
+      <img src="img/input_excitations.png" alt="neomom_input Excitations tab showing Wire Tag, Node Tag, Voltage, and Phase fields">
+      <div class="shot-caption">Wire Tag / Node Tag / Voltage / Phase entry, Add/Apply/Delete below</div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text"><strong>Wire Tag / Node Tag</strong> — point the feed at the wire and the specific node on it: here, <code>W1</code> at node <code>N2</code>, the dipole's center.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text"><strong>Voltage / Phase</strong> — a simple single feed uses Voltage 1.0, Phase 0.</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text">Click <strong>Add</strong> to place the feed.</div></div>
+    </div>
+  </div>
+
+  <h2>5 &middot; Geometry preview</h2>
+  <div class="step">
+    <div class="shot-wrap">
+      <img src="img/input_preview.png" alt="3D geometry preview window showing the dipole wire, nodes, feed marker, and ground plane">
+      <div class="shot-caption">Opens automatically at startup; View → Show Preview Window brings it back if closed</div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">Blue dots and labels are your nodes (N1/N2/N3); the black line is the wire; the red marker is the feed point at N2; the green plane is the ground.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">Use this to sanity-check your geometry — a wire in the wrong place or a feed on the wrong node is much easier to spot here than in the tables.</div></div>
+    </div>
+  </div>
+
+  <h2>6 &middot; Save and run</h2>
+  <div class="step">
+    <div class="panel-mock">
+      <div class="win-title">File menu</div>
+      <div class="mock-row"><div class="pin">1</div><span class="minput">Save As NML…</span></div>
+      <div class="mock-row"><div class="pin">2</div><span class="minput">Validate</span></div>
+      <div class="mock-row"><div class="pin">3</div><span class="minput">Run Solver…</span></div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">Save the geometry as an <code>.nml</code> file.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text"><strong>Validate</strong> checks the model for obvious problems (unconnected nodes, missing feed, etc.) before you spend solve time on it.</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text"><strong>Run Solver…</strong> launches the <code>neomom</code> engine on this file directly — no need to open a terminal. With Launch plot set to Yes on the Globals tab, neomom_plot opens automatically when it's done.</div></div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Note:</strong> the menu above is shown as a wireframe, not a screenshot — a real Tk menu bar can't be captured meaningfully as a static image since it only renders when clicked open.
+  </div>
+
+  <div class="footer-nav">
+    <a href="00_start_here.html">← Install</a>
+    <a href="02_plot.html">Next: neomom_plot →</a>
+  </div>
+
+</div>
+</body>
+</html>

@@ -168,18 +168,14 @@ step "Harvesting package"
 
 rm -rf "$PACKAGE_DIR"
 mkdir -p \
-    "$PACKAGE_DIR/neomom" \
-    "$PACKAGE_DIR/neomom_input" \
-    "$PACKAGE_DIR/neomom_plot" \
-    "$PACKAGE_DIR/neomom_Zin" \
-    "$PACKAGE_DIR/neomom_current" \
+    "$PACKAGE_DIR" \
     "$PACKAGE_DIR/models"
 
-cp "$ENGINE_EXE"               "$PACKAGE_DIR/neomom/"
-cp "$INPUT_DIST/neomom_input"  "$PACKAGE_DIR/neomom_input/"
-cp "$PLOT_DIST/neomom_plot"    "$PACKAGE_DIR/neomom_plot/"
-cp "$ZIN_DIST/neomom_Zin"      "$PACKAGE_DIR/neomom_Zin/"
-cp "$CUR_DIST/neomom_current"  "$PACKAGE_DIR/neomom_current/"
+cp "$ENGINE_EXE"               "$PACKAGE_DIR/"
+cp "$INPUT_DIST/neomom_input"  "$PACKAGE_DIR/"
+cp "$PLOT_DIST/neomom_plot"    "$PACKAGE_DIR/"
+cp "$ZIN_DIST/neomom_Zin"      "$PACKAGE_DIR/"
+cp "$CUR_DIST/neomom_current"  "$PACKAGE_DIR/"
 
 if [[ -d "$MODELS_DIR" ]]; then
     cp -r "$MODELS_DIR"/. "$PACKAGE_DIR/models/"
@@ -208,10 +204,10 @@ ok "Package ready: $PACKAGE_ZIP"
 
 echo ""
 echo -e "${GREEN}Build complete.${NC}"
-echo "  Engine  : $PACKAGE_DIR/neomom/neomom"
-echo "  Input   : $PACKAGE_DIR/neomom_input/neomom_input"
-echo "  Plot    : $PACKAGE_DIR/neomom_plot/neomom_plot"
-echo "  Zin     : $PACKAGE_DIR/neomom_Zin/neomom_Zin"
-echo "  Current : $PACKAGE_DIR/neomom_current/neomom_current"
+echo "  Engine  : $PACKAGE_DIR/neomom"
+echo "  Input   : $PACKAGE_DIR/neomom_input"
+echo "  Plot    : $PACKAGE_DIR/neomom_plot"
+echo "  Zin     : $PACKAGE_DIR/neomom_Zin"
+echo "  Current : $PACKAGE_DIR/neomom_current"
 echo "  Archive : $PACKAGE_ZIP"
 echo ""

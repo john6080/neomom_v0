@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>neomom_input — Quick Start</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="page">
+
+  <div class="nav">
+    <a href="index.html">← Install</a>
+    <a href="01_input.html">1 · neomom_input</a>
+    <a href="02_plot.html">2 · neomom_plot</a>
+    <a href="03_zin.html">3 · neomom_Zin</a>
+    <a href="04_current.html">4 · neomom_current</a>
+  </div>
+
+  <h1>neomom_input</h1>
+  <p class="subtitle">Build the geometry, set run parameters, and launch the solver. Walkthrough: a 10&nbsp;m center-fed dipole, 10&nbsp;m above ground.</p>
+
+  <h2>1 &middot; Globals tab</h2>
+  <div class="step">
+    <div class="panel-mock">
+      <div class="win-title">Neo Wire MOM Input Editor</div>
+      <div class="mtabs">
+        <div class="mtab active">Globals</div><div class="mtab">Nodes</div><div class="mtab">Wires</div><div class="mtab">Excitations</div>
+      </div>
+      <div class="mock-row"><div class="pin">1</div><span class="mlabel">Run Title</span><span class="minput">10m Dipole @ 10m</span></div>
+      <div class="mock-row"><div class="pin">2</div><span class="mlabel">Frequency (MHz)</span><span class="minput">Start: 14.15&nbsp;&nbsp;Stop: 14.15</span></div>
+      <div class="mock-row"><div class="pin">2</div><span class="mlabel">Mode</span><span class="minput">◉ Pattern Sweep &nbsp; ○ VNA Sweep</span></div>
+      <div class="mock-row"><div class="pin">3</div><span class="mlabel">Ground</span><span class="minput">Type: Real &nbsp; Epsilon: 13 &nbsp; Sigma: 0.005</span></div>
+      <div class="mock-row"><div class="pin">4</div><span class="mlabel">Solver Options</span><span class="minput">NBasisPerLambda: 10 &nbsp; Output Currents: Yes</span></div>
+      <div class="mock-row"><div class="pin">5</div><span class="mlabel">Run Controls</span><span class="minput">Launch plot: Yes</span></div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">Give the run a name — this becomes the title on your pattern plots later.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">Set Start and Stop to the same value for a single-frequency run, and leave Mode on <strong>Pattern Sweep</strong> (use <strong>VNA Sweep</strong> instead if you want an impedance-vs-frequency sweep for neomom_Zin).</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text">Pick a ground model. <strong>Real</strong> ground needs Epsilon (dielectric constant) and Sigma (conductivity, S/m); typical soil values shown.</div></div>
+      <div class="step-item"><div class="step-num">4</div><div class="step-text">Set mesh density and turn on <strong>Output Currents</strong> if you want to inspect current distribution in neomom_current afterward.</div></div>
+      <div class="step-item"><div class="step-num">5</div><div class="step-text">With <strong>Launch plot: Yes</strong>, neomom_plot opens automatically with your results as soon as the solver finishes.</div></div>
+    </div>
+  </div>
+
+  <h2>2 &middot; Nodes tab — place the wire endpoints</h2>
+  <div class="step">
+    <div class="panel-mock">
+      <div class="win-title">Neo Wire MOM Input Editor</div>
+      <div class="mtabs">
+        <div class="mtab">Globals</div><div class="mtab active">Nodes</div><div class="mtab">Wires</div><div class="mtab">Excitations</div>
+      </div>
+      <div class="mock-row"><div class="pin">1</div><span class="mlabel">Units</span><span class="minput">◉ Meters &nbsp; ○ Feet &nbsp; ○ Inches</span></div>
+      <div class="mtable" style="margin: 6px 0;">
+        <div class="mtable-row mtable-head"><span>TAG</span><span>X</span><span>Y</span><span>Z</span></div>
+        <div class="mtable-row"><span>N1</span><span>-5</span><span>0</span><span>10</span></div>
+        <div class="mtable-row"><span>N2</span><span>0</span><span>0</span><span>10</span></div>
+        <div class="mtable-row"><span>N3</span><span>5</span><span>0</span><span>10</span></div>
+      </div>
+      <div class="mock-row"><div class="pin">2</div><span class="mlabel">Tag / X / Y / Z</span><span class="minput">entry row for the selected node</span></div>
+      <div class="mock-row"><div class="pin">3</div><span class="mbtn">Add</span><span class="mbtn">Apply</span><span class="mbtn">Delete</span></div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">Confirm Units is set to <strong>Meters</strong> (the coordinates below assume meters).</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">Fill in the Tag/X/Y/Z row and click <strong>Add</strong> three times to place: <code>N1 (-5, 0, 10)</code>, <code>N2 (0, 0, 10)</code> — the feed point at center — and <code>N3 (5, 0, 10)</code>. This lays the dipole along the X axis, 10&nbsp;m above ground.</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text">Click a row in the table to load it into the entry fields; edit and <strong>Apply</strong>, or select and <strong>Delete</strong> to remove it.</div></div>
+    </div>
+  </div>
+
+  <h2>3 &middot; Wires tab — connect the nodes</h2>
+  <div class="step">
+    <div class="panel-mock">
+      <div class="win-title">Neo Wire MOM Input Editor — Wire Editor</div>
+      <div class="mtabs">
+        <div class="mtab">Globals</div><div class="mtab">Nodes</div><div class="mtab active">Wires</div><div class="mtab">Excitations</div>
+      </div>
+      <div class="mock-row"><div class="pin">1</div><span class="mlabel">Tag</span><span class="minput">W1</span></div>
+      <div class="mock-row"><div class="pin">1</div><span class="mlabel">Node Tags</span><span class="minput">N1 → N2 → N3</span></div>
+      <div class="mock-row"><div class="pin">2</div><span class="mlabel">Radius (m)</span><span class="minput">0.0016</span><span class="mbtn">Gauge Table…</span></div>
+      <div class="mock-row"><div class="pin">3</div><span class="mbtn">Add</span><span class="mbtn">Apply</span><span class="mbtn">Delete</span></div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">Name the wire and list the node tags it passes through in order — <code>N1 → N2 → N3</code> strings the whole dipole together through the center feed point in one wire.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">Set the wire radius in meters, or click <strong>Gauge Table…</strong> to look up a radius by AWG wire size instead of converting by hand.</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text">Click <strong>Add</strong> to create the wire.</div></div>
+    </div>
+  </div>
+
+  <h2>4 &middot; Excitations tab — add the feed</h2>
+  <div class="step">
+    <div class="panel-mock">
+      <div class="win-title">Neo Wire MOM Input Editor — Excitation Editor</div>
+      <div class="mtabs">
+        <div class="mtab">Globals</div><div class="mtab">Nodes</div><div class="mtab">Wires</div><div class="mtab active">Excitations</div>
+      </div>
+      <div class="mock-row"><div class="pin">1</div><span class="mlabel">Wire Tag</span><span class="minput">W1</span></div>
+      <div class="mock-row"><div class="pin">1</div><span class="mlabel">Node Tag</span><span class="minput">N2</span></div>
+      <div class="mock-row"><div class="pin">2</div><span class="mlabel">Voltage</span><span class="minput">1.0</span></div>
+      <div class="mock-row"><div class="pin">2</div><span class="mlabel">Phase (deg)</span><span class="minput">0</span></div>
+      <div class="mock-row"><div class="pin">3</div><span class="mbtn">Add</span><span class="mbtn">Apply</span><span class="mbtn">Delete</span></div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">Point the feed at the wire and the specific node on it — here, <code>W1</code> at node <code>N2</code>, the dipole's center.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text">A simple single feed uses Voltage 1.0, Phase 0.</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text">Click <strong>Add</strong> to place the feed.</div></div>
+    </div>
+  </div>
+
+  <h2>5 &middot; Save and run</h2>
+  <div class="step">
+    <div class="panel-mock">
+      <div class="win-title">File menu</div>
+      <div class="mock-row"><div class="pin">1</div><span class="minput">Save As NML…</span></div>
+      <div class="mock-row"><div class="pin">2</div><span class="minput">Validate</span></div>
+      <div class="mock-row"><div class="pin">3</div><span class="minput">Run Solver…</span></div>
+    </div>
+    <div class="steps-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text">Save the geometry as an <code>.nml</code> file.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text"><strong>Validate</strong> checks the model for obvious problems (unconnected nodes, missing feed, etc.) before you spend solve time on it.</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text"><strong>Run Solver…</strong> launches the <code>neomom</code> engine on this file directly — no need to open a terminal. With Launch plot set to Yes on the Globals tab, neomom_plot opens automatically when it's done.</div></div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Tip:</strong> use <strong>View → Show Preview Window</strong> at any point to see a 3D rendering of the geometry you've built so far, before running the solver.
+  </div>
+
+  <div class="footer-nav">
+    <a href="index.html">← Install</a>
+    <a href="02_plot.html">Next: neomom_plot →</a>
+  </div>
+
+</div>
+</body>
+</html>
