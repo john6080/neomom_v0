@@ -1101,7 +1101,7 @@ class WiresFrame(ttk.Frame):
         # Initial load
         self.load_from_model()
 
-        # Populate banner text and raise the gauge reference table
+        # Populate the radius-units warning banner text
         self.refresh_radius_defaults()
 
     # ============================================================
@@ -1345,9 +1345,12 @@ class WiresFrame(ttk.Frame):
     def refresh_radius_defaults(self):
         """
         Refreshes the radius-units warning banner text (node input units
-        can change on the Globals/Nodes tab at any time) and makes sure
-        the AWG gauge reference table is visible. Called whenever the
-        Wires tab becomes active.
+        can change on the Globals/Nodes tab at any time). Called whenever
+        the Wires tab becomes active.
+
+        Does NOT open the AWG gauge reference popup -- that's only
+        triggered by the "Gauge Table..." button, so it doesn't appear
+        unannounced every time this tab is visited.
         """
         try:
             units = str(self.model.node_input_meta.units).strip()
@@ -1359,8 +1362,6 @@ class WiresFrame(ttk.Frame):
             text=f"Note: wire radius is in mm; node coordinates are in {units_display}."
         )
         self._radius_warn_frame.grid()   # re-show even if previously dismissed
-
-        self.show_gauge_table()
 
 #end class WiresFrame
 # start ExcitationsFrame
