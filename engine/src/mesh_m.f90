@@ -142,6 +142,7 @@ contains
    subroutine matrix_fill(mesh, bk0, zBlk)
 
       use zfill_m
+      use zfill_nec_m
 
       class(MESH_TYPE), intent(inout)   :: mesh
       real, intent(in)                  :: bk0           ! k = 2π/λ [1/m]
@@ -149,6 +150,8 @@ contains
 
       complex           :: zReflection_Coef(2)   ! (1)=vert, (2)=horiz Fresnel coeff
       type(ZFILL_TYPE)  :: zClaude
+      
+      type(NEC_ZFILL_TYPE) :: zNEC5
 
       ! Evaluate Fresnel coefficients at grazing angle for image-theory Z-fill
       zReflection_Coef = mesh%Reflection_Coef%FRC(0.0)
@@ -156,7 +159,8 @@ contains
       write (*, *) ' ETA0 =', ETA0   ! sanity: should print ~376.730 Ω
 
       ! --- ACTIVE path: zfill_m ZFILL_TYPE ---
-      call zClaude%fill_matrix(mesh%Basis2, mesh%Segs, bk0, zBlk, zReflection_Coef(1))
+      call zNEC5%fill_matrix_nec(mesh%Basis2, mesh%Segs, bk0, zBlk, zReflection_Coef(1))
+      !call zClaude%fill_matrix(mesh%Basis2, mesh%Segs, bk0, zBlk, zReflection_Coef(1))
 
       return
 

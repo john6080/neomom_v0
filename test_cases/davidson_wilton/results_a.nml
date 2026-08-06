@@ -1,0 +1,62 @@
+&RunTitle
+   title = 'results A, two dipoles'
+/
+
+&Frequency_MHz
+   fmin  = 299.792
+   fmax  = 299.792
+   nFreq = 1
+/
+
+&Ground
+   Ground_Plane = 'free_space'
+   epsilon = 1.0
+   sigma = 0.0
+/
+
+&OPTIONS
+   NBASISPERLAMBDA = 8
+   Output_Currents = .FALSE.
+/
+
+&node_input
+   zHeight = 0.0
+   nNodes = 6
+   units = 'meters'
+
+ node_list(1) = 'A', 0.0, 0.0, 0.0
+ node_list(2) = 'B', 0.0, 0.0, 0.25
+ node_list(3) = 'C', 0.0, 0.0, 0.5
+ node_list(4) = 'D', 0.5, 0.0, 0.0
+ node_list(5) = 'E', 0.5, 0.0, 0.25
+ node_list(6) = 'F', 0.5, 0.0, 0.5
+/
+
+&wire_primitive
+   tag   = 'W1',
+   nNodes = 3,
+   nodeTags = 'A' 'B' 'C'
+   radius     = 0.0025
+/
+
+&wire_primitive
+   tag   = 'W2',
+   nNodes = 3,
+   nodeTags = 'D' 'E' 'F'
+   radius     = 0.0025
+/
+
+&excitation_input
+   wireTag = 'W1'
+   nodeTag = 'B'
+   voltage = 1.0
+   phase_deg = 0.0
+/
+
+&excitation_input
+   wireTag = 'W2'
+   nodeTag = 'E'
+   voltage = 1.0
+   phase_deg = 0.0
+/
+

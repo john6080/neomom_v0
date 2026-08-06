@@ -1,0 +1,72 @@
+&RunTitle
+   title = 'Shorted parallel-wire TL, s=3mm, a=1mm, l=0.15lambda, short refined to 4 segs (Delta/a=0.75)'
+/
+
+&Frequency_MHz
+   fmin  = 299.792458
+   fmax  = 299.792458
+   nFreq = 1
+/
+
+&Ground
+   Ground_Plane = 'free_space'
+   epsilon = 1.0
+   sigma = 0.0
+/
+
+&OPTIONS
+   NBASISPERLAMBDA = 40
+   Output_Currents = .TRUE.
+/
+
+&node_input
+   zHeight = 0.0
+   nNodes = 10
+   units = 'meters'
+
+ node_list(1) = 'A', 0.00000000, 0.00000000, 0.00000000
+ node_list(2) = 'B', 0.15000000, 0.00000000, 0.00000000
+ node_list(3) = 'C', 0.00000000, 0.00300000, 0.00000000
+ node_list(4) = 'D', 0.15000000, 0.00300000, 0.00000000
+ node_list(5) = 'M1', 0.00000000, 0.00075000, 0.00000000
+ node_list(6) = 'F1', 0.15000000, 0.00075000, 0.00000000
+ node_list(7) = 'M', 0.00000000, 0.00150000, 0.00000000
+ node_list(8) = 'F2', 0.15000000, 0.00150000, 0.00000000
+ node_list(9) = 'M3', 0.00000000, 0.00225000, 0.00000000
+ node_list(10) = 'F3', 0.15000000, 0.00225000, 0.00000000
+/
+
+&wire_primitive
+   tag   = 'W1',
+   nNodes = 2,
+   nodeTags = 'A' 'B'
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = 'W2',
+   nNodes = 2,
+   nodeTags = 'C' 'D'
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = 'W3',
+   nNodes = 5,
+   nodeTags = 'A' 'M1' 'M' 'M3' 'C'
+   radius     = 0.001
+/
+
+&wire_primitive
+   tag   = 'W4',
+   nNodes = 5,
+   nodeTags = 'B' 'F1' 'F2' 'F3' 'D'
+   radius     = 0.001
+/
+
+&excitation_input
+   wireTag = 'W3'
+   nodeTag = 'M'
+   voltage = 1.0
+   phase_deg = 0.0
+/

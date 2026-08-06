@@ -69,7 +69,10 @@
 			<File RelativePath="..\src\Quadrature_V2_m.f90"/>
 			<File RelativePath="..\src\Units_File_Frequency_m.f90"/>
 			<File RelativePath="..\src\Vector_and_Utility_m.f90"/>
-			<File RelativePath="..\src\zfill_m.f90"/>
+			<File RelativePath="..\src\zfill_m.f90">
+			</File>
+			<File RelativePath="..\src\zfill_nec_m_15.f90">
+			</File>
 		</Filter>
 	</Files>
 	<Globals/>

@@ -1,5 +1,5 @@
 module zfill_m
-
+    
 !==============================================================================
 !  zfill_m — EFIE wire MOM Z-matrix fill (Galerkin, rooftop basis functions)
 !
@@ -185,6 +185,8 @@ contains
 !==============================================================================
    subroutine fill_matrix(this, Basis, Segs, Bk, zMat, zGroundRefl)
 
+   !use zfill_nec_m
+
       class(ZFILL_TYPE),    intent(inout)        :: this
       type(BASIS2_TYPE),    intent(in)           :: Basis(:)
       type(SEGMENT_TYPE),   intent(in)           :: Segs(:)
@@ -192,10 +194,18 @@ contains
       complex, allocatable, intent(out)          :: zMat(:,:)
       complex, optional,    intent(in)           :: zGroundRefl   ! Γ for image terms
 
+      
       integer :: nB, m, n, p, q
       complex :: Zmn, Refl
       logical :: hasGround
 
+    !subroutine fill_matrix_nec(this, Basis, Segs, Bk, zMat, zGroundRefl)
+     
+     ! call zNEC%fill_matrix_nec( Basis, Segs, Bk, zMat, zGroundRefl )
+      
+     ! RETURN
+      
+      
       nB = size(Basis)
       allocate(zMat(nB, nB))
       zMat = zZERO
