@@ -58,9 +58,13 @@ module zfill_m
 !    RL = sqrt(a² + (x-L)²)             (distance from test pt to right end)
 !    arglog = log( (x+R0) / (x-L+RL) )
 !
-!    S1_asc  =  (RL/L - R0/L + x/L * arglog) - j*(k*L/2)   [Gibson 4.83]
-!    S1_desc = -S1_asc + arglog - j*(k*L/2)                  [Gibson 4.85]
-!    S2      = (1/L) * (arglog - j*k*L) * L                  [scalar potential]
+!    S1_asc  =  (RL/L - R0/L + x/L * arglog) - j*(k*L/2)          [Gibson 4.83]
+!    S1_desc = -(RL/L - R0/L + x/L * arglog) - j*(k*L/2) + arglog  [Gibson 4.85]
+!    S2      = (1/L) * (arglog - j*k*L) * L                         [scalar potential]
+!
+!  Note: S1_asc + S1_desc = arglog - j*k*L = S2  (consistency check passes).
+!  An earlier header had S1_desc = -S1_asc + arglog - j*(k*L/2), which expands
+!  to S1_asc + S1_desc = arglog - j*k*L/2 ≠ S2 — that form was wrong.
 !
 !  S1_asc  corresponds to iEnd_q=2 (ascending source scalar x'/L)
 !  S1_desc corresponds to iEnd_q=1 (descending source scalar (L-x')/L)

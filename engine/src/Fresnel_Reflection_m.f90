@@ -27,14 +27,8 @@ module fresnel_reflection_m
 !   In NeoMoM bk = 2π/λ = ω/c, so ω = bk*c and ε0 = 1/(μ0*c²).
 !   Substituting: σ/(ω*ε0) = σ*μ0*c/bk = σ*η0/bk  (η0 ≈ 376.73 Ω)
 !
-!   The current code stores: epsilon = epsilon_ground - zIMAG*sigma/bk
-!
-!   *** DIMENSIONAL CHECK REQUIRED ***
-!   The formula sigma/bk has units [S/m] / [1/m] = [S] = [Ω⁻¹], whereas
-!   σ/(ω*ε0) = σ*η0/bk is dimensionless (as required for ε_eff).
-!   If sigma is stored in SI [S/m], a factor of η0 ≈ 376.73 is missing.
-!   Validate against a known-good test case (e.g. sea water at a known freq)
-!   before relying on real-ground pattern results.
+!   The code stores: epsilon = epsilon_ground - j*sigma*ETA0/bk
+!   Units: [S/m]*[Ω]/[1/m] = [S/m]*[Ω*m] = dimensionless ✓
 !
 !  Fresnel reflection coefficients (normal-component form):
 !
@@ -129,9 +123,9 @@ contains
 !  Sets bk, computes epsilon = epsilon_ground − j*sigma/bk.
 !  cGround_Plane must be set by the caller before init().
 !
-!  epsilon formula (see DIMENSIONAL CHECK warning in module header):
-!   Current: epsilon_ground - j*sigma/bk
-!   Standard: epsilon_ground - j*sigma*η0/bk   (η0 ≈ 376.73 Ω)
+!  epsilon = epsilon_ground - j*sigma*ETA0/bk
+!  Derivation: σ/(ω*ε0) = σ*η0/bk, where η0=ETA0≈376.73 Ω.
+!  Units: [S/m]*[Ω]/[1/m] = dimensionless ✓
 !==============================================================================
    subroutine init(this, bk)
 

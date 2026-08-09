@@ -274,7 +274,7 @@ contains
       integer           :: iPrim, iTag, iNode, iNP
       logical           :: found_prim, found_tag, found_node, wire_has_node
 
-      real(wp), parameter :: DEFAULT_TOL = 1.0E-4   ! 1 micron
+      real(wp), parameter :: DEFAULT_TOL = 1.0E-4   ! 0.1 mm
 
       tol = DEFAULT_TOL
       if (present(tol_in)) tol = tol_in

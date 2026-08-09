@@ -93,7 +93,6 @@ Program neomom
    use fresnel_reflection_m
    use excitation_m
    use iso_fortran_env
-   use antenna_system_m
 
    implicit none
 
