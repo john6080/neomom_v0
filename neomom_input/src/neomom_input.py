@@ -885,6 +885,11 @@ class NodesFrame(ttk.Frame):
         self.master.master.safe_redraw()
         self.load_from_model()
 
+        # Wire length-in-wavelengths (Wires tab) depends on node positions
+        app = self.master.master
+        if hasattr(app, 'wires_frame'):
+            app.wires_frame.load_from_model()
+
     def _add_node(self):
         """Add a new node using current editor values."""
         self._apply_edit(new_node=True)
@@ -910,8 +915,13 @@ class NodesFrame(ttk.Frame):
         idx = self.tree.index(sel[0])
         del self.model.nodes[idx]
 
-        self.master.master.safe_redraw()    
+        self.master.master.safe_redraw()
         self.load_from_model()
+
+        # Wire length-in-wavelengths (Wires tab) depends on node positions
+        app = self.master.master
+        if hasattr(app, 'wires_frame'):
+            app.wires_frame.load_from_model()
 
     # ============================================================
     # Selection handler
@@ -1074,16 +1084,16 @@ class WiresFrame(ttk.Frame):
         self.radius_entry = ttk.Entry(editor, textvariable=self.radius_var, width=12)
         self.radius_entry.grid(row=0, column=5, sticky="w", padx=4, pady=4)
 
-        ttk.Button(editor, text="Gauge Table...",
-                  command=self.show_gauge_table).grid(row=0, column=6, sticky="w", padx=(8, 4), pady=4)
-
-        # Buttons
+        # Buttons — Gauge Table lives here too (not off in column 6, which
+        # falls outside the visible window on narrower screens/widths).
         btns = ttk.Frame(editor)
         btns.grid(row=1, column=0, columnspan=6, pady=6)
 
         ttk.Button(btns, text="Add",    command=self._add_wire).pack(side="left", padx=4)
         ttk.Button(btns, text="Apply",  command=self._apply_edit).pack(side="left", padx=4)
         ttk.Button(btns, text="Delete", command=self._delete_wire).pack(side="left", padx=4)
+        ttk.Button(btns, text="Gauge Table...",
+                  command=self.show_gauge_table).pack(side="left", padx=(16, 4))
 
         # Keyboard shortcuts
         self.bind_all("<Control-w>", lambda e: self._add_wire())
@@ -1245,9 +1255,18 @@ class WiresFrame(ttk.Frame):
         return total
 
     def _length_to_wavelengths(self, length):
-        """Convert length (model units) to wavelengths at fmin."""
+        """Convert length (model units) to wavelengths at fmin.
+
+        Reads fmin from the live GlobalsFrame entry, not the model —
+        the model is only updated on save_to_model(), not on every
+        keystroke (same reasoning as NodesFrame._update_zheight_wl_label).
+        """
         try:
-            fmhz = float(self.model.frequency.fmin)
+            app = self.master.master
+            if hasattr(app, 'globals_frame'):
+                fmhz = float(app.globals_frame.fmin_var.get())
+            else:
+                fmhz = float(self.model.frequency.fmin)
             if fmhz <= 0:
                 return 0.0
             units = self.model.node_input_meta.units.lower()
@@ -1267,7 +1286,8 @@ class WiresFrame(ttk.Frame):
     def _build_radius_warning_banner(self):
         """
         Inline yellow banner reminding that wire radius is entered in
-        millimeters, NOT the node-coordinate units (feet/inches/meters).
+        meters, NOT the node-coordinate units (feet/inches/meters), and
+        NOT the millimeters used by the AWG gauge reference table.
         Styling matches the existing zHeight/MAA warning banners
         elsewhere in this app (gold #FFD700, amber icon/text).
         """
@@ -1313,7 +1333,7 @@ class WiresFrame(ttk.Frame):
 
         win = tk.Toplevel(self)
         win.title("Wire Gauge Reference (AWG)")
-        win.geometry("260x360")
+        win.geometry("300x380")
         win.resizable(False, False)
 
         def on_close():
@@ -1325,6 +1345,9 @@ class WiresFrame(ttk.Frame):
                 font=("TkDefaultFont", 11, "bold")).pack(pady=(10, 4))
         tk.Label(win, text="(bare copper \u2014 insulated wire is slightly larger)",
                 font=("TkDefaultFont", 8), fg="#555555").pack(pady=(0, 8))
+        tk.Label(win, text="Radius field is METERS \u2014 divide mm by 1000.",
+                font=("TkDefaultFont", 8, "bold"), fg="#7a5000",
+                wraplength=270, justify="center").pack(pady=(0, 6))
 
         table = ttk.Treeview(win, columns=("awg", "rad"),
                              show="headings", height=len(_AWG_TABLE_MM))
@@ -1359,7 +1382,8 @@ class WiresFrame(ttk.Frame):
         units_display = units.capitalize() if units else "node input units"
 
         self._radius_warn_label.config(
-            text=f"Note: wire radius is in mm; node coordinates are in {units_display}."
+            text=f"Note: wire radius is in METERS (0.001 = 1mm); node coordinates are in {units_display}.\n"
+                 f"AWG gauge table below is in mm for reference -- divide by 1000 before entering."
         )
         self._radius_warn_frame.grid()   # re-show even if previously dismissed
 
@@ -2162,28 +2186,6 @@ class GlobalsFrame(ttk.Frame):
         self.master.master.safe_redraw()
         self._check_zheight_warning()
 
-    def _on_start_freq_changed(self, event=None):
-        """When user edits Start Frequency.
-        Pattern mode: auto-fill Stop = Start, Steps = 1.
-        VNA mode: just update point count, leave Stop alone.
-        """
-        try:
-            fmin = float(self.fmin_var.get())
-        except ValueError:
-            return
-
-        if self.sweep_mode_var.get() == 'pattern':
-            self.fmax_var.set(str(fmin))
-            self.nfreq_var.set("1")
-        else:
-            # VNA mode — update point count only
-            self._update_point_count()
-
-        # Update zHeight/lambda label in NodesFrame
-        app = self.master.master
-        if hasattr(app, 'nodes_frame'):
-            app.nodes_frame._update_zheight_wl_label()
-
     def _on_stop_freq_changed(self, event=None):
         """When user edits Stop Frequency.
         Pattern mode: clear Steps.  VNA mode: update point count.
@@ -2192,6 +2194,11 @@ class GlobalsFrame(ttk.Frame):
             self.nfreq_var.set("")
         else:
             self._update_point_count()
+
+        # Wire length-in-wavelengths (Wires tab) depends on frequency too
+        app = self.master.master
+        if hasattr(app, 'wires_frame'):
+            app.wires_frame.load_from_model()
 
 
     def __init__(self, master, model, *args, **kwargs):
@@ -2508,18 +2515,30 @@ class GlobalsFrame(ttk.Frame):
     # AUTO-FILL STOP + STEPS WHEN START CHANGES
     # ============================================================
     def _on_start_freq_changed(self, event=None):
+        """When user edits Start Frequency.
+        Pattern mode: auto-fill Stop = Start, Steps = 1.
+        VNA mode: just update point count, leave Stop alone.
+        """
         try:
             fmin = float(self.fmin_var.get())
         except ValueError:
             return
 
-        # Auto-fill behavior (original NEC/MMANA style)
-        self.fmax_var.set(str(fmin))
-        self.nfreq_var.set("1")
+        if self.sweep_mode_var.get() == 'pattern':
+            self.fmax_var.set(str(fmin))
+            self.nfreq_var.set("1")
+        else:
+            # VNA mode — update point count only
+            self._update_point_count()
+
         # Update zHeight/lambda label in NodesFrame
         app = self.master.master
         if hasattr(app, 'nodes_frame'):
             app.nodes_frame._update_zheight_wl_label()
+
+        # Wire length-in-wavelengths (Wires tab) depends on frequency too
+        if hasattr(app, 'wires_frame'):
+            app.wires_frame.load_from_model()
 
 
     def _on_sweep_mode_changed(self):
