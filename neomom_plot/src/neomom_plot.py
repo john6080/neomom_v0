@@ -24,7 +24,7 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
-from pattern_math import reshape_to_grid
+from pattern_math import reshape_to_grid, reshape_column_to_grid
 import numpy as np
 
 
@@ -571,46 +571,23 @@ class AntennaGUI:
     def _compute_pattern_topdown(self):
         import numpy as np
 
-        # Use Etotal only
-        comp = 'Etotal'
-        out_df = self.out_dict[comp]
+        out_df = self.out_dict['Etotal']
 
-        # 1) Reshape into θ×φ grid
-        theta_vals_full, phi_vals, grid_scaled_full = reshape_to_grid(out_df, self.meta)
+        # Reshape E_mag via pivot — row-order-independent (phi-major or theta-major)
+        theta_vals, phi_vals, E_mag_grid = reshape_column_to_grid(out_df, 'E_mag')
 
-        # 2) Hemisphere mask
+        # Hemisphere mask
         if self.hemisphere == 'upper':
-            mask = theta_vals_full <= 90.0
-            theta_vals = theta_vals_full[mask]
-            grid_scaled = grid_scaled_full[mask, :]
+            mask   = theta_vals <= 90.0
+            E_mag  = E_mag_grid[mask, :]
         else:
-            theta_vals = theta_vals_full
-            grid_scaled = grid_scaled_full
+            E_mag  = E_mag_grid
 
-        # 3) Extract E_mag grid
-        theta_unique = np.sort(out_df['theta_deg'].unique())
-        phi_unique   = np.sort(out_df['phi_deg'].unique())
-        nTheta_full  = len(theta_unique)
-        nPhi_full    = len(phi_unique)
+        # Max radius per phi — power density (E²)
+        _r     = E_mag / np.max(E_mag)
+        r_norm = np.max(_r ** 2, axis=0)
 
-        E_mag_full = out_df['E_mag'].values.reshape(nTheta_full, nPhi_full)
-
-        if self.hemisphere == 'upper':
-            E_mag = E_mag_full[mask, :]
-        else:
-            E_mag = E_mag_full
-
-        # 4) Max radius per phi (this is the real 3D top‑down footprint)
-        # Use gain (E²) so the footprint reflects radiated power density,
-        # not raw E-field amplitude.
-        _r = E_mag / np.max(E_mag)
-        R  = _r ** 2
-        r_norm = np.max(R, axis=0)
-
-        # 5) Phi array
-        phi_deg = phi_unique
-
-        return phi_deg, r_norm
+        return phi_vals, r_norm
 
     
     def _apply_rotation(self, phi, rotation_deg):
@@ -1222,6 +1199,10 @@ class AntennaGUI:
         peak_theta, peak_phi = self.meta.get('e_total_max', (25.0, 90.0))
         self.phi_var.set(peak_phi)
         self.theta_var.set(peak_theta)
+
+        # Rebuild out_dict so map overlay sees the new file's field data
+        comp_flags = {'Ev': True, 'Eh': True, 'Etotal': True}
+        self.out_dict = compute_out_dicts(self.df, self.meta, 'Linear', comp_flags)
 
         self._build_info_box()
         self._apply_ground_plane_interlocks()
