@@ -530,8 +530,8 @@ contains
 !   phiWeight = 0.5  for iPhi=1 (phi_min) and iPhi=nPhi (phi_max)
 !   phiWeight = 1.0  for iPhi=2..nPhi-1 (interior)
 !
-!  Phi index within a theta row:
-!   iPhi = mod(iAng - 1, AngleCut%nPhi) + 1
+!  Phi block index (phi-outer, theta-inner, NEC5 ordering):
+!   iPhi = (iAng - 1) / AngleCut%nTheta + 1
 !
 !==============================================================================
    subroutine power_check(this)
@@ -560,8 +560,8 @@ contains
 
             thr = AngleCut%thr(iAng)
 
-            ! Phi index within this theta row: 1 = phi_min, nPhi = phi_max
-            iPhi = mod(iAng - 1, AngleCut%nPhi) + 1
+            ! Phi block index (phi-outer, theta-inner): 1 = phi_min, nPhi = phi_max
+            iPhi = (iAng - 1) / AngleCut%nTheta + 1
 
             ! Trapezoidal phi weight: halve endpoints to avoid double-counting
             phiWeight = ONE
@@ -1091,14 +1091,6 @@ contains
 !  5. read_geometry_input → mesh%node_primitives, wire_primitives, zHeight
 !  6. read_excitations    → mesh%excitations
 !
-!  NOTE: There is a potential type mismatch in step 3.  The local variable
-!   `epsilon` is declared real(wp), but on line 849 it is initialized from
-!   `this%mesh%Reflection_Coef%epsilon` which is complex (the frequency-
-!   dependent value).  Most compilers will silently take the real part;
-!   the intended default is the real εr stored in epsilon_ground, not the
-!   complex computed epsilon.  The initialization should be:
-!     epsilon = real(this%mesh%Reflection_Coef%epsilon_ground)
-!
 !==============================================================================
    subroutine Input(this)
 
@@ -1231,9 +1223,7 @@ contains
 
          ! ---- 3. Ground plane ----
          Ground_Plane = this%mesh%Reflection_Coef%cGround_Plane
-         ! NOTE: epsilon should default from epsilon_ground (real), not
-         !       epsilon (complex); see note in subroutine header above.
-         epsilon = this%mesh%Reflection_Coef%epsilon    ! potential type mismatch
+         epsilon = real(this%mesh%Reflection_Coef%epsilon_ground)
          sigma = this%mesh%Reflection_Coef%sigma
 
          rewind (iGeo)

@@ -18,8 +18,8 @@ module angle_cut_m
 !      Used for 2-D pattern cuts (currently commented out in ANTENNA_TYPE).
 !
 !   2. 3-D mode  (init_3D_pattern)
-!      Full or upper-hemisphere grid.  theta-outer, phi-inner loop order.
-!      iAng = (iTheta-1)*nPhi + iPhi
+!      Full or upper-hemisphere grid.  phi-outer, theta-inner loop order (NEC5).
+!      iAng = (iPhi-1)*nTheta + iTheta
 !      Used by pattern_3d and power_check.
 !
 !==============================================================================
@@ -66,7 +66,7 @@ module angle_cut_m
 !   theta_min + (iTheta-1)*theta_del.
 !
 !  Total points:  nAng = nTheta * nPhi
-!  Flat index:    iAng = (iTheta-1)*nPhi + iPhi
+!  Flat index:    iAng = (iPhi-1)*nTheta + iTheta   (phi outer, theta inner; NEC5)
 !
 !  Phi-endpoint duplication:
 !   For a full azimuth sweep phi_min=0°, phi_max=360°, the first and last phi
@@ -167,8 +167,8 @@ contains
 !   4. Convert thr, phr to radians
 !   5. Call Angle_Cut_vk_uPol to compute vK and uPol
 !
-!  Result layout:  iAng = (iTheta-1)*nPhi + iPhi   (theta outer, phi inner)
-!  This matches the loop in power_check:  iPhi = mod(iAng-1, nPhi) + 1
+!  Result layout:  iAng = (iPhi-1)*nTheta + iTheta   (phi outer, theta inner; NEC5)
+!  This matches power_check:  iPhi = (iAng-1)/nTheta + 1
 !==============================================================================
    subroutine init_3D_pattern(this)
 
@@ -208,8 +208,8 @@ contains
                this%angle_pairs(1, iAng) = theta   ! [degrees] for peak reporting
                this%angle_pairs(2, iAng) = phi
 
-            end do ! iPhi
-         end do ! iTheta
+            end do ! iTheta
+         end do ! iPhi
 
          ! Convert to radians for all downstream trigonometry
          thr = thr * DTOR
