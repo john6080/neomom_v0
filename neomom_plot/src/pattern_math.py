@@ -188,8 +188,8 @@ def apply_component_and_scale(df, component, scale, meta):
     else:
         peak_emag = out['E_mag'].max()
 
-    if peak_emag == 0.0:
-        peak_emag = out['E_mag'].max()   # fallback
+    if not (peak_emag > 0.0):           # catches both 0.0 and NaN
+        peak_emag = out['E_mag'].max()
 
     # Inject a corrected peak into meta for scale functions
     meta_with_peak = dict(meta)

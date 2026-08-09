@@ -113,7 +113,7 @@ def plot_elevation_cartesian(out_df, meta, component, scale, phi_cut):
     ax.grid(True, linestyle='--', alpha=0.5)
     ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
 
-    _add_peak_annotation(ax, slice_df, scale, coords='cartesian')
+    _add_peak_annotation(ax, slice_df, scale, coords='cartesian', x_col='phi_deg')
     fig.tight_layout()
     plt.show(block=False)
 
@@ -908,7 +908,7 @@ def _normalize_radii_from_emag(E_mag, global_peak, scale):
     db = 20.0 * np.log10(np.maximum(E_mag, 1e-30) / global_peak)
 
     if scale == 'Linear':
-        # radius = E / E_global_peak  (linear, power ~ radius²)
+        # radius = (E / E_global_peak)² — normalized power in [0, 1]
         r = np.maximum(E_mag, 0.0) / global_peak
         return np.clip(r ** 2, 0.0, 1.0)
 
@@ -1065,9 +1065,9 @@ def _polar_grid_labels_global(ax, scale, global_emag, meta):
         r_ticks  = [(db - floor) / (gain_peak - floor) for db in ring_dbs]
         r_labels = [f"{db:.0f}" for db in ring_dbs]
 
-    else:  # Linear
+    else:  # Linear — tick radii ARE power (R = (E/Epeak)²), so labels match directly
         r_ticks  = [0.2, 0.4, 0.6, 0.8, 1.0]
-        r_labels = ['0.04', '0.16', '0.36', '0.64', '1.0']  # power ratios
+        r_labels = ['0.2', '0.4', '0.6', '0.8', '1.0']
 
     ax.set_yticks(r_ticks)
     ax.set_yticklabels(r_labels, fontsize=cfg.font_tick, color='gray')
@@ -1153,13 +1153,13 @@ def _build_elevation_cut_emag(out_df, phi_cut, hemisphere='upper'):
     return thetas_deg, E_mag, nearest_phi
 
 
-def _add_peak_annotation(ax, slice_df, scale, coords='cartesian'):
+def _add_peak_annotation(ax, slice_df, scale, coords='cartesian', x_col='theta_deg'):
     """Mark the peak value on Cartesian plots with a dot and label."""
     idx      = slice_df['E_scaled'].idxmax()
     peak_row = slice_df.loc[idx]
 
     if coords == 'cartesian':
-        x = peak_row.iloc[1]
+        x = peak_row[x_col]
         y = peak_row['E_scaled']
         ax.annotate(f"peak {y:.2f}",
                     xy=(x, y),

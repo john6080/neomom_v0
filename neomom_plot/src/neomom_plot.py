@@ -988,7 +988,7 @@ class AntennaGUI:
         self.theta_max  = float(self.theta_vals[-1])
 
         # Default cut angles from metadata
-        peak_theta, peak_phi = meta.get('e_total_max', (25.0, 90.0))
+        peak_theta, peak_phi = meta.get('e_total_max') or (25.0, 90.0)
         self.phi_var   = tk.DoubleVar(value=peak_phi)
         self.theta_var = tk.DoubleVar(value=peak_theta)
 
@@ -1196,7 +1196,7 @@ class AntennaGUI:
         self.theta_min  = float(self.theta_vals[0])
         self.theta_max  = float(self.theta_vals[-1])
 
-        peak_theta, peak_phi = self.meta.get('e_total_max', (25.0, 90.0))
+        peak_theta, peak_phi = self.meta.get('e_total_max') or (25.0, 90.0)
         self.phi_var.set(peak_phi)
         self.theta_var.set(peak_theta)
 

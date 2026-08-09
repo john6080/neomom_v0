@@ -53,6 +53,8 @@ def _arrl_radius(db):
 def _arrl_normalize(E_mag):
     """Convert linear E_mag to ARRL-normalised radii in [0, 1]."""
     peak  = np.max(E_mag)
+    if peak == 0.0:
+        return np.zeros_like(E_mag, dtype=float)
     E_db  = 20.0 * np.log10(np.maximum(E_mag / peak, 1e-6))
     r_outer = _arrl_radius(0.0)    # 1.000
     r_floor = _arrl_radius(-50.0)  # ~0.054
@@ -141,7 +143,8 @@ def plot_3d_pattern(out_dict, meta, scale,
         if surface_mode == 'arrl':
             R = _arrl_normalize(E_mag)
         else:
-            _r = E_mag / np.max(E_mag)
+            _peak = max(float(np.max(E_mag)), 1e-30)
+            _r = E_mag / _peak
             R  = _r ** 2   # gain = E² (normalized power)
 
         # -----------------------------------------------------------
@@ -204,7 +207,7 @@ def plot_3d_pattern(out_dict, meta, scale,
         if scale in ('dB peak', 'dBi', 'ARRL'):
             target = grid_scaled[peak_idx] - 3.0
         else:
-            target = E_mag[peak_idx] * (10**(-3/20))
+            target = grid_scaled[peak_idx] * (10**(-3/20))
 
         theta_array = theta_vals
         i_peak = peak_idx[0]
@@ -406,7 +409,8 @@ def plot_3d_pattern_topdown(out_dict, meta, scale,
         if surface_mode == 'arrl':
             R = _arrl_normalize(E_mag)
         else:
-            _r = E_mag / np.max(E_mag)
+            _peak = max(float(np.max(E_mag)), 1e-30)
+            _r = E_mag / _peak
             R  = _r ** 2   # gain = E² (normalized power)
 
         if surface_mode == 'linear':
@@ -473,7 +477,7 @@ def plot_3d_pattern_topdown(out_dict, meta, scale,
         if scale in ('dB peak', 'dBi', 'ARRL'):
             target = grid_scaled[peak_idx] - 3.0
         else:
-            target = E_mag[peak_idx] * (10**(-3/20))
+            target = grid_scaled[peak_idx] * (10**(-3/20))
 
         theta_array = theta_vals
         i_peak = peak_idx[0]
