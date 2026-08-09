@@ -391,8 +391,8 @@ def parse_mom_nml(path):
             ex = {
                 "wiretag": raw_ex.get("wiretag"),
                 "nodetag": raw_ex.get("nodetag"),
-                "amp": raw_ex.get("amp", ""),
-                "phase": raw_ex.get("phase", "")
+                "voltage":   raw_ex.get("voltage",   raw_ex.get("amp",   1.0)),
+                "phase_deg": raw_ex.get("phase_deg", raw_ex.get("phase", 0.0)),
             }
             model["excitations"].append(ex)
 
@@ -1867,8 +1867,10 @@ class GeometryPreviewFrame(ttk.Frame):
         # --- Middle button: pan ---
         elif self._mouse_btn == 2:
             scale = 0.002
-            self.ax.set_xlim(self.ax.get_xlim() - dx * scale)
-            self.ax.set_ylim(self.ax.get_ylim() + dy * scale)
+            xlim = self.ax.get_xlim()
+            ylim = self.ax.get_ylim()
+            self.ax.set_xlim(xlim[0] - dx * scale, xlim[1] - dx * scale)
+            self.ax.set_ylim(ylim[0] + dy * scale, ylim[1] + dy * scale)
 
         # --- Right button: zoom ---
         elif self._mouse_btn == 3:
@@ -2059,7 +2061,7 @@ class GeometryPreviewFrame(ttk.Frame):
         # ---------------------------------------------------------
         # Ground plane
         # ---------------------------------------------------------
-        if self.show_ground.get() and model.ground.ground_type == "real":
+        if self.show_ground.get() and model.ground.ground_type.lower() == "real":
             import numpy as np
             if nodes:
                 size = max(
@@ -2487,7 +2489,7 @@ class GlobalsFrame(ttk.Frame):
         self._on_sweep_mode_changed()
 
         # GroundBlock
-        self.ground_type_var.set(m.ground.ground_type)
+        self.ground_type_var.set(m.ground.ground_type.lower())
         self.epsilon_var.set(m.ground.permittivity)
         self.sigma_var.set(m.ground.conductivity)
 
