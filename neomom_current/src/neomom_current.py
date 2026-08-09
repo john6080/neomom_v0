@@ -922,7 +922,7 @@ class CurViewerApp(tk.Tk):
             return
         try:
             save_figures(self.data, out_dir)
-            messagebox.showinfo("Done", f"4 PNG files saved to:\n{out_dir}")
+            messagebox.showinfo("Done", f"3 PNG files saved to:\n{out_dir}")
         except Exception as e:
             messagebox.showerror("Save Error", str(e))
 

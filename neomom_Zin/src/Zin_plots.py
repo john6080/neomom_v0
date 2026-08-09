@@ -87,10 +87,10 @@ def plot_GB(ax, datasets, show_bands=True):
         idx_peak  = int(np.argmax(Gin_ms))
         f_peak    = float(ds.freq_mhz[idx_peak])
         Gin_peak  = float(Gin_ms[idx_peak])
-        Rrad      = 1000.0 / Gin_peak if Gin_peak > 0 else 0.0
+        Rin_peak  = 1000.0 / Gin_peak if Gin_peak > 0 else 0.0
         ax.plot(f_peak, Gin_peak, 'o', color=ds.color, ms=5, zorder=6)
         ax.annotate(
-            f'{ds.name}\nG peak={Gin_peak:.3f} mS\nR$_{{rad}}$={Rrad:.1f} Ω',
+            f'{ds.name}\nG peak={Gin_peak:.3f} mS\nR$_{{in}}$=1/G={Rin_peak:.1f} Ω',
             xy=(f_peak, Gin_peak),
             xytext=(0.03, 0.90 - datasets.index(ds) * 0.18),
             textcoords='axes fraction', fontsize=7,
