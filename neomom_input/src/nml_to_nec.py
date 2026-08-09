@@ -488,8 +488,8 @@ def nml_to_nec(nml_path):
         'CM       |     +------------------------------------------- NTHETA: theta steps',
         'CM       +------------------------------------------------- IOPT: 0=far-field',
         'CM',
-        'CM   This card: azimuth cut at theta=90 (horizon), phi=0 to 360, step=5 deg',
-        'CM   Elevation cut instead: NTHETA=19 NPHI=1 THETA0=0 PHI0=0 DTHETA=5 DPHI=0',
+        'CM   This card: full-sphere (free space) or upper-hemisphere (ground) pattern,',
+        'CM   theta=0 to 180/90, phi=0 to 360, step=5 deg, power gain (dBi).',
     ]
 
     # ── assemble file ─────────────────────────────────────────────────────────

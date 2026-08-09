@@ -113,7 +113,7 @@ def plot_elevation_cartesian(out_df, meta, component, scale, phi_cut):
     ax.grid(True, linestyle='--', alpha=0.5)
     ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
 
-    _add_peak_annotation(ax, slice_df, scale, coords='cartesian', x_col='phi_deg')
+    _add_peak_annotation(ax, slice_df, scale, coords='cartesian', x_col='theta_deg')
     fig.tight_layout()
     plt.show(block=False)
 
