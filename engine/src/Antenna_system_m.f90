@@ -309,6 +309,10 @@ contains
       real :: Gp_theta, Gp_phi
       real :: Gtot_theta, Gtot_phi
 
+      ! Near-pole substitution for peak-angle reporting (see note below)
+      real, parameter :: theta_pole_tol = 10.0    ! deg
+      real, parameter :: theta_pole_default = 45.0  ! deg
+
       !--------| start |------------------------------------------------------
 
       associate (AngleCut => pat%AngleCut)
@@ -400,6 +404,16 @@ contains
                Gtot_phi = AngleCut%angle_pairs(2, iAng)
             end if
          end do
+
+         ! At theta=0 (straight up) every phi maps to the same physical
+         ! direction, so a peak found there gives an azimuth cut that's
+         ! degenerate (phi is meaningless at the pole). Simple broadside
+         ! patterns commonly peak exactly at theta=0, so nudge the reported
+         ! peak theta to 45 deg in that case; downstream cut/plot tools key
+         ! off this angle and need a non-degenerate default.
+         if (Gt_theta   <= theta_pole_tol) Gt_theta   = theta_pole_default
+         if (Gp_theta   <= theta_pole_tol) Gp_theta   = theta_pole_default
+         if (Gtot_theta <= theta_pole_tol) Gtot_theta = theta_pole_default
 
          ! Store peak gains [dBi]; merge avoids log10(0) for null polarisation
          pat%gainMax_db = merge(10.*log10(Gtot_max), -100., Gtot_max > 0.)
