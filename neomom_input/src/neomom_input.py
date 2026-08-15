@@ -2157,6 +2157,37 @@ class GeometryPreviewFrame(ttk.Frame):
         except:
             pass
 
+        # ---------------------------------------------------------
+        # Pin axis limits to the actual antenna geometry
+        # The ground plane is drawn as a fixed square sized from
+        # max(|x|, |y|) * 1.2 (e.g. 60m for a 50m-long, 2cm-spaced
+        # transmission line). Left to matplotlib's autoscale, that
+        # oversized square drags the axis with the smaller true span
+        # (here Y, 0 to 0.02m) out to match it, burying the real
+        # geometry. Explicitly limiting each axis to its own node data
+        # (with a little padding) keeps every axis scaled to what's
+        # actually there; the ground plane simply gets clipped to
+        # whatever of it falls inside that window. An axis with zero
+        # span (e.g. all-Z-coplanar geometry) is left to matplotlib's
+        # own autoscale rather than forced to a degenerate zero-size
+        # range.
+        # ---------------------------------------------------------
+        def _set_padded_lim(setter, vals):
+            if not vals:
+                return
+            lo, hi = min(vals), max(vals)
+            if hi - lo <= 0:
+                return
+            pad = (hi - lo) * 0.1
+            setter(lo - pad, hi + pad)
+
+        _node_xs = [n.x for n in nodes]
+        _node_ys = [n.y for n in nodes]
+        _node_zs = [n.z for n in nodes]
+        _set_padded_lim(ax.set_xlim, _node_xs)
+        _set_padded_lim(ax.set_ylim, _node_ys)
+        _set_padded_lim(ax.set_zlim, _node_zs)
+
         self.canvas.draw()
         # Force Tkinter to flush the pending repaint so the canvas widget
         # actually shows the new Agg buffer — mirrors what a manual window
