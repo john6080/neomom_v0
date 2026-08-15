@@ -2157,6 +2157,31 @@ class GeometryPreviewFrame(ttk.Frame):
         except:
             pass
 
+        # ---------------------------------------------------------
+        # Equal-unit axis scaling
+        # Axes3D's default box aspect is matplotlib-version-dependent
+        # (the default changed from a fixed ratio to auto-derived-from-
+        # data around matplotlib 3.6), so with no explicit box aspect
+        # set, the same geometry can render with different apparent
+        # x/y/z proportions depending on which matplotlib version is
+        # installed. Pin it from the actual node coordinate spans so
+        # the preview is consistent everywhere. A thin/flat antenna
+        # (e.g. a dipole lying in one plane) will render thin — that
+        # reflects true relative dimensions rather than an equal cube.
+        # ---------------------------------------------------------
+        if nodes:
+            x_span = max(n.x for n in nodes) - min(n.x for n in nodes)
+            y_span = max(n.y for n in nodes) - min(n.y for n in nodes)
+            z_span = max(n.z for n in nodes) - min(n.z for n in nodes)
+            max_span = max(x_span, y_span, z_span)
+            if max_span > 0:
+                floor = max_span * 0.05
+                ax.set_box_aspect((
+                    max(x_span, floor),
+                    max(y_span, floor),
+                    max(z_span, floor),
+                ))
+
         self.canvas.draw()
         # Force Tkinter to flush the pending repaint so the canvas widget
         # actually shows the new Agg buffer — mirrors what a manual window
