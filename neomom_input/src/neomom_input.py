@@ -109,7 +109,58 @@ def _strip_comment(line: str) -> str:
     return line.split("!", 1)[0].strip()
 
 
+def split_kv_pairs(line: str):
+    """
+    Split a namelist content line into [(key, raw_value), ...].
+
+    A single line may hold more than one 'key = value' assignment (the
+    compact writer packs a whole group onto one line, e.g.
+    "tag = 'W1' nNodes = 2 nodeTags = 'A' 'B' radius = 0.001"). Quoted
+    strings are masked off first so an '=' or space embedded in a quoted
+    value (e.g. a RunTitle containing "s = 2 cm") is never mistaken for
+    the start of a new assignment.
+    """
+    quote_spans = []
+    i, n = 0, len(line)
+    while i < n:
+        c = line[i]
+        if c in ("'", '"'):
+            j = i + 1
+            while j < n and line[j] != c:
+                j += 1
+            quote_spans.append((i, j))
+            i = j + 1
+        else:
+            i += 1
+
+    def in_quotes(pos):
+        return any(s <= pos <= e for s, e in quote_spans)
+
+    starts = [
+        (m.start(1), m.end())
+        for m in re.finditer(r"(\w+)\s*=", line)
+        if not in_quotes(m.start(1))
+    ]
+
+    pairs = []
+    for idx, (key_start, val_start) in enumerate(starts):
+        key = line[key_start:val_start].split("=", 1)[0].strip()
+        val_end = starts[idx + 1][0] if idx + 1 < len(starts) else len(line)
+        raw_val = line[val_start:val_end].strip().rstrip(",").strip()
+        pairs.append((key, raw_val))
+    return pairs
+
+
 def parse_namelist_blocks(path):
+    """
+    Split an .nml file into (name, lines) namelist groups.
+
+    Supports both layouts written by this app:
+      - multi-line:  '&NAME' on its own line, ... , then a bare '/' line
+      - single-line: '&NAME key = val ... /' entirely on one line
+    Content on the same line as '&NAME' (e.g. '&node_input zHeight = 0.0 ...')
+    is kept, not discarded.
+    """
     with open(path, "r") as f:
         lines = f.readlines()
 
@@ -123,6 +174,17 @@ def parse_namelist_blocks(path):
         if m_start:
             current_name = m_start.group(1)
             current_lines = []
+            remainder = line[m_start.end():]
+
+            stripped = remainder.rstrip()
+            if stripped.endswith("/"):
+                # Single-line block: '&NAME key = val ... /'
+                current_lines.append(stripped[:-1])
+                blocks.append((current_name, current_lines[:]))
+                current_name = None
+                current_lines = []
+            elif remainder.strip():
+                current_lines.append(remainder)
             continue
 
         if current_name is not None:
@@ -148,11 +210,7 @@ def parse_scalar_block(lines):
         if not line_nc:
             continue
 
-        m = ASSIGN_RE.match(line_nc)
-        if m:
-            raw_key = m.group(1).strip()
-            raw_val = m.group(2).strip().rstrip(",")
-
+        for raw_key, raw_val in split_kv_pairs(line_nc):
             # Strip quotes
             if (raw_val.startswith("'") and raw_val.endswith("'")) or (
                 raw_val.startswith('"') and raw_val.endswith('"')
@@ -242,11 +300,7 @@ def parse_node_input(lines):
             continue
 
         # Second: handle meta assignments (zHeight, units, nNodes, etc.)
-        m = ASSIGN_RE.match(line_nc)
-        if m:
-            raw_key = m.group(1).strip()
-            raw_val = m.group(2).strip().rstrip(",")
-
+        for raw_key, raw_val in split_kv_pairs(line_nc):
             # Remove quotes
             if (raw_val.startswith("'") and raw_val.endswith("'")) or (
                 raw_val.startswith('"') and raw_val.endswith('"')
@@ -273,11 +327,7 @@ def parse_wire_primitive(lines):
         if not line_nc:
             continue
 
-        m = ASSIGN_RE.match(line_nc)
-        if m:
-            raw_key = m.group(1).strip()
-            raw_val = m.group(2).strip().rstrip(",")
-
+        for raw_key, raw_val in split_kv_pairs(line_nc):
             if (raw_val.startswith("'") and raw_val.endswith("'")) or (
                 raw_val.startswith('"') and raw_val.endswith('"')
             ):
@@ -315,11 +365,7 @@ def parse_excitation_input(lines):
             continue
 
         # Match key = value pairs
-        m = ASSIGN_RE.match(line_nc)
-        if m:
-            raw_key = m.group(1).strip()
-            raw_val = m.group(2).strip().rstrip(",")
-
+        for raw_key, raw_val in split_kv_pairs(line_nc):
             # Remove quotes if present
             if (raw_val.startswith("'") and raw_val.endswith("'")) or (
                 raw_val.startswith('"') and raw_val.endswith('"')
@@ -419,9 +465,10 @@ def _dict_to_model(d: dict) -> "NeoMoMModel":
     fq = d.get("Frequency_MHz", {})
     try:
         m.frequency = FrequencyBlock(
-            fmin  = float(fq.get("fmin",  7.0) or 7.0),
-            fmax  = float(fq.get("fmax",  7.0) or 7.0),
-            nFreq = int(  fq.get("nFreq", 1)   or 1),
+            fmin  = float(fq.get("fmin",  7.0) if fq.get("fmin")  is not None else 7.0),
+            fmax  = float(fq.get("fmax",  7.0) if fq.get("fmax")  is not None else 7.0),
+            nFreq = int(  fq.get("nFreq", 1)   if fq.get("nFreq") is not None else 1),
+            fstep = float(fq.get("fstep", 0.0) if fq.get("fstep") is not None else 0.0),
         )
     except (TypeError, ValueError): pass
     gnd = d.get("Ground", {})
@@ -439,6 +486,7 @@ def _dict_to_model(d: dict) -> "NeoMoMModel":
         m.options = OptionsBlock(
             nBasisPerLambda = int(opt.get("NBASISPERLAMBDA", 40) or 40),
             output_currents = bool(opt.get("output_currents", False)),
+            sweep_mode      = str(opt.get("sweep_mode", "pattern") or "pattern"),
         )
     except (TypeError, ValueError): pass
     meta = d.get("node_input_meta", d.get("Node_input", {}).get("meta", {}))
