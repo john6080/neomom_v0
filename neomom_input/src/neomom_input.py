@@ -534,6 +534,129 @@ def _dict_to_model(d: dict) -> "NeoMoMModel":
     return m
 
 
+def _seg_seg_min_dist(p1, q1, p2, q2):
+    """True minimum distance between two finite 3-D line segments (P1-Q1,
+    P2-Q2) -- NOT the infinite-line distance, which would understate the
+    gap for segments that pass near each other's extended axis without
+    actually being close. Standard closest-point-between-segments
+    algorithm (Ericson, "Real-Time Collision Detection", sec 5.1.9);
+    mirrors engine/src/zfill_nec_m_15.f90::seg_seg_distance.
+    """
+    EPS = 1e-12
+
+    def sub(a, b): return (a[0]-b[0], a[1]-b[1], a[2]-b[2])
+    def dot(a, b): return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]
+    def add_scaled(a, d, t): return (a[0]+d[0]*t, a[1]+d[1]*t, a[2]+d[2]*t)
+    def norm(a): return dot(a, a) ** 0.5
+    def clamp01(v): return max(0.0, min(1.0, v))
+
+    d1 = sub(q1, p1)
+    d2 = sub(q2, p2)
+    r = sub(p1, p2)
+    a = dot(d1, d1)
+    e = dot(d2, d2)
+    f = dot(d2, r)
+
+    if a <= EPS and e <= EPS:
+        return norm(r)
+
+    if a <= EPS:
+        s = 0.0
+        t = clamp01(f / e)
+    else:
+        c = dot(d1, r)
+        if e <= EPS:
+            t = 0.0
+            s = clamp01(-c / a)
+        else:
+            b = dot(d1, d2)
+            denom = a*e - b*b
+            s = clamp01((b*f - c*e) / denom) if abs(denom) > EPS else 0.0
+            t = (b*s + f) / e
+            if t < 0.0:
+                t = 0.0
+                s = clamp01(-c / a)
+            elif t > 1.0:
+                t = 1.0
+                s = clamp01((b - c) / a)
+
+    c1 = add_scaled(p1, d1, s)
+    c2 = add_scaled(p2, d2, t)
+    return norm(sub(c1, c2))
+
+
+def _wire_spans(wire, node_by_tag):
+    """Expand a wire's node_tags into (p, q, radius, {shared node tags})."""
+    spans = []
+    for i in range(len(wire.node_tags) - 1):
+        t1, t2 = wire.node_tags[i], wire.node_tags[i + 1]
+        if t1 not in node_by_tag or t2 not in node_by_tag:
+            continue
+        n1, n2 = node_by_tag[t1], node_by_tag[t2]
+        spans.append(((n1.x, n1.y, n1.z), (n2.x, n2.y, n2.z), wire.radius, {t1, t2}))
+    return spans
+
+
+def check_close_spacing(model):
+    """Warn about conductor pairs closer than ~2x wire diameter.
+
+    Thin-wire MoM -- NeoMoM's, NEC5's, or any other -- is not reliable
+    below roughly 2x diameter separation: current starts concentrating
+    between the two conductors in a way no thin-wire (current-on-axis)
+    model can represent, only a full surface/patch model can. This is a
+    fundamental modeling limit, not a solver bug, and both NeoMoM and
+    NEC5 share it. The common, entirely ordinary ham constructions that
+    land in this regime are folded dipoles, hairpin match sections, and
+    closely-run ladder line near the feedpoint.
+    """
+    node_by_tag = {n.tag: n for n in model.nodes}
+
+    all_spans = []
+    for w in model.wires:
+        for (p, q, radius, tags) in _wire_spans(w, node_by_tag):
+            all_spans.append((w.tag, p, q, radius, tags))
+
+    warnings = []
+    seen_pairs = set()
+    for i in range(len(all_spans)):
+        tag_i, p1, q1, r1, tags_i = all_spans[i]
+        for j in range(i + 1, len(all_spans)):
+            tag_j, p2, q2, r2, tags_j = all_spans[j]
+            if tags_i & tags_j:
+                continue   # shares a node -- expected to touch/connect
+            try:
+                gap = _seg_seg_min_dist(p1, q1, p2, q2)
+                diameter_sum = float(r1) + float(r2)
+                len_i = sum((a - b) ** 2 for a, b in zip(p1, q1)) ** 0.5
+                len_j = sum((a - b) ** 2 for a, b in zip(p2, q2)) ** 0.5
+            except (TypeError, ValueError):
+                continue
+            if diameter_sum <= 0:
+                continue
+            # Skip short connector stubs (e.g. a feed jumper bridging two
+            # wires) -- the "current concentrates between conductors"
+            # failure mode this warns about needs a genuine parallel RUN,
+            # not a short stub that incidentally passes near another wire
+            # on its way to connect to it.
+            if len_i < 5 * diameter_sum or len_j < 5 * diameter_sum:
+                continue
+            ratio = gap / diameter_sum
+            if ratio < 2.0:
+                key = tuple(sorted((tag_i, tag_j)))
+                if key in seen_pairs:
+                    continue
+                seen_pairs.add(key)
+                warnings.append(
+                    f"Wires {tag_i} and {tag_j} pass within {gap:.4f} m of "
+                    f"each other ({ratio:.2f}x wire diameter). Thin-wire "
+                    f"modeling (NeoMoM and NEC5 alike) is not reliable below "
+                    f"~2x diameter separation -- Zin/SWR here may not be "
+                    f"trustworthy. Common cause: folded dipoles, hairpin "
+                    f"matches, or closely-run ladder line."
+                )
+    return warnings
+
+
 def validate_model(model):
     errors = []
 
@@ -2731,6 +2854,12 @@ class MomNMLApp(tk.Tk):
         errors = validate_model(self.model)
         if errors:
             messagebox.showerror("Validation Errors", "\n".join(errors))
+            return
+
+        spacing_warnings = check_close_spacing(self.model)
+        if spacing_warnings:
+            messagebox.showwarning("Validation — Closely-Spaced Conductors",
+                                    "\n\n".join(spacing_warnings))
         else:
             messagebox.showinfo("Validation", "No errors detected.")
    

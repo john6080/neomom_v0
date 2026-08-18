@@ -205,6 +205,12 @@ class DatasetRow(ttk.Frame):
 # ------------------------------------------------------------------
 class NeoMoMZin(tk.Tk):
 
+    # Default per-tab Y-axis range: (ymin, ymax), either may be None for
+    # auto. Indexed by tab: 0=R/X, 1=G/B, 2=SWR. SWR can't go below 1.0,
+    # so it's preset as a sensible starting floor -- still user-editable,
+    # and what "Auto" reverts to on that tab.
+    _YLIM_DEFAULTS = [(None, None), (None, None), (1.0, None)]
+
     def __init__(self, csv_path=None):
         super().__init__()
         self.title('NeoMoM — Impedance Sweep Viewer')
@@ -215,6 +221,8 @@ class NeoMoMZin(tk.Tk):
         self._show_bands  = tk.BooleanVar(value=True)
         self._Z0_var      = tk.StringVar(value='50.0')
         self._active_tab  = 0
+
+        self._ylim_settings = list(self._YLIM_DEFAULTS)
 
         self._build_menu()
         self._build_main()
@@ -300,6 +308,24 @@ class NeoMoMZin(tk.Tk):
         self._Z0_entry.bind('<Return>',   lambda e: self._redraw())
         self._Z0_entry.bind('<FocusOut>', lambda e: self._redraw())
 
+        # Y-axis range override — applies to whichever tab is active
+        ttk.Separator(bar, orient='vertical').pack(
+            side='left', fill='y', padx=8)
+        ttk.Label(bar, text='Y range:').pack(side='left', padx=(4, 2))
+        self._ymin_var = tk.StringVar(value='')
+        self._ymax_var = tk.StringVar(value='')
+        ttk.Label(bar, text='min').pack(side='left')
+        self._ymin_entry = ttk.Entry(bar, textvariable=self._ymin_var, width=7)
+        self._ymin_entry.pack(side='left', padx=2)
+        ttk.Label(bar, text='max').pack(side='left')
+        self._ymax_entry = ttk.Entry(bar, textvariable=self._ymax_var, width=7)
+        self._ymax_entry.pack(side='left', padx=2)
+        for entry in (self._ymin_entry, self._ymax_entry):
+            entry.bind('<Return>',   lambda e: self._on_ylim_changed())
+            entry.bind('<FocusOut>', lambda e: self._on_ylim_changed())
+        ttk.Button(bar, text='Auto', width=5,
+                   command=self._reset_ylim).pack(side='left', padx=(2, 0))
+
         self._switch_tab(0)
 
     def _build_plot(self, parent):
@@ -330,6 +356,46 @@ class NeoMoMZin(tk.Tk):
         self._Z0_label.config(
             foreground='black' if idx == 2 else 'grey')
 
+        self._show_ylim_fields(idx)
+        self._redraw()
+
+    def _show_ylim_fields(self, idx):
+        """Reflect a tab's stored Y-range in the min/max entry fields."""
+        ymin, ymax = self._ylim_settings[idx]
+        self._ymin_var.set('' if ymin is None else f'{ymin:g}')
+        self._ymax_var.set('' if ymax is None else f'{ymax:g}')
+
+    def _on_ylim_changed(self):
+        """Parse the Y min/max entries and store them for the active tab."""
+        def parse(strvar, label):
+            s = strvar.get().strip()
+            if not s:
+                return None, True
+            try:
+                return float(s), True
+            except ValueError:
+                messagebox.showerror('Invalid Y range',
+                                      f'{label} must be a number or blank.')
+                return None, False
+
+        ymin, ok = parse(self._ymin_var, 'Y min')
+        if not ok:
+            return
+        ymax, ok = parse(self._ymax_var, 'Y max')
+        if not ok:
+            return
+        if ymin is not None and ymax is not None and ymin >= ymax:
+            messagebox.showerror('Invalid Y range',
+                                  'Y min must be less than Y max.')
+            return
+
+        self._ylim_settings[self._active_tab] = (ymin, ymax)
+        self._redraw()
+
+    def _reset_ylim(self):
+        """Revert the active tab's Y-range to its default (SWR: min=1.0)."""
+        self._ylim_settings[self._active_tab] = self._YLIM_DEFAULTS[self._active_tab]
+        self._show_ylim_fields(self._active_tab)
         self._redraw()
 
     # ----------------------------------------------------------
@@ -351,12 +417,20 @@ class NeoMoMZin(tk.Tk):
             self._canvas.draw()
             return
 
+        # User-specified Y range, if any, for the active tab. Passed into
+        # the plot function so it's applied *before* the band overlay --
+        # overlay_bands() positions its labels from ax.get_ylim(), so
+        # setting this afterward here would leave labels anchored to the
+        # old autoscaled range and break tight_layout.
+        ymin, ymax = self._ylim_settings[self._active_tab]
+        ylim = (ymin, ymax) if (ymin is not None or ymax is not None) else None
+
         if self._active_tab == 0:
-            plot_RX (self._ax, ds, show_bands=bands)
+            plot_RX (self._ax, ds, show_bands=bands, ylim=ylim)
         elif self._active_tab == 1:
-            plot_GB (self._ax, ds, show_bands=bands)
+            plot_GB (self._ax, ds, show_bands=bands, ylim=ylim)
         else:
-            plot_SWR(self._ax, ds, show_bands=bands, Z0=Z0)
+            plot_SWR(self._ax, ds, show_bands=bands, Z0=Z0, ylim=ylim)
 
         self._fig.tight_layout()
         self._canvas.draw()

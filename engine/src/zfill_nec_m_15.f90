@@ -1,84 +1,16 @@
 module zfill_nec_m
 
 !==============================================================================
-!  SESSION SUMMARY (read this first)
-!
-!  Bottom line: DEFAULTS (selfKernel=RTWK, nearKernel=BARE, C1=C2=C3=0) are
-!  set to reproduce original zfill_m EXACTLY -- confirmed by direct testing
-!  (matched to full precision, 171.05 ohm, on a shorted-parallel-wire-TL
-!  test case; cross-validated to ~5% against idealized transmission-line
-!  theory via independent open- and shorted-line Zin measurements). This is
-!  the validated, trustworthy configuration. Use it.
-!
-!  What the more elaborate options (EXACT self-term, EXACT/ETWK near-pairs,
-!  nonzero C1/C2/C3) were built for and what testing actually showed:
-!
-!   - EXACT self-term: some evidence of better numerical stability at
-!     extreme Delta/a (short segments relative to wire radius, e.g. a
-!     junction strap) -- roughly half the oscillation amplitude of RTWK
-!     across a 3-point Delta/a convergence sweep. Not conclusively proven
-!     (convergence wasn't clean/monotonic in only 3 points), but the only
-!     genuinely positive signal from this session's work. Worth
-!     revisiting with more refinement levels if extreme-Delta/a self terms
-!     matter for your geometry.
-!
-!   - EXACT/ETWK near-PAIR interactions (source_pair_exact/etwk, the
-!     phi-averaged surface-current model generalized from Burke's SELF-term
-!     formula to different-segment pairs): tested against a validated
-!     baseline on a 90-degree-junction shorted-TL case and made Zin
-!     substantially WORSE (theta~292 ohm vs a baseline+bare-filament
-!     result of ~155-171 ohm). Burke never validates phi-averaging for
-!     pair interactions, only self -- this generalization, while
-!     mathematically valid, turned out not to be the right physical model
-!     for that case. NOT recommended.
-!
-!   - C3_radMult / gap_within_radius (tightly-spaced-parallel-wire
-!     proximity classification): tested on an open-circuit TL case via an
-!     open+short Zin cross-validation (Z0 = sqrt(Zin_open*Zin_short),
-!     cancels the tan(beta*l) dependence exactly). Baseline (C3=0)
-!     cross-validated to Z0=121.0 ohm (4.9% from idealized 115.4 ohm).
-!     C3_radMult=5 (with nearKernel still BARE, so ONLY the quadrature
-!     order changed, not the kernel formula) gave Z0=128.2 ohm (11.1% off)
-!     -- WORSE. NOT recommended as currently implemented.
-!
-!   - None of the near-pair refinements (EXACT/ETWK/C3_radMult) moved the
-!     azimuth-pattern offset vs NEC5 on the original closed-loop bent-
-!     junction case that motivated building this module in the first
-!     place, despite EXACT being a verified-exact kernel (matched a
-!     converged brute-force reference to 7 significant figures). Combined
-!     with that geometry's Delta/a~6400 (nowhere near the rho~a regime
-!     these refinements target) and the wider context that NEC5 and
-!     zfill_m already agreed well across a 2-32 MHz Zin sweep before this
-!     bug appeared, this points AWAY from "near-field kernel accuracy" as
-!     the azimuth bug's cause and back toward something loop-topology/
-!     phase-accumulation-specific -- consistent with where the original
-!     multi-week investigation was already heading before this module was
-!     built. That investigation is paused, not resolved.
-!
-!  Pattern worth taking seriously: in every isolated test this session ran,
-!  adding near-field sophistication (better kernel accuracy, phi-averaging,
-!  more quadrature points) moved results AWAY from validated references,
-!  not toward them, except for the one self-term Delta/a case above. Don't
-!  assume "more accurate kernel" implies "better Zin" for a change you
-!  haven't isolated and tested against a known-good reference yourself.
-!
-!==============================================================================
-
-!==============================================================================
 !  zfill_nec_m — NEC5-style wire-wire interaction fill (companion to zfill_m)
 !
-!  CORRECTION (v2): an earlier version of this module offered a "point
-!  matching" mode as a supposed NEC5 differentiator. That was wrong. Per
-!  Burke, "Accuracy of Reduced and Extended Thin-Wire Kernels" (LLNL-PROC-
-!  409033): NEC-4 is point matched; NEC-5 is "a mixed potential code with
-!  triangular and roof-top basis functions" -- i.e. Galerkin, the same
-!  architecture family zfill_m already uses. That mode has been removed.
-!  fill_matrix_nec below is plain double-integral Galerkin, same structure
-!  as zfill_m::fill_matrix.
+!  Galerkin double-integral fill, same architecture as zfill_m::fill_matrix
+!  (per Burke, "Accuracy of Reduced and Extended Thin-Wire Kernels",
+!  LLNL-PROC-409033: NEC-5 is a mixed-potential code with triangular/
+!  roof-top basis functions, not point-matched like NEC-4).
 !
-!  What actually distinguishes NEC5's wire-wire interaction is the KERNEL:
-!  it offers a choice of RTWK (reduced thin-wire kernel) or ETWK (extended
-!  thin-wire kernel). Both approximate the same exact kernel
+!  What distinguishes NEC5's wire-wire interaction is the KERNEL: a choice
+!  of RTWK (reduced thin-wire kernel) or ETWK (extended thin-wire kernel).
+!  Both approximate the same exact kernel
 !
 !      K(rho,z) = INT_{-D/2}^{D/2} INT_{-pi}^{pi} exp(-jkR)/R  dphi dz'      (Burke eq.1)
 !      R = sqrt(rho^2 + a^2 + (z-z')^2 - 2*a*rho*cos(phi))
@@ -86,14 +18,10 @@ module zfill_nec_m
 !  RTWK (Burke eq. 3): evaluation points on-axis, current as a filament,
 !      K0(rho,z) = 2*pi * INT e^{-jkR0}/R0 dz',  R0 = sqrt(rho^2+a^2+(z-z')^2)
 !  This is the "R -> sqrt(|dr|^2+a^2)" reduced-kernel offset used below in
-!  source_gauss_nec. CORRECTION: this was originally applied to every
-!  wire-wire pair unconditionally, including genuine FAR pairs. That was
-!  wrong -- for closely-spaced parallel wires, softening 1/R on FAR
-!  cross-wire pairs weakens mutual-coupling cancellation and inflates net
-!  reactance (found via a shorted-parallel-wire-TL test case: Zin reactance
-!  was ~293 ohm against zfill_m's ~171 ohm reference; scoping the offset to
-!  isNear pairs only, matching original zfill_m's bare-R treatment of FAR
-!  pairs, is what closed most of that gap -- see source_gauss_nec).
+!  source_gauss_nec, applied only to non-FAR pairs -- softening 1/R on
+!  genuinely far cross-wire pairs weakens mutual-coupling cancellation and
+!  inflates net reactance for closely-spaced parallel wires (see
+!  source_gauss_nec).
 !
 !  ETWK (Burke eq. 2, 4, 5): removes the singular 1/R term from a series
 !  expansion of the exponential and integrates THAT term analytically over
@@ -135,41 +63,32 @@ module zfill_nec_m
 !   - isNearTouching pairs (shares a node, or axis gap within
 !     C3_radMult*wireRadius) -> ALWAYS ETWK via source_pair_etwk,
 !     regardless of selfKernel -- that flag only ever governs the self term.
-!   - isNear-but-not-touching pairs (C1_lenMult or C2_lambda triggered) ->
-!     RTWK-style plain quadrature at elevated (NQ_NEAR, 16-point) order,
-!     NOT ETWK -- see the isNearTouching note at its assignment in
-!     Z_half_pair_nec for why these were deliberately kept off the ETWK
-!     path (empirically overcorrected: Zin reactance blew up to +74.7 ohm
-!     before this split was added).
-!   - True FAR pairs -> RTWK-style plain quadrature at 4-point (NQ_FAR)
-!     order.
+!   - Non-touching pairs -> RTWK-style plain quadrature, NOT ETWK (applying
+!     the singularity-subtracted ETWK formula there overcorrects). The
+!     quadrature order is graduated by select_nQ (NQ_FAR/NQ_NEAR/NQ_64/
+!     NQ_128), based on the true seg_seg_distance gap-to-length ratio.
 !
-!  SCOPE / WHAT I DERIVED VS WHAT'S IN THE PAPER:
+!  EXTENSIONS BEYOND THE PAPER:
 !   - Eq. 1-5 (RTWK, ETWK, the closed-form log-singularity extraction) are
-!     Burke's, reproduced directly. Nothing in that derivation requires the
-!     field point to be ON the source segment -- (rho,z) is just "field
-!     point in cylindrical coordinates relative to a straight source
-!     segment's axis," so the same closed form applies to a DIFFERENT
-!     segment's field point too, with rho computed as the true perpendicular
+!     Burke's, reproduced directly for the self term. Nothing in that
+!     derivation requires the field point to be ON the source segment --
+!     (rho,z) is just "field point in cylindrical coordinates relative to a
+!     straight source segment's axis" -- so the same closed form applies to
+!     a different segment's field point too, with rho the true perpendicular
 !     distance from the test point to the source segment's axis line. This
-!     is now applied to NEAR (node-sharing, different-segment) pairs in
-!     source_pair_etwk below, not just self -- see that routine's header for
-!     the projection geometry. This generalization (using it for NEAR pairs
-!     at all, and using the geometric rho rather than a fixed rho=a/rho=0
-!     convention there) is mine, built directly on Burke's eq. 1-5, not
-!     something the paper states explicitly (his numerical results are all
-!     self-term / far-pair convergence, not adjacent-segment near terms).
-!   - Burke's eq. 2/4/5 derivation is for a CONSTANT source density (his
-!     "typical integral ... due to constant source density"). Your rooftop
-!     basis needs the same kernel WEIGHTED by a linear ramp scalar_q(z') =
-!     z'/L or (L-z')/L, which Burke's closed form does not directly cover.
-!     For the weighted (Ivec) piece I used standard singularity-subtraction:
-!     evaluate the ramp weight at the SOURCE-segment coordinate nearest the
-!     singularity (the axial projection of the test point, not the test
-!     point's own position), and quadrature the smooth remainder as usual.
-!     That is a reasonable, standard technique but it is MY extension, not
-!     a formula from the paper -- flagged in etwk_core below.
-!   - FAR pairs still use the plain RTWK offset (source_gauss_nec) -- no
+!     generalization to NEAR (node-sharing, different-segment) pairs is
+!     applied in source_pair_etwk below; see that routine's header for the
+!     projection geometry. Burke's own numerical results only cover
+!     self-term / far-pair convergence, not adjacent-segment near terms.
+!   - Burke's eq. 2/4/5 derivation is for constant source density. The
+!     rooftop basis needs the same kernel weighted by a linear ramp
+!     scalar_q(z') = z'/L or (L-z')/L, which Burke's closed form does not
+!     directly cover. The weighted (Ivec) piece uses standard singularity
+!     subtraction: the ramp weight is evaluated at the source-segment
+!     coordinate nearest the singularity (the axial projection of the test
+!     point, not the test point's own position), and the smooth remainder is
+!     quadratured as usual -- flagged in etwk_core below.
+!   - FAR pairs use the plain RTWK offset (source_gauss_nec) -- no
 !     rapid-variation concern there, the extra machinery isn't worth it.
 !
 !  Reference: G. J. Burke, "Accuracy of Reduced and Extended Thin-Wire
@@ -186,71 +105,36 @@ module zfill_nec_m
    public :: KERNEL_RTWK, KERNEL_ETWK, KERNEL_EXACT, KERNEL_BARE
 
    integer, parameter :: KERNEL_RTWK = 1
-   integer, parameter :: KERNEL_ETWK = 2    ! SUPERSEDED by KERNEL_EXACT --
-                                             ! see the SESSION SUMMARY block
-                                             ! near the top of this file.
-                                             ! ETWK's only reason to exist
-                                             ! was cost: it approximates the
-                                             ! same double integral EXACT
-                                             ! computes outright, and was
-                                             ! never once validated as MORE
-                                             ! accurate than either RTWK or
-                                             ! EXACT in any test this session
-                                             ! -- it underestimated the true
-                                             ! kernel by up to ~17% at rho~a
-                                             ! (brute-force-verified), and
-                                             ! its pair-interaction results
-                                             ! were consistently worse than
-                                             ! the validated baseline. Given
-                                             ! compute time is explicitly not
-                                             ! a constraint for this codebase,
-                                             ! there is no remaining case for
-                                             ! choosing ETWK over EXACT. Code
-                                             ! kept for reference/history
-                                             ! (it's what led to discovering
-                                             ! the rho~a underestimate that
-                                             ! motivated building EXACT) --
-                                             ! not a recommended choice for
-                                             ! either selfKernel or
-                                             ! nearKernel going forward.
+   integer, parameter :: KERNEL_ETWK = 2    ! closed-form singularity
+                                             ! extraction (Burke eq.4/5).
+                                             ! Approximates the true kernel's
+                                             ! phi-dependence by evaluating at
+                                             ! phi=pi/2 and scaling by 2*pi,
+                                             ! which underestimates the true
+                                             ! kernel by up to ~17% when
+                                             ! rho~a -- see KERNEL_EXACT.
    integer, parameter :: KERNEL_EXACT = 3   ! direct double (z',phi) quadrature
                                              ! of the true kernel -- see
                                              ! exact_core header. No closed-
-                                             ! form approximation at all;
-                                             ! added after validating that
-                                             ! ETWK underestimates the true
-                                             ! kernel by up to ~17% when
-                                             ! rho~a (confirmed by brute-
-                                             ! force comparison on the
-                                             ! shorted-parallel-wire-TL test
-                                             ! case's 90-degree junction).
-   integer, parameter :: KERNEL_BARE = 4    ! bare R = |dr|, NO offset of any
-                                             ! kind, ever -- exact match to
-                                             ! original zfill_m::source_gauss
-                                             ! (verified by direct inspection:
-                                             ! it never adds a^2, for NEAR or
-                                             ! FAR). NOTE: KERNEL_RTWK in this
+                                             ! form approximation at all.
+   integer, parameter :: KERNEL_BARE = 4    ! bare R = |dr|, no offset of any
+                                             ! kind. NOTE: KERNEL_RTWK in this
                                              ! module's source_gauss_nec is
                                              ! NOT the same thing -- it adds
-                                             ! a^2 whenever isNear is true.
-                                             ! Added specifically as a true
-                                             ! apples-to-apples baseline for
-                                             ! nearKernel, since KERNEL_RTWK
-                                             ! there turned out not to be one.
+                                             ! a^2 whenever the quadrature
+                                             ! order is elevated above NQ_FAR.
 
    integer, parameter :: NQ_FAR  = 4
    integer, parameter :: NQ_NEAR = 16
+   integer, parameter :: NQ_64   = 64    ! third rung of the distance-ratio
+                                          ! quadrature ladder -- see select_nQ.
+   integer, parameter :: NQ_128  = 128   ! fourth (top) rung.
    integer, parameter :: NQ_PHI  = 16    ! phi-integral quadrature for ETWK
    integer, parameter :: NQ_EXACT = 32   ! double quadrature order for
                                           ! KERNEL_EXACT, both z' and phi.
-                                          ! Validated: even NQ_EXACT=16
-                                          ! matches a converged high-
-                                          ! resolution trapezoid reference to
-                                          ! 7 sig figs at the smallest rho
-                                          ! tested (rho/a~0.13) -- the
-                                          ! integrand is smooth (R>=a always,
-                                          ! no true singularity), so this is
-                                          ! generous headroom, not a
+                                          ! The integrand is smooth (R>=a
+                                          ! always, no true singularity), so
+                                          ! this is generous headroom, not a
                                           ! minimum-required order.
 
    real, parameter :: XI4(4) = [ 0.069431844, 0.330009478, 0.669990522, 0.930568156 ]
@@ -291,62 +175,129 @@ module zfill_nec_m
       3.2911111388E-02, 2.9342046739E-02, 2.5499029631E-02, 2.1417949011E-02, &
       1.7136931457E-02, 1.2696032655E-02, 8.1371973655E-03, 3.5093050047E-03 ]
 
+   ! 64- and 128-point Gauss-Legendre on [0,1] (numpy leggauss), the
+   ! third and fourth rungs of the distance-ratio quadrature ladder
+   ! used for closely-spaced NEAR pairs -- see select_nQ.
+   real, parameter :: XI64(64) = [ &
+      3.4747913211E-04, 1.8299416140E-03, 4.4933142616E-03, 8.3318730577E-03, &
+      1.3336586105E-02, 1.9495600174E-02, 2.6794312571E-02, 3.5215413934E-02, &
+      4.4738931461E-02, 5.5342277002E-02, 6.7000300923E-02, 7.9685351874E-02, &
+      9.3367342439E-02, 1.0801382053E-01, 1.2359004637E-01, 1.4005907491E-01, &
+      1.5738184347E-01, 1.7551726437E-01, 1.9442232241E-01, 2.1405217690E-01, &
+      2.3436026799E-01, 2.5529842715E-01, 2.7681699137E-01, 2.9886492102E-01, &
+      3.2138992083E-01, 3.4433856400E-01, 3.6765641890E-01, 3.9128817813E-01, &
+      4.1517778979E-01, 4.3926859035E-01, 4.6350343911E-01, 4.8782485367E-01, &
+      5.1217514633E-01, 5.3649656089E-01, 5.6073140965E-01, 5.8482221021E-01, &
+      6.0871182187E-01, 6.3234358110E-01, 6.5566143600E-01, 6.7861007917E-01, &
+      7.0113507898E-01, 7.2318300863E-01, 7.4470157285E-01, 7.6563973201E-01, &
+      7.8594782310E-01, 8.0557767759E-01, 8.2448273563E-01, 8.4261815653E-01, &
+      8.5994092509E-01, 8.7640995363E-01, 8.9198617947E-01, 9.0663265756E-01, &
+      9.2031464813E-01, 9.3299969908E-01, 9.4465772300E-01, 9.5526106854E-01, &
+      9.6478458607E-01, 9.7320568743E-01, 9.8050439983E-01, 9.8666341389E-01, &
+      9.9166812694E-01, 9.9550668574E-01, 9.9817005839E-01, 9.9965252087E-01 ]
+
+   real, parameter :: W64(64) = [ &
+      8.9164036085E-04, 2.0735166303E-03, 3.2522289845E-03, 4.4233799132E-03, &
+      5.5840697301E-03, 6.7315239484E-03, 7.8630152380E-03, 8.9758578878E-03, &
+      1.0067411577E-02, 1.1135086904E-02, 1.2176351284E-02, 1.3188734858E-02, &
+      1.4169836307E-02, 1.5117328536E-02, 1.6028964177E-02, 1.6902580919E-02, &
+      1.7736106628E-02, 1.8527564270E-02, 1.9275076589E-02, 1.9976870566E-02, &
+      2.0631281621E-02, 2.1236757562E-02, 2.1791862265E-02, 2.2295279082E-02, &
+      2.2745813964E-02, 2.3142398291E-02, 2.3484091408E-02, 2.3770082857E-02, &
+      2.3999694298E-02, 2.4172381117E-02, 2.4287733721E-02, 2.4345478505E-02, &
+      2.4345478505E-02, 2.4287733721E-02, 2.4172381117E-02, 2.3999694298E-02, &
+      2.3770082857E-02, 2.3484091408E-02, 2.3142398291E-02, 2.2745813964E-02, &
+      2.2295279082E-02, 2.1791862265E-02, 2.1236757562E-02, 2.0631281621E-02, &
+      1.9976870566E-02, 1.9275076589E-02, 1.8527564270E-02, 1.7736106628E-02, &
+      1.6902580919E-02, 1.6028964177E-02, 1.5117328536E-02, 1.4169836307E-02, &
+      1.3188734858E-02, 1.2176351284E-02, 1.1135086904E-02, 1.0067411577E-02, &
+      8.9758578878E-03, 7.8630152380E-03, 6.7315239484E-03, 5.5840697301E-03, &
+      4.4233799132E-03, 3.2522289845E-03, 2.0735166303E-03, 8.9164036085E-04 ]
+
+   real, parameter :: XI128(128) = [ &
+      8.7556026434E-05, 4.6127001131E-04, 1.1333756872E-03, 2.1036207325E-03, &
+      3.3714435499E-03, 4.9360907541E-03, 6.7966286377E-03, 8.9519457821E-03, &
+      1.1400754268E-02, 1.4141590626E-02, 1.7172816784E-02, 2.0492621073E-02, &
+      2.4099019329E-02, 2.7989856085E-02, 3.2162805861E-02, 3.6615374561E-02, &
+      4.1344900960E-02, 4.6348558299E-02, 5.1623355975E-02, 5.7166141327E-02, &
+      6.2973601521E-02, 6.9042265530E-02, 7.5368506211E-02, 8.1948542470E-02, &
+      8.8778441522E-02, 9.5854121246E-02, 1.0317135262E-01, 1.1072576225E-01, &
+      1.1851283498E-01, 1.2652791660E-01, 1.3476621663E-01, 1.4322281116E-01, &
+      1.5189264582E-01, 1.6077053878E-01, 1.6985118386E-01, 1.7912915372E-01, &
+      1.8859890304E-01, 1.9825477192E-01, 2.0809098919E-01, 2.1810167589E-01, &
+      2.2828084879E-01, 2.3862242397E-01, 2.4912022043E-01, 2.5976796380E-01, &
+      2.7055929008E-01, 2.8148774948E-01, 2.9254681022E-01, 3.0372986248E-01, &
+      3.1503022233E-01, 3.2644113570E-01, 3.3795578249E-01, 3.4956728056E-01, &
+      3.6126868991E-01, 3.7305301679E-01, 3.8491321789E-01, 3.9684220455E-01, &
+      4.0883284701E-01, 4.2087797864E-01, 4.3297040027E-01, 4.4510288444E-01, &
+      4.5726817975E-01, 4.6945901520E-01, 4.8166810452E-01, 4.9388815052E-01, &
+      5.0611184948E-01, 5.1833189548E-01, 5.3054098480E-01, 5.4273182025E-01, &
+      5.5489711556E-01, 5.6702959973E-01, 5.7912202136E-01, 5.9116715299E-01, &
+      6.0315779545E-01, 6.1508678211E-01, 6.2694698321E-01, 6.3873131009E-01, &
+      6.5043271944E-01, 6.6204421751E-01, 6.7355886430E-01, 6.8496977767E-01, &
+      6.9627013752E-01, 7.0745318978E-01, 7.1851225052E-01, 7.2944070992E-01, &
+      7.4023203620E-01, 7.5087977957E-01, 7.6137757603E-01, 7.7171915121E-01, &
+      7.8189832411E-01, 7.9190901081E-01, 8.0174522808E-01, 8.1140109696E-01, &
+      8.2087084628E-01, 8.3014881614E-01, 8.3922946122E-01, 8.4810735418E-01, &
+      8.5677718884E-01, 8.6523378337E-01, 8.7347208340E-01, 8.8148716502E-01, &
+      8.8927423775E-01, 8.9682864738E-01, 9.0414587875E-01, 9.1122155848E-01, &
+      9.1805145753E-01, 9.2463149379E-01, 9.3095773447E-01, 9.3702639848E-01, &
+      9.4283385867E-01, 9.4837664402E-01, 9.5365144170E-01, 9.5865509904E-01, &
+      9.6338462544E-01, 9.6783719414E-01, 9.7201014392E-01, 9.7590098067E-01, &
+      9.7950737893E-01, 9.8282718322E-01, 9.8585840937E-01, 9.8859924573E-01, &
+      9.9104805422E-01, 9.9320337136E-01, 9.9506390925E-01, 9.9662855645E-01, &
+      9.9789637927E-01, 9.9886662431E-01, 9.9953872999E-01, 9.9991244397E-01 ]
+
+   real, parameter :: W128(128) = [ &
+      2.2469048014E-04, 5.2290633967E-04, 8.2125150933E-04, 1.1191442155E-03, &
+      1.4163757357E-03, 1.7127630205E-03, 2.0081274919E-03, 2.3022921284E-03, &
+      2.5950809163E-03, 2.8863187714E-03, 3.1758315809E-03, 3.4634462834E-03, &
+      3.7489909628E-03, 4.0322949452E-03, 4.3131888993E-03, 4.5915049358E-03, &
+      4.8670767075E-03, 5.1397395079E-03, 5.4093303698E-03, 5.6756881620E-03, &
+      5.9386536864E-03, 6.1980697720E-03, 6.4537813696E-03, 6.7056356443E-03, &
+      6.9534820665E-03, 7.1971725021E-03, 7.4365613011E-03, 7.6715053844E-03, &
+      7.9018643297E-03, 8.1275004549E-03, 8.3482789008E-03, 8.5640677116E-03, &
+      8.7747379136E-03, 8.9801635925E-03, 9.1802219687E-03, 9.3747934703E-03, &
+      9.5637618050E-03, 9.7470140294E-03, 9.9244406164E-03, 1.0095935521E-02, &
+      1.0261396243E-02, 1.0420723890E-02, 1.0573823234E-02, 1.0720602770E-02, &
+      1.0860974769E-02, 1.0994855334E-02, 1.1122164447E-02, 1.1242826016E-02, &
+      1.1356767925E-02, 1.1463922072E-02, 1.1564224412E-02, 1.1657614997E-02, &
+      1.1744038008E-02, 1.1823441792E-02, 1.1895778891E-02, 1.1961006068E-02, &
+      1.2019084341E-02, 1.2069978995E-02, 1.2113659611E-02, 1.2150100084E-02, &
+      1.2179278632E-02, 1.2201177817E-02, 1.2215784549E-02, 1.2223090098E-02, &
+      1.2223090098E-02, 1.2215784549E-02, 1.2201177817E-02, 1.2179278632E-02, &
+      1.2150100084E-02, 1.2113659611E-02, 1.2069978995E-02, 1.2019084341E-02, &
+      1.1961006068E-02, 1.1895778891E-02, 1.1823441792E-02, 1.1744038008E-02, &
+      1.1657614997E-02, 1.1564224412E-02, 1.1463922072E-02, 1.1356767925E-02, &
+      1.1242826016E-02, 1.1122164447E-02, 1.0994855334E-02, 1.0860974769E-02, &
+      1.0720602770E-02, 1.0573823234E-02, 1.0420723890E-02, 1.0261396243E-02, &
+      1.0095935521E-02, 9.9244406164E-03, 9.7470140294E-03, 9.5637618050E-03, &
+      9.3747934703E-03, 9.1802219687E-03, 8.9801635925E-03, 8.7747379136E-03, &
+      8.5640677116E-03, 8.3482789008E-03, 8.1275004549E-03, 7.9018643297E-03, &
+      7.6715053844E-03, 7.4365613011E-03, 7.1971725021E-03, 6.9534820665E-03, &
+      6.7056356443E-03, 6.4537813696E-03, 6.1980697720E-03, 5.9386536864E-03, &
+      5.6756881620E-03, 5.4093303698E-03, 5.1397395079E-03, 4.8670767075E-03, &
+      4.5915049358E-03, 4.3131888993E-03, 4.0322949452E-03, 3.7489909628E-03, &
+      3.4634462834E-03, 3.1758315809E-03, 2.8863187714E-03, 2.5950809163E-03, &
+      2.3022921284E-03, 2.0081274919E-03, 1.7127630205E-03, 1.4163757357E-03, &
+      1.1191442155E-03, 8.2125150933E-04, 5.2290633967E-04, 2.2469048014E-04 ]
+
 !------------------------------------------------------------------------------
    type :: NEC_ZFILL_TYPE
-      ! DEFAULTS (as of the shorted-parallel-wire-TL validation): set to
-      ! reproduce original zfill_m exactly (RTWK self, BARE near-pairs,
-      ! C1=C2=C3=0 -- i.e. NEAR classification reduces to pure node-sharing,
-      ! same as original). Confirmed by direct test: this combination
-      ! reproduced original zfill_m's Zin to full precision (171.05 ohm) on
-      ! the shorted-TL case. The more elaborate options below (ETWK/EXACT
-      ! self, EXACT/ETWK near-pairs, nonzero C1/C2/C3) are validated
-      ! improvements ONLY for specific regimes tested so far (self term at
-      ! extreme Delta/a; not yet confirmed for near-pairs in general) --
-      ! they are NOT safe blanket defaults. Turn them on deliberately, one
-      ! at a time, with an isolated A/B test against this baseline for
-      ! whatever geometry you're applying them to -- the phi-averaged model
-      ! (ETWK/EXACT) was found to make near-PAIR results substantially
-      ! WORSE on the shorted-TL 90-degree-junction case despite being
-      ! "more correct" kernel math in isolation, so "more accurate kernel"
-      ! does not reliably imply "better Zin" once assembled into the full
-      ! matrix -- there is no substitute for testing each change against a
-      ! known-good reference on the actual geometry you care about.
-      integer :: selfKernel = KERNEL_RTWK    ! RTWK (=original zfill_m,
-                                              ! Gibson closed form) / ETWK /
-                                              ! EXACT. ETWK/EXACT validated
-                                              ! more accurate than RTWK
-                                              ! specifically at extreme
-                                              ! Delta/a (short-strap self
-                                              ! terms) -- not yet tested
-                                              ! against Gibson independently
-                                              ! of RTWK at that regime; only
-                                              ! RTWK has been directly
-                                              ! confirmed to match Gibson.
-      integer :: nearKernel = KERNEL_BARE    ! BARE (=original zfill_m) /
-                                              ! RTWK (bare + a^2 floor,
-                                              ! NOT the same as original
-                                              ! despite the name) / ETWK /
-                                              ! EXACT (phi-averaged surface-
-                                              ! current model). BARE is the
-                                              ! only one confirmed to
-                                              ! reproduce original zfill_m;
-                                              ! the others substantially
-                                              ! changed Zin on the shorted-
-                                              ! TL case, direction and
-                                              ! magnitude not yet understood
-                                              ! well enough to recommend.
+      ! Defaults reproduce original zfill_m: RTWK self term (Gibson closed
+      ! form), BARE near-pairs (no offset). ETWK/EXACT self and ETWK/EXACT/
+      ! RTWK near-pair kernels are selectable alternatives -- see the
+      ! KERNEL_* parameter comments above for what each does and when it's
+      ! more accurate.
+      integer :: selfKernel = KERNEL_RTWK    ! RTWK / ETWK / EXACT
+      integer :: nearKernel = KERNEL_BARE    ! BARE / RTWK / ETWK / EXACT --
+                                              ! RTWK here means bare + a^2
+                                              ! floor, not a plain match to
+                                              ! original zfill_m.
 
-      ! Hybrid NEAR classification thresholds (see classify_near). Node-
-      ! sharing is always NEAR regardless of these. DEFAULTS SET TO ZERO --
-      ! i.e. NEAR reduces to pure node-sharing, matching original zfill_m --
-      ! for the same reason as the kernel defaults above: nonzero values
-      ! were never isolated from the nearKernel confound in this session's
-      ! testing (every nonzero-C1/C2/C3 run also had a near-pair kernel
-      ! choice active at the same time), so their real effect on Zin is
-      ! still unknown. Re-enable deliberately, one at a time, with your own
-      ! A/B test.
-      real :: C1_lenMult = 0.0    ! centroid sep < C1_lenMult * max(Lp,Lq)
-      real :: C2_lambda  = 0.0    ! centroid sep < C2_lambda * lambda
+      ! Node-sharing/surface-touching threshold for isNearTouching -- see
+      ! gap_within_radius. NEAR-pair quadrature order itself is chosen by
+      ! select_nQ (purely geometric, no configuration needed).
       real :: C3_radMult = 0.0    ! axis-to-axis gap < C3_radMult * wireRadius
    contains
       procedure          :: fill_matrix_nec
@@ -360,7 +311,7 @@ module zfill_nec_m
       procedure, private :: source_pair_exact
       procedure, private :: etwk_core
       procedure, private :: exact_core
-      procedure, private :: classify_near
+      procedure, private :: select_nQ
       procedure, private :: gap_within_radius
    end type NEC_ZFILL_TYPE
 
@@ -447,7 +398,7 @@ contains
       complex                              :: Z
 
       type(SEGMENT_TYPE) :: Sp, Sq
-      logical  :: isSelf, isNear, isNearTouching
+      logical  :: isSelf, isNearTouching
       integer  :: ip, nQtest
       real     :: xTest, Lp, scalar_p, uDotu
       real     :: vTest(3)
@@ -457,21 +408,15 @@ contains
       Sq = Segs(Hq%iSeg)
 
       isSelf = (Hp%iSeg == Hq%iSeg) .and. (.not. useImage)
-      isNear = this%classify_near(Sp, Sq, wireRadius, Bk) .and. (.not. isSelf)
 
-      ! Of the NEAR pairs, only route to the ETWK closed-form treatment
+      ! Of the non-self pairs, only route to the ETWK closed-form treatment
       ! (source_pair_etwk) when the field point's axial projection is
       ! actually likely to land at/near the source segment's own span --
-      ! node-sharing or true surface proximity. The C1_lenMult/C2_lambda
-      ! criteria in classify_near catch moderately-close, often collinear,
-      ! non-touching pairs where the projection frequently falls WELL
-      ! outside [0,L]; applying the singularity-subtracted ETWK formula
-      ! there was overcorrecting (confirmed empirically: Zin reactance
-      ! blew up to +74.7 ohm once those pairs started routing through it).
-      ! Those pairs still get elevated (NQ_NEAR) quadrature order via
-      ! isNear below -- that addresses the legitimate phase/quadrature-
-      ! resolution concern C1/C2 were meant for -- just via plain RTWK
-      ! quadrature (source_gauss_nec) rather than the closed-form ETWK path.
+      ! node-sharing or true surface proximity (isNearTouching below).
+      ! Applying the singularity-subtracted ETWK formula further out
+      ! overcorrects. Those pairs instead get graduated quadrature order
+      ! from select_nQ via plain RTWK quadrature (source_gauss_nec) rather
+      ! than the closed-form ETWK path.
       isNearTouching = (segments_share_node(Sp, Sq) .or. &
                          this%gap_within_radius(Sp, Sq, wireRadius)) .and. (.not. isSelf)
 
@@ -488,8 +433,19 @@ contains
       end if
 
       Lp     = Sp%length
-      nQtest = NQ_FAR
-      if (isSelf .or. isNear) nQtest = NQ_NEAR
+      if (isSelf .or. isNearTouching) then
+         ! Self terms and node-sharing/surface-touching pairs keep the
+         ! original fixed NQ_NEAR order -- they're handled by dedicated
+         ! kernel formulas below (self_*/pair_*/source_gauss_bare), not by
+         ! the graduated ladder, which targets moderately-close,
+         ! non-touching pairs where a plain RTWK quadrature is used but the
+         ! source segment can still subtend a large angle at the test point.
+         nQtest = NQ_NEAR
+      else
+         ! Graduated quadrature order from the true minimum distance
+         ! between the segments' axes -- see select_nQ.
+         nQtest = this%select_nQ(Sp, Sq)
+      end if
 
       A_pq   = zZERO
       Phi_pq = zZERO
@@ -510,35 +466,30 @@ contains
                call this%source_self_rtwk(xTest, wireRadius, Lp, Hq%iEnd, Bk, Ivec, Iscl)
             end select
          else if (isNearTouching .and. .not. useImage) then
-            ! Node-sharing or true surface proximity. Default kernel here is
-            ! configurable via nearKernel:
+            ! Node-sharing or true surface proximity. Kernel is configurable
+            ! via nearKernel:
             !  KERNEL_EXACT/KERNEL_ETWK -> phi-averaged surface-current
             !    model (source_pair_exact/etwk), generalizing Burke's
-            !    SELF-term formula to pair interactions -- Burke never
-            !    validates this for pairs, only self. Testing hypothesis.
-            !  KERNEL_RTWK -> simple filament + a^2-floor treatment, NO
+            !    SELF-term formula to pair interactions -- Burke only
+            !    validates this for the self term.
+            !  KERNEL_RTWK -> simple filament + a^2-floor treatment, no
             !    phi-averaging (source_gauss_nec, forced to near-quadrature
-            !    order) -- matches original zfill_m's near-pair convention
-            !    (bare R, or R with a^2 floor once isNear is true). Added
-            !    as an option after EXACT vs ETWK barely moved Zin on the
-            !    shorted-TL test, suggesting the phi-averaged model itself,
-            !    not its accuracy, may be the wrong generalization for
-            !    PAIR (non-self, different-segment) interactions.
+            !    order).
             ! Image terms fall through to the plain RTWK path below -- the
-            ! reflected geometry changes the projection algebra and I
-            ! haven't worked that through yet.
+            ! reflected geometry changes the projection algebra, not
+            ! currently handled by the phi-averaged kernels.
             select case (this%nearKernel)
             case (KERNEL_EXACT)
                call this%source_pair_exact(vTest, Sq, wireRadius, Bk, Hq%iEnd, Ivec, Iscl)
             case (KERNEL_ETWK)
                call this%source_pair_etwk(vTest, Sq, wireRadius, Bk, Hq%iEnd, Ivec, Iscl)
             case (KERNEL_RTWK)
-               call this%source_gauss_nec(vTest, Sq, wireRadius, Bk, Hq%iEnd, .true., useImage, Ivec, Iscl)
+               call this%source_gauss_nec(vTest, Sq, wireRadius, Bk, Hq%iEnd, NQ_NEAR, useImage, Ivec, Iscl)
             case default   ! KERNEL_BARE
                call this%source_gauss_bare(vTest, Sq, Bk, Hq%iEnd, Ivec, Iscl)
             end select
          else
-            call this%source_gauss_nec(vTest, Sq, wireRadius, Bk, Hq%iEnd, isNear, useImage, Ivec, Iscl)
+            call this%source_gauss_nec(vTest, Sq, wireRadius, Bk, Hq%iEnd, nQtest, useImage, Ivec, Iscl)
          end if
 
          A_pq   = A_pq   + w_n(ip, nQtest) * Lp * scalar_p * Ivec
@@ -558,16 +509,20 @@ contains
 !  source_gauss_nec: NEAR/FAR source integration. RTWK reduced-kernel radius
 !  offset (Burke eq. 3, R0 = sqrt(rho^2+a^2+dz^2), which for a general 3-D
 !  pair reduces to R = sqrt(|dr|^2 + a^2) since rho^2+dz^2 is exactly the
-!  squared distance from the test point to the source axis) is applied ONLY
-!  for isNear pairs -- see the FIX note at the Rsq computation below for why
-!  applying it unconditionally (the original version of this routine) was
-!  wrong. Genuine FAR pairs use bare R = |dr|, matching original zfill_m.
+!  squared distance from the test point to the source axis) is applied only
+!  for elevated-order (nQsrc > NQ_FAR) pairs -- see the Rsq computation
+!  below. Genuine FAR pairs use bare R = |dr|.
 !
-!  ASSUMPTION FLAGGED (unchanged from before): uses `wireRadius` for both
-!  test and source segment. If SEGMENT_TYPE carries a per-segment radius,
-!  use Sq's own radius for the source-side offset instead.
+!  nQsrc is passed in directly by the caller (nQtest for the graduated,
+!  non-touching-pair branch; NQ_NEAR for the node-sharing/touching-pair
+!  KERNEL_RTWK branch) rather than derived from a NEAR/FAR boolean here --
+!  see select_nQ for how the graduated order is chosen.
+!
+!  ASSUMPTION: uses `wireRadius` for both test and source segment. If
+!  SEGMENT_TYPE carries a per-segment radius, use Sq's own radius for the
+!  source-side offset instead.
 !==============================================================================
-   subroutine source_gauss_nec(this, vTest, Sq, wireRadius, Bk, iEnd_q, isNear, useImage, Ivec, Iscl)
+   subroutine source_gauss_nec(this, vTest, Sq, wireRadius, Bk, iEnd_q, nQsrc, useImage, Ivec, Iscl)
 
       class(NEC_ZFILL_TYPE), intent(in)  :: this
       real,                   intent(in)  :: vTest(3)
@@ -575,17 +530,14 @@ contains
       real,                   intent(in)  :: wireRadius
       real,                   intent(in)  :: Bk
       integer,                intent(in)  :: iEnd_q
-      logical,                intent(in)  :: isNear
+      integer,                intent(in)  :: nQsrc
       logical,                intent(in)  :: useImage
       complex,                intent(out) :: Ivec, Iscl
 
-      integer :: iq, nQsrc
+      integer :: iq
       real    :: xSrc, Lq, R, Rsq, scalar_q
       real    :: vSrc(3), vSrcImg(3), vR(3)
       complex :: Green
-
-      nQsrc = NQ_FAR
-      if (isNear) nQsrc = NQ_NEAR
 
       Lq   = Sq%length
       Ivec = zZERO
@@ -604,19 +556,15 @@ contains
             vR = vTest - vSrc
          end if
 
-         ! RTWK offset (Burke eq.3's a^2 term) applied ONLY for isNear pairs,
-         ! not unconditionally. FIX: this used to add wireRadius^2 to every
-         ! pair including genuine FAR ones. For two closely-spaced parallel
-         ! wires, input reactance is governed by the self-inductance MINUS
-         ! mutual-inductance cancellation between the wires; softening 1/R
-         ! (via +a^2) on cross-wire FAR-classified pairs weakens that mutual
-         ! coupling and inflates net reactance -- confirmed empirically on
-         ! the shorted-TL test case (Zin reactance dropped from ~293 toward
-         ! zfill_m's ~171 ohm reference once this was scoped to isNear only).
-         ! Genuine FAR pairs now match original zfill_m's bare-R treatment;
-         ! the offset still applies for isNear (quadrature-resolution
-         ! concern, where it's actually earning its keep).
-         if (isNear) then
+         ! RTWK offset (Burke eq.3's a^2 term) applied only for elevated-order
+         ! (nQsrc > NQ_FAR) pairs, not unconditionally: for two closely-spaced
+         ! parallel wires, input reactance is governed by self-inductance
+         ! MINUS mutual-inductance cancellation between the wires; softening
+         ! 1/R (via +a^2) on cross-wire FAR-classified pairs weakens that
+         ! mutual coupling and inflates net reactance. Genuine FAR pairs use
+         ! bare-R; the offset applies only where the elevated quadrature
+         ! order signals a quadrature-resolution concern.
+         if (nQsrc > NQ_FAR) then
             Rsq = dot_product(vR, vR) + wireRadius * wireRadius
          else
             Rsq = dot_product(vR, vR)
@@ -637,15 +585,10 @@ contains
 
 
 !==============================================================================
-!  source_gauss_bare: exact transcription of original zfill_m::source_gauss
-!  (verified by direct inspection of the uploaded file). Bare R = |dr|, NO
-!  offset of any kind -- not a^2, not phi-averaging. NQ_NEAR quadrature
-!  order always (caller only invokes this when isNearTouching). This is the
-!  true apples-to-apples baseline for isolating whether the kernel-formula
-!  choice for near-touching pairs is what's driving the shorted-TL Zin
-!  discrepancy, or whether it's something else entirely -- if this ALSO
-!  lands near 270-295 ohm rather than zfill_m's 171, the bug is not in the
-!  kernel formula at all.
+!  source_gauss_bare: exact transcription of original zfill_m::source_gauss.
+!  Bare R = |dr|, no offset of any kind -- not a^2, not phi-averaging.
+!  NQ_NEAR quadrature order always (caller only invokes this when
+!  isNearTouching).
 !==============================================================================
    subroutine source_gauss_bare(this, vTest, Sq, Bk, iEnd_q, Ivec, Iscl)
 
@@ -687,25 +630,14 @@ contains
 
 
 !==============================================================================
-!  source_self_rtwk: RTWK self term.
-!
-!  FIX: this previously did a fixed 16-point Gauss-Legendre quadrature of
-!  e^{-jkR0}/R0 directly over the whole segment. For a=x << L (typical thin
-!  wire, L/a often in the hundreds), 1/R0 is a ridge only about `a` wide
-!  sitting inside a domain of length L -- a global 16-point rule essentially
-!  never resolves it. That produced Zin = 68.97 - j134.04 on a resonant
-!  half-wave dipole, against the correct ~73+j7 (Gibson closed form) and
-!  ~73+j7 (ETWK) -- not a sign ETWK was wrong, a sign this quadrature
-!  approximation was much too crude for a legitimate comparison.
-!
-!  This is mathematically the SAME integral zfill_m's Gibson closed form
-!  evaluates (R0 = sqrt(a^2+x^2) is exactly Burke's RTWK R0 at rho=0), so
-!  rather than fix the quadrature (which would just mean adding a
-!  singularity-subtraction scheme identical in spirit to ETWK, at which
-!  point it's not really a distinct "RTWK" baseline anymore), this now
-!  calls Gibson's closed form directly. It exists here mainly so
-!  selfKernel=KERNEL_RTWK gives a fast, exact reference to diff ETWK
-!  against, not as an independent numerical method.
+!  source_self_rtwk: RTWK self term, via Gibson's closed form rather than
+!  direct quadrature of e^{-jkR0}/R0. For a=x << L (typical thin wire, L/a
+!  often in the hundreds), 1/R0 is a ridge only about `a` wide sitting
+!  inside a domain of length L -- a fixed-order Gauss-Legendre rule over the
+!  whole segment cannot resolve it without a singularity-subtraction scheme,
+!  at which point it stops being a distinct RTWK baseline from ETWK. This is
+!  mathematically the same integral Gibson's closed form evaluates (R0 =
+!  sqrt(a^2+x^2) is exactly Burke's RTWK R0 at rho=0), so it's used directly.
 !
 !  Reference: Gibson, "The Method of Moments in Electromagnetics", 2nd ed.,
 !  Sec. 4.5.2, Eqs. 4.83-4.86 -- reproduced from zfill_m::source_self_analytical.
@@ -763,13 +695,11 @@ contains
 !
 !  WEIGHTED (Ivec) EXTENSION -- NOT FROM THE PAPER:
 !  Burke's K1 is for constant source density. For the rooftop scalar_q(z')
-!  ramp, I apply standard singularity subtraction: the closed-form log
-!  (singular) term is weighted by scalar_q evaluated AT THE TEST POINT
+!  ramp, standard singularity subtraction is used: the closed-form log
+!  (singular) term is weighted by scalar_q evaluated at the test point
 !  (since the z' dependence in that term has already been integrated out
 !  analytically), while the regular (e^{-jkR0}-1)/R0 term is weighted
-!  pointwise by scalar_q(z') under the z' quadrature, as usual. This is a
-!  reasonable standard approximation, not a formula given in the paper --
-!  flagging it explicitly so it isn't mistaken for Burke's result.
+!  pointwise by scalar_q(z') under the z' quadrature, as usual.
 !==============================================================================
    subroutine source_self_etwk(this, x, a, L, iEnd_q, Bk, Ivec, Iscl)
 
@@ -837,10 +767,9 @@ contains
 !
 !  WEIGHTED (Ivec) EXTENSION -- NOT FROM THE PAPER (see module header):
 !  the closed-form singular term is weighted by scalar_q evaluated at x --
-!  i.e. at the SOURCE segment's own coordinate nearest the field point's
+!  i.e. at the source segment's own coordinate nearest the field point's
 !  axial projection, which is where the near-singular behavior is
-!  concentrated. This is the same substitution used before, just now stated
-!  generally: x plays the role "z1/z2 are built from" in both call sites.
+!  concentrated.
 !==============================================================================
    subroutine etwk_core(this, rho, x, a, L, iEnd_q, Bk, Ivec, Iscl)
 
@@ -894,7 +823,7 @@ contains
          ! mathematically >=0, but computed as X+sqrt(X^2+eps) this suffers
          ! catastrophic cancellation whenever X<0 and |X| is large relative
          ! to eps (i.e. the field-point axial projection lands well outside
-         ! [0,L] -- expected now that classify_near can flag pairs close by
+         ! [0,L] -- expected for isNearTouching pairs close by true axis
          ! distance but far apart along the axis). Use stable_xpsqrt below
          ! rather than the direct sum.
          epsPhi = a*a + rho*rho - 2.0*a*rho*cphi
@@ -905,24 +834,21 @@ contains
       end do
 
       ! Iscl: K1 normalized to match zfill_m's G=exp(-jkR)/(4*pi*R) filament
-      ! convention (see derivation below -- final divisor is 8*pi^2, not 4*pi).
-      ! NOTE: term1_scl is already complex (carries e^{-jkR0} phase from
-      ! Green0) -- do NOT wrap in cmplx(...,0.0) here, that silently drops
-      ! its imaginary part. (-singPart+phiIntegral) is real and promotes
-      ! fine under ordinary complex+real addition.
+      ! convention. NOTE: term1_scl is already complex (carries e^{-jkR0}
+      ! phase from Green0) -- do NOT wrap in cmplx(...,0.0) here, that
+      ! silently drops its imaginary part. (-singPart+phiIntegral) is real
+      ! and promotes fine under ordinary complex+real addition.
       !
-      ! NORMALIZATION (found by cross-checking against source_self_rtwk):
-      ! Burke's K0 (eq.3) = 2*pi * INT e^{-jkR0}/R0 dz'. source_self_rtwk
-      ! computes the plain filament integral INT e^{-jkR0}/R0 dz' directly
-      ! (no 2*pi), normalized by /(4*pi) -- i.e. it computes K0/(8*pi^2).
-      ! K1 is built on the SAME "K" convention as K0 (both approximate the
-      ! same Burke eq.1 double integral), so it needs the SAME divisor,
-      ! K1/(8*pi^2), not K1/(4*pi) -- the /(4*pi) alone is missing a
-      ! factor of 2*pi, inflating every self/near-pair ETWK contribution.
+      ! NORMALIZATION: Burke's K0 (eq.3) = 2*pi * INT e^{-jkR0}/R0 dz'.
+      ! source_self_rtwk computes the plain filament integral
+      ! INT e^{-jkR0}/R0 dz' directly (no 2*pi), normalized by /(4*pi) --
+      ! i.e. it computes K0/(8*pi^2). K1 is built on the same K convention
+      ! as K0 (both approximate the same Burke eq.1 double integral), so it
+      ! needs the same divisor, K1/(8*pi^2), not K1/(4*pi).
       Iscl = (term1_scl + (-singPart + phiIntegral)) / (FOURPI * 2.0*PI)
 
       ! Ivec: singularity-subtraction weighting -- see header note above.
-      ! Same /(8*pi^2) normalization fix as Iscl above -- both pieces of K1
+      ! Same /(8*pi^2) normalization as Iscl -- both pieces of K1
       ! (term1_vec and the closed-form part) are on Burke's K-convention.
       scalar_test = scalar_fn(x, L, iEnd_q)
       Ivec = (term1_vec + scalar_test * (-singPart + phiIntegral)) / (FOURPI * 2.0*PI)
@@ -939,27 +865,20 @@ contains
 !      exp(-jkR)/R,   R = sqrt(rho^2 + a^2 + (x-z')^2 - 2*a*rho*cos(phi))
 !
 !  (Burke eq.1's integrand, before any RTWK/ETWK approximation is applied to
-!  it). This exists because ETWK was validated (brute-force comparison
-!  against a converged high-resolution trapezoid reference, on the
-!  90-degree-junction shorted-parallel-wire-TL test case) to underestimate
-!  the true kernel by up to ~17% specifically when rho is comparable to a --
-!  ETWK's "regular" term approximates the true kernel's phi-dependence by
-!  evaluating it once at phi=pi/2 and multiplying by 2*pi, which is a poor
-!  approximation exactly in that regime. R is never actually zero here (it's
-!  bounded below by a), so the integrand is smooth, not singular -- ordinary
-!  Gauss-Legendre converges fast on it (verified: even NQ_EXACT=16 matched
-!  the reference to 7 significant figures at the smallest rho tested,
-!  rho/a~0.13; NQ_EXACT=32 here is generous headroom, not a bare minimum).
-!  The ramp weight scalar_q(z') is applied directly inside the z' quadrature
-!  -- no singularity-subtraction approximation needed at all for the
-!  weighted (Ivec) term, unlike etwk_core.
+!  it). This exists because ETWK's "regular" term approximates the true
+!  kernel's phi-dependence by evaluating it once at phi=pi/2 and multiplying
+!  by 2*pi, which underestimates the true kernel by up to ~17% when rho is
+!  comparable to a. R is never actually zero here (it's bounded below by a),
+!  so the integrand is smooth, not singular -- ordinary Gauss-Legendre
+!  converges fast on it; NQ_EXACT=32 is generous headroom, not a bare
+!  minimum. The ramp weight scalar_q(z') is applied directly inside the z'
+!  quadrature -- no singularity-subtraction approximation needed at all for
+!  the weighted (Ivec) term, unlike etwk_core.
 !
-!  Normalization: same /(8*pi^2) divisor as etwk_core, established by
-!  cross-checking against source_self_rtwk (see etwk_core's Iscl comment for
-!  the derivation) -- RTWK, ETWK, and EXACT all approximate (EXACT: exactly
-!  equal, to quadrature precision) the same underlying Burke eq.1 double
-!  integral, so all three need the same overall normalization to be
-!  comparable / substitutable in Z_half_pair_nec.
+!  Normalization: same /(8*pi^2) divisor as etwk_core -- RTWK, ETWK, and
+!  EXACT all approximate (EXACT: exactly, to quadrature precision) the same
+!  underlying Burke eq.1 double integral, so all three need the same overall
+!  normalization to be comparable / substitutable in Z_half_pair_nec.
 !==============================================================================
    subroutine source_self_exact(this, x, a, L, iEnd_q, Bk, Ivec, Iscl)
       class(NEC_ZFILL_TYPE), intent(in)  :: this
@@ -1053,77 +972,65 @@ contains
    end function scalar_fn
 
 !==============================================================================
-!  classify_near: hybrid NEAR classification.
+!  select_nQ: graduated quadrature-order selection for non-self,
+!  non-touching pairs, based on the true minimum distance between the two
+!  segments' axes (finite segments, not infinite lines -- seg_seg_distance),
+!  not centroid distance -- centroid separation is fooled by long, closely-
+!  spaced antiparallel runs (e.g. a tightly-spaced parallel-wire
+!  transmission line), where two facing segments' centroids sit a full
+!  segment-length apart even though their nearest points are only a few
+!  wire-diameters away.
 !
-!  The original criterion (segments_share_node) only catches pairs
-!  GUARANTEED to touch. It misses two other cases where the kernel needs
-!  the same careful treatment:
-!   - Non-touching segments whose CENTROIDS are close relative to their own
-!     length (quadrature-resolution concern: 1/R varies fast relative to
-!     the domain a fixed-order Gauss rule has to cover) or relative to
-!     wavelength (phase-sampling concern: e^{-jkR} varies fast over the
-!     quadrature domain).
-!   - Segments whose AXES pass close together without touching at all --
-!     e.g. a tightly-spaced parallel-wire transmission line. This is
-!     governed by gap relative to wire radius (a), NOT segment length or
-!     wavelength; Burke's Fig. 5 (parallel-wire Z0 vs s/d) is exactly this
-!     regime and is why ETWK exists.
+!  ratio = Lmax / gap, where Lmax = max(Sp%length, Sq%length) and gap is the
+!  true axis-to-axis segment distance. The larger the ratio, the more the
+!  source segment subtends at the test point relative to how close it is,
+!  so the faster 1/R and e^{-jkR} vary across the quadrature domain, and the
+!  higher the order needed to resolve them.
 !
-!  A pair is NEAR if it shares a node, OR centroid separation is within
-!  C1_lenMult*max(Lp,Lq), OR within C2_lambda*lambda, OR the minimum
-!  distance between the two AXIS SEGMENTS (finite segments, not infinite
-!  lines -- see seg_seg_distance) is within C3_radMult*wireRadius.
-!
-!  ASSUMPTION FLAGGED: uses `wireRadius` (single value, same one passed
-!  everywhere else in this module) for the C3 gap check. If your mesh mixes
-!  wire gauges on a close-spaced pair, this won't distinguish them -- same
-!  simplification already flagged in source_gauss_nec/source_pair_etwk.
+!  Pure geometry -- no wireRadius or wavelength dependence. A fixed physical
+!  gap (e.g. a 2cm-spaced TL) needs the same quadrature resolution
+!  regardless of frequency, but NBASISPERLAMBDA-driven meshing is
+!  wavelength-relative, so a wavelength-relative quadrature criterion would
+!  compound rather than compensate for that mismatch at the low-frequency
+!  end of a sweep.
 !
 !  Segment endpoints are computed as vNodes(:,1) + length*uHat rather than
 !  assuming a second vNodes column exists -- matches how the rest of this
 !  module (and zfill_m) reaches a segment's far end.
 !==============================================================================
-   pure logical function classify_near(this, Sp, Sq, wireRadius, Bk)
+   pure integer function select_nQ(this, Sp, Sq)
       class(NEC_ZFILL_TYPE), intent(in) :: this
       type(SEGMENT_TYPE),    intent(in) :: Sp, Sq
-      real,                   intent(in) :: wireRadius
-      real,                   intent(in) :: Bk
 
-      real :: centP(3), centQ(3), dCent, Lmax, lambda
+      real, parameter :: GAP_FLOOR = 1.0e-6
+      real :: P1(3), Q1(3), P2(3), Q2(3), dGap, Lmax, ratio
 
-      if (segments_share_node(Sp, Sq)) then
-         classify_near = .true.
-         return
-      end if
+      P1 = Sp%vNodes(:,1)
+      Q1 = Sp%vNodes(:,1) + Sp%length*Sp%uHat
+      P2 = Sq%vNodes(:,1)
+      Q2 = Sq%vNodes(:,1) + Sq%length*Sq%uHat
+      dGap = seg_seg_distance(P1, Q1, P2, Q2)
 
-      centP = Sp%vNodes(:,1) + 0.5*Sp%length*Sp%uHat
-      centQ = Sq%vNodes(:,1) + 0.5*Sq%length*Sq%uHat
-      dCent = norm2(centP - centQ)
       Lmax  = max(Sp%length, Sq%length)
-      lambda = 2.0*PI / max(Bk, 1.0e-30)
+      ratio = Lmax / max(dGap, GAP_FLOOR)
 
-      if (dCent < this%C1_lenMult*Lmax) then
-         classify_near = .true.
-         return
+      if (ratio < 2.0) then
+         select_nQ = NQ_FAR
+      else if (ratio < 25.0) then
+         select_nQ = NQ_NEAR
+      else if (ratio < 60.0) then
+         select_nQ = NQ_64
+      else
+         select_nQ = NQ_128
       end if
 
-      if (dCent < this%C2_lambda*lambda) then
-         classify_near = .true.
-         return
-      end if
-
-      classify_near = this%gap_within_radius(Sp, Sq, wireRadius)
-
-   end function classify_near
+   end function select_nQ
 
 
 !==============================================================================
-!  gap_within_radius: true surface-proximity check only (axis-to-axis
-!  segment distance vs. C3_radMult*wireRadius). Factored out of
-!  classify_near so Z_half_pair_nec can use it directly to decide ETWK
-!  routing (isNearTouching) without the broader C1/C2 distance criteria --
-!  see the note at the isNearTouching assignment for why those two are
-!  kept separate from the ETWK-routing decision.
+!  gap_within_radius: true surface-proximity check (axis-to-axis segment
+!  distance vs. C3_radMult*wireRadius), used by Z_half_pair_nec to decide
+!  ETWK routing (isNearTouching).
 !==============================================================================
    pure logical function gap_within_radius(this, Sp, Sq, wireRadius)
       class(NEC_ZFILL_TYPE), intent(in) :: this
@@ -1239,13 +1146,15 @@ contains
 
    pure real function xi_n(i, nQ)
       integer, intent(in) :: i, nQ
-      ! Explicit dispatch on nQ (was "if NQ_FAR else assume 16" -- silently
-      ! wrong once a third table (32-pt, for KERNEL_EXACT) existed).
       select case (nQ)
       case (NQ_FAR)
          xi_n = XI4(i)
       case (NQ_NEAR)   ! == NQ_PHI (both 16) by construction
          xi_n = XI16(i)
+      case (NQ_64)
+         xi_n = XI64(i)
+      case (NQ_128)
+         xi_n = XI128(i)
       case (NQ_EXACT)
          xi_n = XI32(i)
       case default
@@ -1260,6 +1169,10 @@ contains
          w_n = W4(i)
       case (NQ_NEAR)
          w_n = W16(i)
+      case (NQ_64)
+         w_n = W64(i)
+      case (NQ_128)
+         w_n = W128(i)
       case (NQ_EXACT)
          w_n = W32(i)
       case default

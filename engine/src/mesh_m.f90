@@ -158,7 +158,11 @@ contains
 
       write (*, *) ' ETA0 =', ETA0   ! sanity: should print ~376.730 Ω
 
-      ! --- ACTIVE path: zfill_m ZFILL_TYPE ---
+      ! --- ACTIVE path: zfill_nec_m NEC_ZFILL_TYPE ---
+      ! Near-pair quadrature order is chosen automatically by select_nQ
+      ! (zfill_nec_m), a seg_seg_distance-based graduated ladder -- no
+      ! manual threshold tuning needed here. nearKernel stays BARE;
+      ! C3_radMult stays 0 (isNearTouching reduces to pure node-sharing).
       call zNEC5%fill_matrix_nec(mesh%Basis2, mesh%Segs, bk0, zBlk, zReflection_Coef(1))
       !call zClaude%fill_matrix(mesh%Basis2, mesh%Segs, bk0, zBlk, zReflection_Coef(1))
 
@@ -337,7 +341,12 @@ contains
 !   wire_primitive into each segment (uppercased via toUpper).
 !
 !  Step 4 — merge_nodes:
-!   Collapses coincident nodes within tol = seglengthDesired * 0.001.
+!   Collapses coincident nodes within tol = min(seglengthDesired, shortest
+!   realized segment length) * 0.001 -- not seglengthDesired alone, which is
+!   only the wavelength-relative target and can exceed the actual length of
+!   a short, physically-fixed stub wire (e.g. a center-feed jumper) at low
+!   frequency/coarse NBASISPERLAMBDA, merging away one of its nodes and
+!   collapsing a segment to zero length.
 !   Returns map(:): map(i_old) = j_new.  The iLeftNode and iRightNode of
 !   every segment are immediately remapped using map.
 !
@@ -359,7 +368,7 @@ contains
       integer, allocatable            :: map(:)
 
       integer, parameter :: iLeft = 1, iRight = 2
-      real               :: tol, vSize_max(3), vSize_min(3)
+      real               :: tol, vSize_max(3), vSize_min(3), minSegLen, segLen
       logical            :: not_free_space = .true.
       !character          :: nodeTag*8, wireTag*16
 
@@ -413,9 +422,23 @@ contains
       end do
 
       ! Step 4: merge coincident nodes; remap segment endpoint IDs
-      ! tol = 0.1% of seglengthDesired: smaller than any real gap, larger than
-      ! floating-point round-off at wire junctions
-      tol = this%seglengthDesired*0.001
+      ! tol = 0.1% of the shortest segment actually realized by
+      ! wireprimitive_segment, not of seglengthDesired (the wavelength-
+      ! relative target length) -- using seglengthDesired directly can bite
+      ! short, physically-fixed stub wires (e.g. a center-feed jumper
+      ! between two long antiparallel runs) at low frequency/coarse
+      ! NBASISPERLAMBDA: seglengthDesired can grow well past the stub's own
+      ! sub-segment length, merging one of its intermediate nodes into a
+      ! neighboring node and collapsing that segment to zero length (which
+      ! then divides by zero in the self-term impedance formula,
+      ! zfill_nec_m_15.f90::source_self_rtwk). Using the true shortest
+      ! realized segment keeps tol always far below any legitimate segment.
+      minSegLen = huge(1.0)
+      do i = 1, size(SegsInitial)
+         segLen = norm2(SegsInitial(i)%vNodes(:, 2) - SegsInitial(i)%vNodes(:, 1))
+         minSegLen = min(minSegLen, segLen)
+      end do
+      tol = min(this%seglengthDesired, minSegLen)*0.001
 
       call merge_nodes(nodesInitial, nodes_out, map, tol)
       this%Nodes = nodes_out

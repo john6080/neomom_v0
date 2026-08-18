@@ -65,6 +65,54 @@ UNITS = {
 # Namelist parser
 # ══════════════════════════════════════════════════════════════════════════════
 
+_KV_RE = re.compile(r'(\w+(?:\([^)]*\))?)\s*=')
+
+
+def _split_kv_pairs(text):
+    """
+    Quote-aware split of a namelist body into [(key_lowercase, raw_value), ...].
+
+    A block body may hold more than one 'key = value' assignment on a
+    single line (the compact writer packs a whole group onto one line,
+    e.g. "tag = 'W1' nNodes = 2 nodeTags = 'A' 'B' radius = 0.001"), or
+    the classic one-assignment-per-line layout. Both are handled the
+    same way here since line breaks are irrelevant to Fortran namelist
+    syntax. Quoted strings are masked off first so an '=' or ',' inside
+    a quoted value (e.g. a RunTitle containing "s = 2 cm") is never
+    mistaken for the start of a new assignment. Keys may carry a
+    parenthesized subscript, e.g. node_list(1).
+    """
+    quote_spans = []
+    i, n = 0, len(text)
+    while i < n:
+        c = text[i]
+        if c in ("'", '"'):
+            j = i + 1
+            while j < n and text[j] != c:
+                j += 1
+            quote_spans.append((i, j))
+            i = j + 1
+        else:
+            i += 1
+
+    def in_quotes(pos):
+        return any(s <= pos <= e for s, e in quote_spans)
+
+    starts = [
+        (m.start(1), m.end())
+        for m in _KV_RE.finditer(text)
+        if not in_quotes(m.start(1))
+    ]
+
+    pairs = []
+    for idx, (key_start, val_start) in enumerate(starts):
+        key = text[key_start:val_start].split('=', 1)[0].strip().lower()
+        val_end = starts[idx + 1][0] if idx + 1 < len(starts) else len(text)
+        raw_val = text[val_start:val_end].strip().rstrip(',').strip()
+        pairs.append((key, raw_val))
+    return pairs
+
+
 def parse_nml(path):
     """
     Minimal Fortran namelist parser.
@@ -79,25 +127,21 @@ def parse_nml(path):
     for m in re.finditer(r'&(\w+)(.*?)/', text, re.DOTALL):
         bname = m.group(1).strip().lower()
         body  = m.group(2)
-        kv    = {}
 
+        # Strip comments per physical line, then join into one stream --
+        # line breaks don't matter for namelist syntax once comments are
+        # gone, and this lets _split_kv_pairs handle single-line and
+        # multi-line block bodies identically.
+        clean_lines = []
         for line in body.splitlines():
-            # strip whitespace and trailing Fortran list-separator comma
-            line = line.strip().rstrip(',')
-            # skip blank lines and comment-only lines
-            if not line or line.startswith('!'):
-                continue
-            # strip inline comment
             if '!' in line:
-                line = line[:line.index('!')].rstrip()
-            if '=' not in line:
-                continue
+                line = line[:line.index('!')]
+            line = line.strip()
+            if line:
+                clean_lines.append(line)
+        clean_body = ' '.join(clean_lines)
 
-            eq_pos = line.index('=')
-            key    = line[:eq_pos].strip().lower()
-            val    = line[eq_pos + 1:].strip().rstrip(',')
-            kv[key] = val
-
+        kv = dict(_split_kv_pairs(clean_body))
         blocks.append((bname, kv))
 
     return blocks
@@ -538,11 +582,14 @@ def main():
     nec_text = nml_to_nec(nml_path)
     out_path = os.path.splitext(nml_path)[0] + '.nec'
 
-    with open(out_path, 'w') as fh:
+    with open(out_path, 'w', encoding='utf-8') as fh:
         fh.write(nec_text)
 
-    print(nec_text)
-    print(f'─── Written to: {out_path} ───')
+    try:
+        print(nec_text)
+    except UnicodeEncodeError:
+        print(nec_text.encode('ascii', errors='replace').decode('ascii'))
+    print(f'--- Written to: {out_path} ---')
 
 
 if __name__ == '__main__':

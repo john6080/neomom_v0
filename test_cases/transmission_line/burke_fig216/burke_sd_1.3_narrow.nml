@@ -1,0 +1,24 @@
+&RunTitle title = 'Burke Fig 2.1.6 TL, s/d=1.3, l=5.0m, a=0.001m' /
+
+&Frequency_MHz fmin = 299.023060 fmax = 300.023060 fstep = 0.1 nFreq = 0 /
+
+&Ground Ground_Plane = 'free_space' epsilon = 1.0 sigma = 0.0 /
+
+&OPTIONS NBASISPERLAMBDA = 80 Output_Currents = .FALSE. sweep_mode = 'vna_sweep' /
+
+&node_input zHeight = 0.0 nNodes = 6 units = 'meters'
+ node_list(1) = 'A1', -5.000000, 0.000000, 0.000000
+ node_list(2) = 'M1',  0.000000, 0.000000, 0.000000
+ node_list(3) = 'B1',  5.000000, 0.000000, 0.000000
+ node_list(4) = 'A2', -5.000000, 0.00260000, 0.000000
+ node_list(5) = 'M2',  0.000000, 0.00260000, 0.000000
+ node_list(6) = 'B2',  5.000000, 0.00260000, 0.000000
+/
+
+&wire_primitive tag = 'W1' nNodes = 3 nodeTags = 'A1' 'M1' 'B1'     radius = 0.001 /
+
+&wire_primitive tag = 'W2' nNodes = 3 nodeTags = 'A2' 'M2' 'B2'     radius = 0.001 /
+
+&excitation_input wireTag = 'W1' nodeTag = 'M1' voltage = 1.0 phase_deg = 0.0 /
+
+&excitation_input wireTag = 'W2' nodeTag = 'M2' voltage = 1.0 phase_deg = 180.0 /

@@ -1,0 +1,23 @@
+&RunTitle title = 'TL, Open, 50m long, s = 0.5 cm, a = 0.001' /
+
+&Frequency_MHz fmin = 1.0 fmax = 5.0 fstep = 0.02 nFreq = 0 /
+
+&Ground Ground_Plane = 'free_space' epsilon = 1.0 sigma = 0.0 /
+
+&OPTIONS NBASISPERLAMBDA = 80 Output_Currents = .FALSE. sweep_mode = 'vna_sweep' /
+
+&node_input zHeight = 0.0 nNodes = 5 units = 'meters'
+ node_list(1) = 'A',  0.000000, 0.000000, 0.000000
+ node_list(2) = 'B', 50.000000, 0.000000, 0.000000
+ node_list(3) = 'C',  0.000000, 0.005000, 0.000000
+ node_list(4) = 'D', 50.000000, 0.005000, 0.000000
+ node_list(5) = 'M',  0.000000, 0.002500, 0.000000
+/
+
+&wire_primitive tag = 'W1' nNodes = 2 nodeTags = 'A' 'B'     radius = 0.001 /
+
+&wire_primitive tag = 'W2' nNodes = 2 nodeTags = 'C' 'D'     radius = 0.001 /
+
+&wire_primitive tag = 'W3' nNodes = 3 nodeTags = 'A' 'M' 'C' radius = 0.001 /
+
+&excitation_input wireTag = 'W3' nodeTag = 'M' voltage = 1.0 phase_deg = 0.0 /

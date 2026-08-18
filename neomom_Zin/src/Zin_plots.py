@@ -29,12 +29,17 @@ LW_RES  = 1.2         # resonance marker
 # ------------------------------------------------------------------
 # plot_RX
 # ------------------------------------------------------------------
-def plot_RX(ax, datasets, show_bands=True):
+def plot_RX(ax, datasets, show_bands=True, ylim=None):
     """
     Plot Rin (solid) and Xin (dashed) vs frequency for all datasets.
 
     Each dataset uses its own colour; Xin uses the same colour
     with dashed line style for visual pairing.
+
+    ylim, if given, is a (bottom, top) tuple (either may be None) applied
+    *before* the band overlay, since overlay_bands() positions its labels
+    from ax.get_ylim() — applying it after leaves labels anchored to the
+    old autoscaled range, breaking tight_layout.
     """
     for ds in datasets:
         if not ds.visible:
@@ -48,6 +53,9 @@ def plot_RX(ax, datasets, show_bands=True):
 
     ax.axhline(0, color=COL_REF, lw=LW_REF, linestyle=':')
     _add_resonance_markers(ax, datasets)
+
+    if ylim is not None:
+        ax.set_ylim(bottom=ylim[0], top=ylim[1])
 
     if show_bands:
         _overlay_bands_auto(ax, datasets)
@@ -63,12 +71,15 @@ def plot_RX(ax, datasets, show_bands=True):
 # ------------------------------------------------------------------
 # plot_GB
 # ------------------------------------------------------------------
-def plot_GB(ax, datasets, show_bands=True):
+def plot_GB(ax, datasets, show_bands=True, ylim=None):
     """
     Plot Gin (solid) and Bin (dashed) vs frequency for all datasets.
 
     Bin zero crossing marks resonance — key MoM validation diagnostic.
     Values shown in milli-Siemens.
+
+    ylim, if given, is a (bottom, top) tuple (either may be None) applied
+    *before* the band overlay — see plot_RX for why.
     """
     for ds in datasets:
         if not ds.visible:
@@ -103,6 +114,9 @@ def plot_GB(ax, datasets, show_bands=True):
     ax.axhline(0, color=COL_REF, lw=LW_REF, linestyle=':')
     _add_resonance_markers(ax, datasets)
 
+    if ylim is not None:
+        ax.set_ylim(bottom=ylim[0], top=ylim[1])
+
     if show_bands:
         _overlay_bands_auto(ax, datasets)
 
@@ -117,11 +131,15 @@ def plot_GB(ax, datasets, show_bands=True):
 # ------------------------------------------------------------------
 # plot_SWR
 # ------------------------------------------------------------------
-def plot_SWR(ax, datasets, show_bands=True, Z0=50.0):
+def plot_SWR(ax, datasets, show_bands=True, Z0=50.0, ylim=None):
     """
     Plot SWR vs frequency for all datasets at reference impedance Z0.
 
     SWR is computed from Rin/Xin — not from any pre-stored SWR column.
+
+    ylim, if given, is a (bottom, top) tuple (either may be None) applied
+    *before* the band overlay — see plot_RX for why. Overrides the default
+    bottom=1.0 floor when given.
     """
     SWR_MAX = 20.0
 
@@ -152,6 +170,11 @@ def plot_SWR(ax, datasets, show_bands=True, Z0=50.0):
     ax.axhline(2.0, color=COL_REF, lw=LW_REF, linestyle='--', label='SWR=2')
     _add_resonance_markers(ax, datasets)
 
+    if ylim is not None:
+        ax.set_ylim(bottom=ylim[0], top=ylim[1])
+    else:
+        ax.set_ylim(bottom=1.0)
+
     if show_bands:
         _overlay_bands_auto(ax, datasets)
 
@@ -159,7 +182,6 @@ def plot_SWR(ax, datasets, show_bands=True, Z0=50.0):
     ax.set_ylabel('SWR')
     ax.set_title(_make_title(datasets,
                              f'SWR vs Frequency  |  Z\u2080 = {Z0:.1f} \u03a9'))
-    ax.set_ylim(bottom=1.0)
     ax.legend(loc='upper right', framealpha=0.85, fontsize=8)
     ax.grid(True, which='major', linestyle=':', alpha=0.5)
     _set_freq_limits(ax, datasets)
