@@ -53,7 +53,7 @@ packages/*.zip
 test_cases/**/*.csv
 test_cases/**/*.cur
 test_cases/**/*.txt
-test_cases/**/*.nec
+test_cases/**/*.nec.out
 test_cases/**/*.nec.txt
 test_cases/**/*_Zin.csv
 
