@@ -420,16 +420,28 @@ class DpiScaling:
         return int(round(_BASE_DPI * self.scale))
 
     def window_geometry(self, widget, frac_w, frac_h,
-                        min_w=0, min_h=0) -> str:
+                        min_w=0, min_h=0, center=False) -> str:
         """
-        A centered Tk geometry string sized as a fraction of the
-        screen, in real pixels -- replaces hardcoded "600x475" /
-        "1200x800" literals so one call fits 1080p, 1440p and 4K.
+        A Tk geometry string sized as a fraction of the screen (capped
+        to the screen so the window never exceeds it) -- replaces
+        hardcoded "600x475" / "1200x800" literals so one call fits
+        1080p, 1440p and 4K.
+
+        Returns SIZE ONLY ("WxH") by default and lets the window
+        manager place the window.  That is the safe, conventional
+        choice: an explicit "+x+y" position can land the title bar
+        off-screen on some multi-monitor / panel / WM setups, leaving
+        the window with no reachable title-bar buttons and unable to
+        move.  Pass center=True only when you specifically want a
+        centered position and know the display layout is simple.
         """
         sw = widget.winfo_screenwidth()
         sh = widget.winfo_screenheight()
-        w = max(int(sw * frac_w), int(min_w))
-        h = max(int(sh * frac_h), int(min_h))
+        # Cap to the screen (small margins keep panels/title bar clear).
+        w = min(max(int(sw * frac_w), int(min_w)), max(sw - 40, 200))
+        h = min(max(int(sh * frac_h), int(min_h)), max(sh - 80, 200))
+        if not center:
+            return f"{w}x{h}"
         x = max((sw - w) // 2, 0)
         y = max((sh - h) // 2, 0)
         return f"{w}x{h}+{x}+{y}"
