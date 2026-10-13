@@ -1030,7 +1030,11 @@ class AntennaGUI:
         self.root.title("Antenna Pattern Viewer")
         self.root.resizable(False, False)
 
- 
+        # Menubar with the shared UI-scale control (plot has no other menu).
+        _menubar = tk.Menu(self.root)
+        self.ui.add_scale_menu(_menubar)
+        self.root.config(menu=_menubar)
+
         self._build_ui()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         

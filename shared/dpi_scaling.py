@@ -113,6 +113,45 @@ _ENV_OVERRIDE = "NEOMOM_UI_SCALE"
 
 
 # --------------------------------------------------------------
+# Persistent per-user UI-scale preference (shared by all NeoMOM GUIs)
+# --------------------------------------------------------------
+def _prefs_path():
+    """Shared prefs file: ~/.config/neomom/ui.json (Linux/macOS),
+    %APPDATA%\\neomom\\ui.json (Windows)."""
+    import pathlib
+    if platform.system() == "Windows":
+        base = pathlib.Path(os.environ.get("APPDATA", pathlib.Path.home()))
+    else:
+        base = pathlib.Path.home() / ".config"
+    return base / "neomom" / "ui.json"
+
+
+def load_saved_scale():
+    """Return the saved UI-scale factor (float), or None for 'auto'.
+    Never raises -- a missing/garbled file reads as 'auto'."""
+    import json
+    try:
+        with open(_prefs_path(), "r") as fh:
+            v = json.load(fh).get("scale")
+        return float(v) if v is not None else None
+    except Exception:
+        return None
+
+
+def save_scale(value):
+    """Persist the UI-scale factor. Pass None to mean 'auto' (detect).
+    Best-effort -- failure to write is non-fatal."""
+    import json
+    try:
+        p = _prefs_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with open(p, "w") as fh:
+            json.dump({"scale": value}, fh)
+    except Exception:
+        pass
+
+
+# --------------------------------------------------------------
 # Step 1 -- process DPI awareness (must run before the first Tk root)
 # --------------------------------------------------------------
 def enable_hidpi() -> str:
@@ -248,7 +287,12 @@ class DpiScaling:
             except ValueError:
                 pass  # ignore a malformed value, fall through
 
-        # 2) macOS: let Cocoa handle Retina; do not double-scale.
+        # 2) saved per-user preference (set via the UI Scale menu).
+        saved = load_saved_scale()
+        if saved is not None:
+            return self._clamp(saved, lo, hi), "saved-pref"
+
+        # 3) macOS: let Cocoa handle Retina; do not double-scale.
         if self._system == "Darwin":
             return 1.0, "macos (OS-managed)"
 
@@ -445,6 +489,42 @@ class DpiScaling:
         x = max((sw - w) // 2, 0)
         y = max((sh - h) // 2, 0)
         return f"{w}x{h}+{x}+{y}"
+
+    # -- persistent UI-scale menu -----------------------------------
+    def add_scale_menu(self, menubar, label="UI Scale"):
+        """
+        Add a 'UI Scale' submenu of radio choices to a tk Menu
+        (menubar). Picking one saves the per-user preference and
+        prompts to restart (scaling is applied once at startup).
+        The current effective scale is marked. Returns the submenu.
+        """
+        import tkinter as tk
+        from tkinter import messagebox
+
+        submenu = tk.Menu(menubar, tearoff=0)
+        saved = load_saved_scale()
+        var = tk.StringVar(
+            value=("auto" if saved is None else f"{saved:g}"))
+
+        def choose():
+            v = var.get()
+            save_scale(None if v == "auto" else float(v))
+            messagebox.showinfo(
+                "UI Scale",
+                "Saved. Restart the app for the new UI scale to take "
+                "effect.")
+
+        choices = [("Auto (detect display)", "auto"),
+                   ("100%", "1.0"), ("125%", "1.25"), ("150%", "1.5"),
+                   ("175%", "1.75"), ("200%", "2.0"), ("225%", "2.25"),
+                   ("250%", "2.5"), ("300%", "3.0")]
+        for text, val in choices:
+            submenu.add_radiobutton(label=text, value=val,
+                                    variable=var, command=choose)
+        # Keep a reference so the StringVar isn't garbage-collected.
+        submenu._scale_var = var
+        menubar.add_cascade(label=label, menu=submenu)
+        return submenu
 
     # -- diagnostics -------------------------------------------------
     def report(self):

@@ -751,6 +751,7 @@ class CurViewerApp(tk.Tk):
         fm.add_separator()
         fm.add_command(label="Quit", command=self.quit)
         mb.add_cascade(label="File", menu=fm)
+        self.ui.add_scale_menu(mb)
         self.config(menu=mb)
 
     # ── toolbar ───────────────────────────────────────────────────────────────

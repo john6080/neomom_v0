@@ -266,6 +266,7 @@ class NeoMoMZin(tk.Tk):
         fm.add_separator()
         fm.add_command(label='Exit', command=self.destroy)
         menubar.add_cascade(label='File', menu=fm)
+        self.ui.add_scale_menu(menubar)
         self.config(menu=menubar)
         self.bind('<Control-o>', lambda e: self._prompt_open())
 
