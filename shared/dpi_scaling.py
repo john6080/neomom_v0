@@ -279,6 +279,12 @@ class DpiScaling:
 
     # -- scale policy ------------------------------------------------
     def _decide_scale(self, lo, hi):
+        # Always compute what auto-detection WOULD give (this also sets
+        # self.real_dpi via the Linux path), so the UI can show the true
+        # auto value even when an override is in effect.
+        self.auto_scale, auto_src = self._auto_scale(lo, hi)
+
+        # Overrides decide the EFFECTIVE scale, in precedence order:
         # 1) explicit env override always wins (no rebuild needed).
         env = os.environ.get(_ENV_OVERRIDE)
         if env:
@@ -292,15 +298,18 @@ class DpiScaling:
         if saved is not None:
             return self._clamp(saved, lo, hi), "saved-pref"
 
-        # 3) macOS: let Cocoa handle Retina; do not double-scale.
+        # 3) otherwise, the auto-detected value.
+        return self.auto_scale, auto_src
+
+    def _auto_scale(self, lo, hi):
+        """The scale auto-detection would choose, ignoring env/saved."""
+        # macOS: let Cocoa handle Retina; do not double-scale.
         if self._system == "Darwin":
             return 1.0, "macos (OS-managed)"
-
-        # 3) Windows: process is DPI-aware, so Tk's DPI is the truth.
+        # Windows: process is DPI-aware, so Tk's DPI is the truth.
         if self._system == "Windows":
             return self._clamp(self.dpi / _BASE_DPI, lo, hi), "windows-dpi"
-
-        # 4) Linux / other X11: the hybrid ladder.
+        # Linux / other X11: the hybrid ladder.
         return self._linux_scale(lo, hi)
 
     # -- Linux hybrid ladder ----------------------------------------
@@ -493,37 +502,53 @@ class DpiScaling:
     # -- persistent UI-scale menu -----------------------------------
     def add_scale_menu(self, menubar, label="UI Scale"):
         """
-        Add a 'UI Scale' submenu of radio choices to a tk Menu
-        (menubar). Picking one saves the per-user preference and
-        prompts to restart (scaling is applied once at startup).
-        The current effective scale is marked. Returns the submenu.
+        Add a 'UI Scale' submenu to a tk Menu (menubar). Picking a value
+        saves the per-user preference and prompts to restart (scaling is
+        applied once at startup).
+
+        The current selection is shown as TEXT -- a leading check mark on
+        the active entry and the effective percentage in the cascade
+        label -- rather than a radiobutton dot, whose indicator is a tiny
+        fixed-size bitmap that is unreadable on a HiDPI display.
+        Returns the submenu.
         """
         import tkinter as tk
         from tkinter import messagebox
 
         submenu = tk.Menu(menubar, tearoff=0)
         saved = load_saved_scale()
-        var = tk.StringVar(
-            value=("auto" if saved is None else f"{saved:g}"))
+        current_key = "auto" if saved is None else f"{saved:g}"
+        eff_pct = int(round(self.scale * 100))
+        auto_pct = int(round(getattr(self, "auto_scale", self.scale) * 100))
 
-        def choose():
-            v = var.get()
+        def choose(v):
             save_scale(None if v == "auto" else float(v))
+            shown = "Auto" if v == "auto" else f"{int(round(float(v)*100))}%"
             messagebox.showinfo(
                 "UI Scale",
-                "Saved. Restart the app for the new UI scale to take "
-                "effect.")
+                f"UI scale set to {shown}. Restart the app for it to "
+                f"take effect.")
 
         choices = [("Auto (detect display)", "auto"),
                    ("100%", "1.0"), ("125%", "1.25"), ("150%", "1.5"),
                    ("175%", "1.75"), ("200%", "2.0"), ("225%", "2.25"),
                    ("250%", "2.5"), ("300%", "3.0")]
         for text, val in choices:
-            submenu.add_radiobutton(label=text, value=val,
-                                    variable=var, command=choose)
-        # Keep a reference so the StringVar isn't garbage-collected.
-        submenu._scale_var = var
-        menubar.add_cascade(label=label, menu=submenu)
+            if val == "auto":
+                text = f"Auto (detect) — {auto_pct}%"
+            active = (val == current_key)
+            mark = "✓  " if active else "      "
+            kw = {}
+            if active:
+                # Highlight the current selection in a distinct colour so
+                # it stands out without relying on the tiny radio dot.
+                kw = {"foreground": "#0b6e00",        # green
+                      "activeforeground": "#0b6e00"}
+            submenu.add_command(label=mark + text,
+                                command=lambda v=val: choose(v), **kw)
+        menubar.add_cascade(label=f"{label}: "
+                            f"{'Auto' if saved is None else f'{eff_pct}%'}",
+                            menu=submenu)
         return submenu
 
     # -- diagnostics -------------------------------------------------
