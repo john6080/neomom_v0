@@ -31,16 +31,21 @@ import glob
 block_cipher = None
 
 SRC = os.path.abspath(os.path.join(SPECPATH, '..', 'src'))
+# Shared NeoMOM modules live at the repo root in shared/.
+SHARED = os.path.abspath(os.path.join(SPECPATH, '..', '..', 'shared'))
 
 all_py = [
     (f, '.')
     for f in glob.glob(os.path.join(SRC, '*.py'))
 ]
+# Bundle the shared HiDPI module flat so `import dpi_scaling` resolves
+# inside the frozen bundle.
+all_py += [(os.path.join(SHARED, 'dpi_scaling.py'), '.')]
 
 a = Analysis(
     [os.path.join(SRC, 'neomom_current.py')],
 
-    pathex=[SRC],
+    pathex=[SRC, SHARED],
 
     binaries=[],
 

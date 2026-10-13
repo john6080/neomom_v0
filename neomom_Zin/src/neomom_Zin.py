@@ -13,7 +13,6 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import sys
 import os
-import platform
 
 import matplotlib
 matplotlib.use('TkAgg')
@@ -23,6 +22,21 @@ from matplotlib.figure import Figure
 from Zin_reader  import sweep_from_file
 from Zin_plots   import plot_RX, plot_GB, plot_SWR
 from sweep_data  import SweepData, next_color, next_linestyle
+
+
+# ── Shared HiDPI / display-scaling support ──────────────────────────────────
+# Locate shared/dpi_scaling.py whether running from source (repo_root/shared)
+# or from a PyInstaller one-file bundle (bundled flat in sys._MEIPASS).
+def _bootstrap_shared_path():
+    here = os.path.dirname(os.path.abspath(__file__))
+    for cand in (getattr(sys, "_MEIPASS", here), here,
+                 os.path.join(here, "..", "..", "shared")):
+        if os.path.isdir(cand) and cand not in sys.path:
+            sys.path.insert(0, cand)
+
+
+_bootstrap_shared_path()
+from dpi_scaling import enable_hidpi, DpiScaling
 
 
 # ------------------------------------------------------------------
@@ -154,24 +168,6 @@ class PortExtensionDialog(tk.Toplevel):
 
 
 # ------------------------------------------------------------------
-# Display scaling
-# ------------------------------------------------------------------
-def _get_scale():
-    root = tk.Tk(); root.withdraw()
-    sw = root.winfo_screenwidth()
-    sh = root.winfo_screenheight()
-    root.destroy()
-    if platform.system() == 'Windows':
-        return (6.0, 5.0), 100
-    if sw >= 3500 and sh >= 2000:
-        return (7.5, 6.0), 180
-    elif sw >= 2500 and sh >= 1400:
-        return (6.5, 5.5), 130
-    else:
-        return (6.0, 5.0), 100
-
-
-# ------------------------------------------------------------------
 # Dataset panel row
 # ------------------------------------------------------------------
 class DatasetRow(ttk.Frame):
@@ -216,7 +212,15 @@ class NeoMoMZin(tk.Tk):
         self.title('NeoMoM — Impedance Sweep Viewer')
         self.protocol('WM_DELETE_WINDOW', self.destroy)
 
-        self._fig_size, self._dpi = _get_scale()
+        # HiDPI / display scaling — unified via shared/dpi_scaling.py.
+        # One scale factor from real DPI (see that module); enable_hidpi()
+        # must already have run (see main()) so Windows is DPI-aware.
+        # The figure is a fixed size in INCHES; the DPI below carries the
+        # physical enlargement, so no per-resolution figsize tiers.
+        self.ui       = DpiScaling(self)    # real-DPI scale + tk scaling
+        self._fig_size = (6.0, 5.0)         # base inches
+        self._dpi      = self.ui.fig_dpi    # 96 * scale
+
         self._datasets    = []          # list of SweepData
         self._show_bands  = tk.BooleanVar(value=True)
         self._Z0_var      = tk.StringVar(value='50.0')
@@ -549,6 +553,8 @@ class NeoMoMZin(tk.Tk):
 # ------------------------------------------------------------------
 def main():
     csv_path = sys.argv[1] if len(sys.argv) > 1 else None
+    # Must run before the first Tk() so Windows is DPI-aware; no-op elsewhere.
+    enable_hidpi()
     app = NeoMoMZin(csv_path=csv_path)
     app.mainloop()
 

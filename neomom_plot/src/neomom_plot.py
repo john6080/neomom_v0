@@ -66,6 +66,21 @@ from plot_panel    import (plot_elevation_polar_overlay,
                            plot_azimuth_polar_compare)
 from display_config import cfg
 
+
+# ── Shared HiDPI / display-scaling support ──────────────────────────────────
+# Locate shared/dpi_scaling.py whether running from source (repo_root/shared)
+# or from a PyInstaller one-file bundle (bundled flat in sys._MEIPASS).
+def _bootstrap_shared_path():
+    here = os.path.dirname(os.path.abspath(__file__))
+    for cand in (getattr(sys, "_MEIPASS", here), here,
+                 os.path.join(here, "..", "..", "shared")):
+        if os.path.isdir(cand) and cand not in sys.path:
+            sys.path.insert(0, cand)
+
+
+_bootstrap_shared_path()
+from dpi_scaling import enable_hidpi, DpiScaling
+
 # ==================================================================
 # NEC5 COMPARISON FEATURE (optional, may be temporary)
 # ------------------------------------------------------------------
@@ -938,6 +953,10 @@ class AntennaGUI:
    
     def __init__(self, root, out_dict, meta, df, neomom_filepath=None):
         self.root = root
+        # Unified HiDPI scaling: applies Tk's point->pixel scaling so the
+        # point-sized widget fonts below render correctly on 1080p/1440p/4K.
+        # (enable_hidpi() must already have run — see __main__.)
+        self.ui = DpiScaling(self.root)
         self.out_dict = out_dict
         self.meta = meta
         self.df = df
@@ -966,13 +985,13 @@ class AntennaGUI:
 
 
         self.fonts = {
-            'hdr1':  ('Segoe UI', 13, 'bold'),
-            'hdr2':  ('Segoe UI', 12, 'bold'),
-            'hdr3':  ('Segoe UI', 10, 'bold'),
-            'ui':    ('Segoe UI', 11),
-            'meta1': ('Segoe UI', 13, 'bold'),
-            'meta2': ('Segoe UI', 12),
-            'meta3': ('Segoe UI', 11),         
+            'hdr1':  ('TkDefaultFont', 13, 'bold'),
+            'hdr2':  ('TkDefaultFont', 12, 'bold'),
+            'hdr3':  ('TkDefaultFont', 10, 'bold'),
+            'ui':    ('TkDefaultFont', 11),
+            'meta1': ('TkDefaultFont', 13, 'bold'),
+            'meta2': ('TkDefaultFont', 12),
+            'meta3': ('TkDefaultFont', 11),         
         }
 
         style = ttk.Style()
@@ -1604,6 +1623,10 @@ class AntennaGUI:
 # ----------------------------------------------------------------
 
 if __name__ == '__main__':
+
+    # Must run before the FIRST Tk() (the file-dialog picker below and
+    # the main root) so Windows is DPI-aware; no-op on Linux/macOS.
+    enable_hidpi()
 
     # ----------------------------------------------------------------
     # Resolve input file path:

@@ -16,6 +16,21 @@ from maa_parser import parse_maa_file, wrap_maa_into_model
 from neomom_model import NeoMoMModel
 from constants import FREQ_FIELDS, GROUND_FIELDS, OPTIONS_FIELDS
 
+
+# ── Shared HiDPI / display-scaling support ──────────────────────────────────
+# Locate shared/dpi_scaling.py whether running from source (repo_root/shared)
+# or from a PyInstaller one-file bundle (bundled flat in sys._MEIPASS).
+def _bootstrap_shared_path():
+    here = os.path.dirname(os.path.abspath(__file__))
+    for cand in (getattr(sys, "_MEIPASS", here), here,
+                 os.path.join(here, "..", "..", "shared")):
+        if os.path.isdir(cand) and cand not in sys.path:
+            sys.path.insert(0, cand)
+
+
+_bootstrap_shared_path()
+from dpi_scaling import enable_hidpi, DpiScaling
+
 # ----------------------------------------------------------------------
 # Parsing helpers for this specific MoM namelist structure
 # ----------------------------------------------------------------------
@@ -1931,7 +1946,11 @@ class GeometryPreviewFrame(ttk.Frame):
         # ---------------------------------------------------------
         # 3. Matplotlib figure + canvas
         # ---------------------------------------------------------
-        fig = Figure(figsize=(6, 6))
+        # Scale the embedded figure's DPI to the display so the 3D
+        # preview text matches the (already tk-scaled) chrome. Read-only
+        # (apply_tk_scaling=False) — the app root already set tk scaling.
+        _dpi = DpiScaling(self, apply_tk_scaling=False).fig_dpi
+        fig = Figure(figsize=(6, 6), dpi=_dpi)
         self.ax = fig.add_subplot(111, projection="3d")
         self.canvas = FigureCanvasTkAgg(fig, master=self)
         self.canvas_widget = self.canvas.get_tk_widget()
@@ -3075,7 +3094,7 @@ class MomNMLApp(tk.Tk):
         super().__init__()
         self._initial_file = initial_file
 
-        self.option_add("*Menu.font", ("Segoe UI", 10, "bold"))
+        self.option_add("*Menu.font", ("TkDefaultFont", 10, "bold"))
         self.option_add("*Menu.activeBorderWidth", 2)
         self.option_add("*Menu.activeBackground", "#d0d7e5")
 
@@ -3090,7 +3109,7 @@ class MomNMLApp(tk.Tk):
         # Stronger tab appearance
 
         style.configure("TNotebook.Tab",
-                        font=("Segoe UI", 11, "bold"),
+                        font=("TkDefaultFont", 11, "bold"),
                         padding=[20, 12],
                         foreground="#1A1A1A")
 
@@ -3109,49 +3128,20 @@ class MomNMLApp(tk.Tk):
         self.float_vcmd = (self.register(self._validate_float), "%P")
 
         # --------------------------------------------------------
-        # HiDPI / DPI scaling
-        # On Windows, the OS handles DPI scaling automatically —
-        # applying manual tk scaling on top doubles the size.
-        # On Linux we apply scaling based on screen resolution.
-        #
-        # Geometry is computed as a fraction of screen size so the
-        # window fits correctly on both 1080p and 4K monitors without
-        # hardcoded pixel values.
+        # HiDPI / display scaling — unified via shared/dpi_scaling.py.
+        # One scale factor from real DPI (see that module for the
+        # per-OS policy); no manual WIN font_scale=2.0 and no Linux
+        # resolution ladder.  enable_hidpi() must already have run
+        # (see main()) so Windows is DPI-aware.
         # --------------------------------------------------------
-        import platform
-        sw = self.winfo_screenwidth()
-        sh = self.winfo_screenheight()
+        self.ui = DpiScaling(self)          # reads DPI + applies tk scaling
+        self._font_scale = self.ui.scale    # retained for any references
 
-        if platform.system() == "Windows":
-            # Windows handles geometry scaling via OS DPI awareness.
-            # tk scaling = 1.0 gives correct window size on 4K at 200%.
-            # font_scale is set separately to get readable font sizes.
-            scale      = 1.0      # controls tk scaling (window geometry)
-            font_scale = 2.0      # controls font/row sizes independently
-            self.tk.call('tk', 'scaling', scale)
-        else:
-            # Linux / macOS: reports physical pixels, manual scaling.
-            if sw >= 3500 and sh >= 2000:
-                scale = 2.5       # 4K physical (~3840x2160)
-            elif sw >= 2500 and sh >= 1400:
-                scale = 1.5       # 1440p physical (~2560x1440)
-            else:
-                scale = 1.2       # 1080p — no scaling, use native size
-            font_scale = scale    # Linux: font and geometry scale together
-            self.tk.call('tk', 'scaling', scale)
-
-        # Store font_scale for use elsewhere
-        self._font_scale = font_scale
-
-        # Fix Treeview row height using font_scale
+        # Treeview row height is in PIXELS → scale via ui.px(); the font
+        # is in POINTS → Tk's scaling enlarges it, so no manual factor.
         style = ttk.Style(self)
-        style.configure("Treeview", rowheight=int(28 * font_scale))
-
-        # HiDPI Treeview font tuning
-        # Base font size 8 → scales to 20 on 4K
-        base_size = 8
-        tv_font = ("TkDefaultFont", int(base_size * font_scale))
-
+        style.configure("Treeview", rowheight=self.ui.px(28))
+        tv_font = ("TkDefaultFont", 8)
         style.configure("Treeview", font=tv_font)
         style.configure("Treeview.Heading",
                         font=(tv_font[0], tv_font[1] + 1, "bold"))
@@ -3167,7 +3157,7 @@ class MomNMLApp(tk.Tk):
         style.configure("Treeview.Row", background="#ffffff")
         style.configure("Treeview.Alternate", background="#f0f0f0")
 
-        style.configure("Hdr3.TLabel", font=("Segoe UI", 10, "bold"))
+        style.configure("Hdr3.TLabel", font=("TkDefaultFont", 10, "bold"))
         style.configure("Panel.TFrame", background="#f7f7f7")
         style.configure("Panel.TLabel", background="#f7f7f7")
         style.configure("Panel.TEntry", fieldbackground="#ffffff")
@@ -3178,99 +3168,11 @@ class MomNMLApp(tk.Tk):
         # Window geometry — computed as a fraction of screen size so
         # the window fits correctly on any monitor without hardcoded values.
 
-        if platform.system() == "Windows":
-            self.geometry("600x475")
-        else:
-            # Linux: size as fraction of screen — fits 1080p, 1440p and 4K
-            # w = int(sw * 0.55)   # 55% of screen width  → 1056px on 1080p
-            # h = int(sh * 0.75)   # 75% of screen height → 810px on 1080p
-            w = int(sw * 0.35)   # 55% of screen width  → 1056px on 1080p
-            h = int(sh * 0.45)   # 75% of screen height → 810px on 1080p            
-            self.geometry(f"{w}x{h}")
+        # Size as a fraction of the screen so it fits 1080p / 1440p / 4K
+        # without hardcoded pixel values.
+        self.geometry(self.ui.window_geometry(self, 0.5, 0.6,
+                                               min_w=760, min_h=600))
 
-        # if platform.system() == "Windows":
-        #     # Windows reports logical pixels already scaled by OS.
-        #     # Use a smaller logical size that Windows will scale up correctly.
-        #     self.geometry("600x475")
-        # else:
-        #     # Linux: physical pixels — 65% width, 80% height of screen.
-        #     # On 1080p: ~1248x864   On 4K: ~2496x1728 (then tk scale applies)
-        #     w = int(sw * 0.65)
-        #     h = int(sh * 0.80)
-        #     self.geometry(f"{w}x{h}")
-
-        # # --------------------------------------------------------
-        # # HiDPI / DPI scaling
-        # # On Windows, the OS handles DPI scaling automatically —
-        # # applying manual tk scaling on top doubles the size.
-        # # On Linux we apply scaling based on screen resolution.
-        # # --------------------------------------------------------
-        # import platform
-        # sw = self.winfo_screenwidth()
-        # sh = self.winfo_screenheight()
-
-        # if platform.system() == "Windows":
-        #     # Windows handles geometry scaling via OS DPI awareness.
-        #     # tk scaling = 1.0 gives correct window size on 4K at 200%.
-        #     # font_scale is set separately to get readable font sizes.
-        #     scale      = 1.0      # controls tk scaling (window geometry)
-        #     font_scale = 2.0      # controls font/row sizes independently
-        #     self.tk.call('tk', 'scaling', scale)
-        # else:
-        #     # Linux / macOS: reports physical pixels, manual scaling.
-        #     if sw >= 3500 and sh >= 2000:
-        #         scale = 3.0       # 4K physical
-        #     elif sw >= 2500 and sh >= 1400:
-        #         scale = 1.75      # 1440p physical
-        #     else:
-        #         scale = 1.2       # 1080p baseline
-        #     font_scale = scale    # Linux: font and geometry scale together
-        #     self.tk.call('tk', 'scaling', scale)
-
-        # # Store font_scale for use elsewhere
-        # self._font_scale = font_scale
-
-        # # Fix Treeview row height using font_scale
-        # style = ttk.Style(self)
-        # style.configure("Treeview", rowheight=int(28 * font_scale))
-
-        # # HiDPI Treeview font tuning
-        # # Base font size 8 → scales to 24 on 4K
-        # base_size = 8
-        # tv_font = ("TkDefaultFont", int(base_size * font_scale))
-
-        # style.configure("Treeview", font=tv_font)
-        # style.configure("Treeview.Heading",
-        #                 font=(tv_font[0], tv_font[1] + 1, "bold"))
-
-
-        # # Alternating row colors (zebra striping)
-        # style.map("Treeview", background=[("selected", "#347083")])
-
-        # style.configure("Treeview",
-        #                 background="#ffffff",
-        #                 foreground="black",
-        #                 fieldbackground="#ffffff")
-
-        # style.configure("Treeview.Row", background="#ffffff")
-        # style.configure("Treeview.Alternate", background="#f0f0f0")
-
-        # style.configure("Hdr3.TLabel", font=("Segoe UI", 10, "bold"))
-        # style.configure("Panel.TFrame", background="#f7f7f7")
-        # style.configure("Panel.TLabel", background="#f7f7f7")
-        # style.configure("Panel.TEntry", fieldbackground="#ffffff")
-
-
-
-        # self.title("Neo Wire MOM Input Editor")
-        # # Window geometry — Windows reports logical pixels already scaled by OS,
-        # # so use a smaller logical size that Windows will scale up correctly.
-        # if platform.system() == "Windows":
-        #     self.geometry("600x475")    # half of 1200x950 — OS doubles it to fill 4K
-        # else:
-        #     self.geometry("1200x950")   # Linux: physical pixels, full size
-
-        #self.model = None
         self.model = NeoMoMModel()
 
         self._build_menu()
@@ -3750,6 +3652,8 @@ def main():
         else:
             print(f"Warning: unrecognised extension '{ext}' — ignored.", file=sys.stderr)
 
+    # Must run before the first Tk() so Windows is DPI-aware; no-op elsewhere.
+    enable_hidpi()
     app = MomNMLApp(initial_file=initial_file)
     app.mainloop()
 

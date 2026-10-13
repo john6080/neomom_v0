@@ -1,215 +1,149 @@
 # display_config.py
 #
-# Purpose: Detect monitor resolution and UI scaling, then compute
-# matplotlib figure sizes and font sizes that fill the screen well.
+# Matplotlib figure sizes, DPI and font sizes for the NeoMOM plot GUI,
+# derived from the ONE unified display scale in shared/dpi_scaling.py.
 #
-# Usage:
+# Usage (unchanged — the public API is identical):
 #   from display_config import cfg
-#   fig, ax = plt.subplots(figsize=cfg.fig_polar)
+#   fig, ax = plt.subplots(figsize=cfg.fig_polar, dpi=cfg.mpl_dpi)
 #
-# All other modules import the singleton `cfg` — do not instantiate
-# DisplayConfig directly.
+# WHAT CHANGED
+# ------------------------------------------------------------------
+# Previously this module computed its own scale from screen resolution
+# tiers and a hand-edited WIN_OS_SCALE constant, AND it created a Tk
+# root at import time.  Both are gone:
+#   * Scale now comes from shared/dpi_scaling.py (real DPI; see that
+#     module for the per-OS policy and the NEOMOM_UI_SCALE override).
+#   * Sizing is computed LAZILY on first attribute access, so importing
+#     this module never creates a Tk root -- which is what let the old
+#     version run before enable_hidpi() and defeat Windows DPI
+#     awareness.  By the time any cfg.* is read (at plot time) the app
+#     root already exists.
 #
-# Tuning guide (Linux):
-#   Run:  python3 display_config.py
-#   Adjust FONT_BASE for your resolution tier until text is readable.
-#   FIG_POLAR_IN and MPL_DPI control plot window physical size.
-#   Fonts are INDEPENDENT of figure size — tuned separately.
+# Figure sizes are fixed in INCHES; mpl_dpi carries the physical
+# enlargement (mpl_dpi = 96 * scale), so font point sizes stay at their
+# base values and are NOT also multiplied by the scale (doing both
+# double-scaled the old per-tier code).
 
-import platform
-import tkinter as tk
+import os
+import sys
+
+
+# ── Locate shared/dpi_scaling.py (source tree or frozen bundle) ─────────────
+def _bootstrap_shared_path():
+    here = os.path.dirname(os.path.abspath(__file__))
+    for cand in (getattr(sys, "_MEIPASS", here), here,
+                 os.path.join(here, "..", "..", "shared")):
+        if os.path.isdir(cand) and cand not in sys.path:
+            sys.path.insert(0, cand)
+
+
+_bootstrap_shared_path()
+from dpi_scaling import DpiScaling
 
 
 class DisplayConfig:
     """
-    Computes display-aware sizing on first import.
+    Lazily-computed, display-aware matplotlib sizing.
 
-    Figure size and font size are set INDEPENDENTLY by resolution tier.
-    Reducing figure size does NOT shrink fonts.
-
-    Linux tiers (detected from screen resolution):
-        1080p : FIG_POLAR_IN=4.5  MPL_DPI=100  FONT_BASE=10
-        1440p : FIG_POLAR_IN=5.5  MPL_DPI=120  FONT_BASE=11
-        4K    : FIG_POLAR_IN=6.0  MPL_DPI=200  FONT_BASE=10
-
-    Windows: uses WIN_POLAR_SCALE / WIN_3D_SCALE multipliers.
-    Font base is tuned independently per tier.
-
-    Single tuning knob per tier:
-        FONT_BASE  — increase/decrease by 1pt for all fonts together
+    Public attributes (computed on first access):
+        scale
+        mpl_dpi
+        fig_polar, fig_cart, fig_heatmap, fig_3d          (inches)
+        font_title, font_label, font_tick, font_legend, font_annot
+        font_3d_title, font_3d_label, font_3d_annot
+        lw_plot, lw_minor, lw_grid
     """
 
-    WIN_POLAR_SCALE = 0.5
-    WIN_3D_SCALE    = 0.5
+    # Base polar-figure edge (inches) at scale 1.0 — the old 1080p tier,
+    # so a standard-DPI display looks exactly as it did before.
+    _BASE_IN   = 4.5
+    _FONT_BASE = 10
 
-    def __init__(self):
-        self._detect_screen()
-        self._compute_sizes()
+    # -- lazy computation -------------------------------------------
+    def _compute(self):
+        import tkinter as tk
+        root = tk._get_default_root()
+        temp = None
+        if root is None:
+            # Standalone use (e.g. the self-test) with no app root yet.
+            temp = tk.Tk()
+            temp.withdraw()
+            root = temp
+        # Read the unified scale only; the app owns the Tk root's own
+        # point->pixel scaling, so we must NOT re-apply it here.
+        ui = DpiScaling(root, apply_tk_scaling=False)
+        if temp is not None:
+            temp.destroy()
 
-    def _detect_screen(self):
-        """Record screen size; set FIG_POLAR_IN, MPL_DPI, FONT_BASE by tier."""
-        root = tk.Tk()
-        root.withdraw()
-        self.screen_w_px = root.winfo_screenwidth()
-        self.screen_h_px = root.winfo_screenheight()
-        self.logical_w   = self.screen_w_px
-        self.logical_h   = self.screen_h_px
+        self.scale   = ui.scale
+        self.mpl_dpi = ui.fig_dpi
 
-        sw = self.screen_w_px
-        sh = self.screen_h_px
+        p = self._BASE_IN
+        self.fig_polar   = (p,        p)
+        self.fig_cart    = (p * 1.6,  p * 0.7)
+        self.fig_heatmap = (p * 2.2,  p * 0.8)
+        self.fig_3d      = (p * 1.1,  p * 1.1)
 
-        if platform.system() == 'Windows':
-            # ----------------------------------------------------------------
-            # Windows HiDPI workaround
-            #
-            # Python/tkinter runs DPI-unaware by default on Windows, so both
-            # winfo_screenwidth() and ctypes DPI calls return LOGICAL pixels
-            # (physical / OS_scale).  On a 4K monitor at 200% scaling:
-            #   logical resolution = 1920x1080  (same as a real 1080p monitor)
-            #   physical resolution = 3840x2160
-            #
-            # matplotlib is also DPI-unaware, so the OS doubles all figure
-            # dimensions AND font sizes when rendering to the physical display.
-            #
-            # Solution: set WIN_OS_SCALE below to match your Windows display
-            # scaling setting (Settings > Display > Scale):
-            #   100% scaling  →  WIN_OS_SCALE = 1.0  (no correction needed)
-            #   125% scaling  →  WIN_OS_SCALE = 1.25
-            #   150% scaling  →  WIN_OS_SCALE = 1.5
-            #   200% scaling  →  WIN_OS_SCALE = 2.0  ← 4K monitor typical
-            # ----------------------------------------------------------------
-            WIN_OS_SCALE = 1.5  # ← SET THIS to your Windows display scaling
-
-            self._win_dpi_scale = WIN_OS_SCALE
-            self.FIG_POLAR_IN   = 6.0
-            self.MPL_DPI        = 200
-            self.FONT_BASE      = 10  # divided by WIN_OS_SCALE in _compute_sizes
-
-        else:
-            self._win_dpi_scale = 1.0
-
-            if sw >= 3500 and sh >= 2000:
-                # 4K (~3840x2160) at 200% Ubuntu scaling
-                # Figure: 6.0in x 200dpi = 1200px (OS doubles to 2400px)
-                # Font: 10pt base — keeps text readable without being huge
-                self.FIG_POLAR_IN = 6.0
-                self.MPL_DPI      = 200
-                self.FONT_BASE    = 10   # ← tune for 4K font size
-
-            elif sw >= 2500 and sh >= 1400:
-                # 1440p (~2560x1440)
-                self.FIG_POLAR_IN = 5.5
-                self.MPL_DPI      = 120
-                self.FONT_BASE    = 11   # ← tune for 1440p font size
-
-            else:
-                # 1080p (~1920x1080) — default
-                self.FIG_POLAR_IN = 4.5
-                self.MPL_DPI      = 100
-                self.FONT_BASE    = 10   # ← tune for 1080p font size
-
-        root.destroy()
-
-    def _compute_sizes(self):
-        """
-        Derive all figure and font sizes.
-
-        Figure sizes cascade from FIG_POLAR_IN and MPL_DPI.
-        Font sizes cascade from FONT_BASE — independent of figure size.
-        """
-        p = self.FIG_POLAR_IN
-        f = self.FONT_BASE
-
-        if platform.system() == 'Windows':
-            _pp   = p * self.WIN_POLAR_SCALE
-            _3d_p = p * 1.1 * self.WIN_3D_SCALE
-            if self._win_dpi_scale > 1.0:
-                self.mpl_dpi = round(self.MPL_DPI / self._win_dpi_scale)
-                # Divide font sizes by OS scale too — Windows doubles
-                # matplotlib font sizes at high DPI just like figure sizes.
-                f = round(f / self._win_dpi_scale, 2)
-            else:
-                self.mpl_dpi = self.MPL_DPI
-        else:
-            _pp          = p
-            _3d_p        = p * 1.1
-            self.mpl_dpi = self.MPL_DPI
-
-        # ── Figure sizes (width, height) in inches ──────────────────────
-        self.fig_polar   = (_pp,         _pp)
-        self.fig_cart    = (_pp * 1.6,   _pp * 0.7)
-        self.fig_heatmap = (_pp * 2.2,   _pp * 0.8)
-        self.fig_3d      = (_3d_p,       _3d_p)
-
-        # ── Font sizes — from FONT_BASE, NOT figure size ─────────────────
-        # Changing figure size will NOT change font sizes.
-        # On Windows, f is pre-divided by _win_dpi_scale above so OS
-        # doubling restores it to the intended size.
-        # Tune FONT_BASE in _detect_screen() for your monitor.
-        self.font_title  = round(f * 1.1, 1)
-        self.font_label  = round(f * 1.0, 1)
-        self.font_tick   = round(f * 0.9, 1)
-        self.font_legend = round(f * 0.9, 1)
-        self.font_annot  = round(f * 0.85, 1)
-
-        # 3D fonts — same base, slightly larger title
-        self.font_3d_title = round(f * 1.2, 1)
-        self.font_3d_label = round(f * 1.0, 1)
+        f = self._FONT_BASE
+        self.font_title    = round(f * 1.1,  1)
+        self.font_label    = round(f * 1.0,  1)
+        self.font_tick     = round(f * 0.9,  1)
+        self.font_legend   = round(f * 0.9,  1)
+        self.font_annot    = round(f * 0.85, 1)
+        self.font_3d_title = round(f * 1.2,  1)
+        self.font_3d_label = round(f * 1.0,  1)
         self.font_3d_annot = round(f * 0.85, 1)
 
-        # ── Line widths — still tied to figure size ──────────────────────
-        _lw = _pp / (self.FIG_POLAR_IN *
-                     (self.WIN_POLAR_SCALE if platform.system() == 'Windows' else 1.0))
-        self.lw_plot  = max(round(1.5 * _lw, 2), 0.4)
-        self.lw_minor = max(round(0.8 * _lw, 2), 0.2)
-        self.lw_grid  = max(round(0.5 * _lw, 2), 0.2)
+        # Line widths at the base figure size (dpi carries enlargement).
+        self.lw_plot  = 1.5
+        self.lw_minor = 0.8
+        self.lw_grid  = 0.5
 
+        self.__dict__['_ready'] = True
+
+    def _ensure(self):
+        if not self.__dict__.get('_ready'):
+            self._compute()
+
+    def __getattr__(self, name):
+        # Reached only for attributes not yet set. Compute once, retry.
+        if name.startswith('_'):
+            raise AttributeError(name)
+        self._ensure()
+        try:
+            return self.__dict__[name]
+        except KeyError:
+            raise AttributeError(name)
+
+    # -- diagnostics ------------------------------------------------
     def report(self):
-        """Print a summary — useful for tuning on a new monitor."""
-        def fmt(t): return f"({t[0]:.2f}, {t[1]:.2f})"
-        def px(t):
-            w = round(t[0] * self.mpl_dpi)
-            h = round(t[1] * self.mpl_dpi)
-            return f"{w}x{h}px"
-        print(f"\n{'='*50}")
-        print(f"  Display Configuration")
-        print(f"{'='*50}")
-        print(f"  Screen (tkinter)  : {self.screen_w_px} x {self.screen_h_px} px")
-        print(f"  Platform          : {platform.system()}")
-        print(f"  Windows DPI scale : {self._win_dpi_scale:.2f}x  (1.0 on Linux/Mac)")
-        print(f"  FIG_POLAR_IN      : {self.FIG_POLAR_IN} in")
-        print(f"  FONT_BASE         : {self.FONT_BASE} pt  (tune per tier in _detect_screen)")
-        print(f"  MPL_DPI (base)    : {self.MPL_DPI}")
-        print(f"  mpl_dpi (actual)  : {self.mpl_dpi}")
-        print(f"  fig_polar         : {fmt(self.fig_polar)} in  →  {px(self.fig_polar)}")
-        print(f"  fig_cart          : {fmt(self.fig_cart)} in  →  {px(self.fig_cart)}")
-        print(f"  fig_heatmap       : {fmt(self.fig_heatmap)} in  →  {px(self.fig_heatmap)}")
-        print(f"  fig_3d            : {fmt(self.fig_3d)} in  →  {px(self.fig_3d)}")
-        eff = self._win_dpi_scale if platform.system() == 'Windows' else 1.0
-        print(f"  font_title        : {self.font_title} pt  "
-              f"(effective on screen: {self.font_title*eff:.1f} pt)")
-        print(f"  font_label        : {self.font_label} pt  "
-              f"(effective on screen: {self.font_label*eff:.1f} pt)")
-        print(f"  font_tick         : {self.font_tick} pt  "
-              f"(effective on screen: {self.font_tick*eff:.1f} pt)")
-        print(f"  font_3d_title     : {self.font_3d_title} pt  "
-              f"(effective on screen: {self.font_3d_title*eff:.1f} pt)")
-        print(f"  font_3d_label     : {self.font_3d_label} pt  "
-              f"(effective on screen: {self.font_3d_label*eff:.1f} pt)")
-        print(f"{'='*50}\n")
-        print(f"  Tuning: adjust FONT_BASE in _detect_screen() for your tier.")
-        print(f"  Current FONT_BASE = {self.FONT_BASE} pt")
-        print(f"  Run cfg.report() after each change to verify.\n")
+        self._ensure()
+        print("=" * 52)
+        print("  NeoMOM plot display config")
+        print("=" * 52)
+        print(f"  scale       : {self.scale:.3f}")
+        print(f"  mpl_dpi     : {self.mpl_dpi}")
+        print(f"  fig_polar   : {self.fig_polar} in")
+        print(f"  fig_cart    : {self.fig_cart} in")
+        print(f"  fig_heatmap : {self.fig_heatmap} in")
+        print(f"  fig_3d      : {self.fig_3d} in")
+        print(f"  font_title  : {self.font_title} pt")
+        print(f"  font_label  : {self.font_label} pt")
+        print(f"  font_tick   : {self.font_tick} pt")
+        print("=" * 52)
 
 
 # ----------------------------------------------------------------
-# Singleton — import this everywhere
+# Singleton — import this everywhere (unchanged public name).
 # ----------------------------------------------------------------
 cfg = DisplayConfig()
 
 
 # ----------------------------------------------------------------
-# Self-test
+# Self-test:  python3 display_config.py
 # ----------------------------------------------------------------
 if __name__ == '__main__':
+    from dpi_scaling import enable_hidpi
+    enable_hidpi()
     cfg.report()

@@ -659,6 +659,21 @@ from tkinter import ttk, filedialog, messagebox
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
 
+# ── Shared HiDPI / display-scaling support ──────────────────────────────────
+# Locate shared/dpi_scaling.py whether running from source (repo_root/shared)
+# or from a PyInstaller one-file bundle (bundled flat in sys._MEIPASS).
+def _bootstrap_shared_path():
+    here = os.path.dirname(os.path.abspath(__file__))
+    for cand in (getattr(sys, "_MEIPASS", here), here,
+                 os.path.join(here, "..", "..", "shared")):
+        if os.path.isdir(cand) and cand not in sys.path:
+            sys.path.insert(0, cand)
+
+
+_bootstrap_shared_path()
+from dpi_scaling import enable_hidpi, DpiScaling
+
+
 class CurViewerApp(tk.Tk):
 
     TABS = [
@@ -671,73 +686,49 @@ class CurViewerApp(tk.Tk):
         super().__init__()
 
         # --------------------------------------------------------
-        # HiDPI / DPI scaling — same approach as neomom_input.py
-        # Windows: OS handles geometry scaling; we set tk scaling=1.0
-        # and scale fonts/widgets separately via font_scale.
-        # Linux/macOS: winfo_screenwidth/height report physical pixels,
-        # so we scale tk directly based on detected resolution.
+        # HiDPI / display scaling — unified across all NeoMOM GUIs via
+        # shared/dpi_scaling.py.  One scale factor derived from real
+        # DPI (see that module for the per-OS policy); no manual
+        # WIN_OS_SCALE knob and no resolution ladder.  enable_hidpi()
+        # must already have run (see main()) so Windows is DPI-aware.
         # --------------------------------------------------------
-        import platform
-        sw = self.winfo_screenwidth()
-        sh = self.winfo_screenheight()
+        self.ui = DpiScaling(self)          # reads DPI + applies tk scaling
+        self._font_scale = self.ui.scale    # retained for existing call sites
+        self._fig_dpi = self.ui.fig_dpi     # matplotlib figure DPI
 
-        if platform.system() == "Windows":
-            # WIN_OS_SCALE must match Windows Settings > Display > Scale:
-            #   100% -> 1.0,  125% -> 1.25,  150% -> 1.5,  200% -> 2.0
-            WIN_OS_SCALE = 1.0   # ← set to your Windows display scaling
-            scale      = 1.0
-            font_scale = 1.0 / WIN_OS_SCALE   # matplotlib fonts pre-divided;
-                                               # OS scaling restores target size
-            self.tk.call('tk', 'scaling', scale)
-        else:
-            if sw >= 3500 and sh >= 2000:
-                scale = 1.5         # 4K physical (was 3.0 — too large)
-            elif sw >= 2500 and sh >= 1400:
-                scale = 1.3         # 1440p physical (was 1.75)
-            else:
-                scale = 1.1         # 1080p baseline (was 1.2)
-            font_scale = scale
-            self.tk.call('tk', 'scaling', scale)
-
-        self._font_scale = font_scale
-        # Matplotlib figure DPI — keeps embedded plot text legible at the
-        # same physical size as the surrounding Tk widgets.
-        if platform.system() == "Windows":
-            self._fig_dpi = 100   # OS doubles figure rendering — keep DPI at 100
-        else:
-            self._fig_dpi = int(100 * font_scale)
-
-        # Apply font_scale to matplotlib global rcParams so all
-        # hardcoded fontsize values in plot functions are scaled correctly.
-        # Base sizes: title=12, label=11, tick=9, legend=8, annot=8
+        # Matplotlib font sizes stay at their true POINT values: the
+        # figure DPI above handles physical enlargement, so point sizes
+        # must NOT also be multiplied (doing both double-scaled in the
+        # old per-app code and forced constant retuning).
         import matplotlib
         matplotlib.rcParams.update({
-            'font.size'          : round(9  * font_scale, 1),
-            'axes.titlesize'     : round(12 * font_scale, 1),
-            'axes.labelsize'     : round(11 * font_scale, 1),
-            'xtick.labelsize'    : round(9  * font_scale, 1),
-            'ytick.labelsize'    : round(9  * font_scale, 1),
-            'legend.fontsize'    : round(8  * font_scale, 1),
-            'figure.titlesize'   : round(12 * font_scale, 1),
+            'font.size'          : 9,
+            'axes.titlesize'     : 12,
+            'axes.labelsize'     : 11,
+            'xtick.labelsize'    : 9,
+            'ytick.labelsize'    : 9,
+            'legend.fontsize'    : 8,
+            'figure.titlesize'   : 12,
         })
 
         style = ttk.Style(self)
         style.theme_use("default")
-        base_size = 9
-        ui_font   = ("TkDefaultFont", int(base_size * font_scale))
+        # Fonts are specified in POINTS; Tk's scaling (set by DpiScaling)
+        # converts them to the correct pixel size.  Only pixel-valued
+        # dimensions (padding, geometry) are scaled with ui.px().
+        ui_font = ("TkDefaultFont", 9)
         style.configure(".", font=ui_font)
         style.configure("TNotebook.Tab",
                         font=(ui_font[0], ui_font[1], "bold"),
-                        padding=[int(14 * font_scale), int(8 * font_scale)])
+                        padding=[self.ui.px(14), self.ui.px(8)])
         self.option_add("*Font", ui_font)
         self.option_add("*Menu.font", ui_font)
 
         self.title("NeoMoM Current Viewer")
-        if platform.system() == "Windows":
-            self.geometry("700x550")     # logical px — OS scales up on 4K
-        else:
-            self.geometry(f"{int(1050*min(font_scale,1.6)/1.2)}x"
-                          f"{int(800*min(font_scale,1.6)/1.2)}")
+        # Size as a fraction of the screen so it fits 1080p / 1440p / 4K
+        # without hardcoded pixel values.
+        self.geometry(self.ui.window_geometry(self, 0.55, 0.72,
+                                               min_w=700, min_h=550))
 
         self.data = None
         self._build_menu()
@@ -955,6 +946,9 @@ def main():
         else:
             print(f"Warning: file not found: {args.file}", file=sys.stderr)
 
+    # Must run before the first Tk() so Windows is DPI-aware and stops
+    # bitmap-stretching the window; no-op on Linux/macOS.
+    enable_hidpi()
     app = CurViewerApp(initial_file=initial)
     app.mainloop()
 
