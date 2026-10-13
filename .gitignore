@@ -47,6 +47,15 @@ packages/macos/
 packages/*.zip
 
 # ==============================================================
+# ARCHIVES — zips are build artifacts, not source. Regenerate from
+# the source files instead of committing. (Any .zip that is a
+# deliberately-tracked data bundle stays tracked — .gitignore does
+# not untrack files git already tracks.)
+# ==============================================================
+
+*.zip
+
+# ==============================================================
 # ENGINE RUN OUTPUT — generated files, never committed
 # ==============================================================
 
