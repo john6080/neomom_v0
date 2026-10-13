@@ -874,8 +874,6 @@ class NodesFrame(ttk.Frame):
         super().__init__(master, *args, **kwargs)
         self.model = model
 
-        print("NodesFrame instance:", id(self))
-
         # ------------------------------------------------------------
         # Configure GRID layout for this frame
         # ------------------------------------------------------------
@@ -1226,8 +1224,6 @@ class WiresFrame(ttk.Frame):
     def __init__(self, master, model, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
         self.model = model
-
-        print("WiresFrame instance:", id(self))
 
         # ------------------------------------------------------------
         # Configure GRID layout for this frame
@@ -1661,8 +1657,6 @@ class ExcitationsFrame(ttk.Frame):
     def __init__(self, master, model, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
         self.model = model
-
-        print("ExcitationsFrame instance:", id(self))
 
         # ------------------------------------------------------------
         # GRID layout
@@ -3276,8 +3270,6 @@ class MomNMLApp(tk.Tk):
 
         self.config(menu=menubar)
 
-        print("MomNMLApp model id:", id(self.model))
-
     def _build_main(self):
 
         # Create Notebook
@@ -3625,8 +3617,6 @@ class MomNMLApp(tk.Tk):
         self.set_status(f"Exported MMANA: {os.path.basename(maa_path)}")
 
     def save_file_as(self):
-
-        print("DEBUG save_file_as called on:", type(self))
 
 
         """Save the current model to a user-selected .nml file."""
