@@ -3111,6 +3111,14 @@ class MomNMLApp(tk.Tk):
         super().__init__()
         self._initial_file = initial_file
 
+        # HiDPI / display scaling FIRST — so every _pt() and scale_fonts()
+        # call below (menu font, tab font, Treeview, ...) sees the real
+        # scale. enable_hidpi() already ran in main() so Windows is
+        # DPI-aware. See shared/dpi_scaling.py for the per-OS policy.
+        self.ui = DpiScaling(self)          # reads DPI + scales named fonts
+        _set_app_ui(self.ui)                # expose to frames/dialogs via _pt()
+        self._font_scale = self.ui.scale    # retained for any references
+
         self.option_add("*Menu.font", ("TkDefaultFont", _pt(10), "bold"))
         self.option_add("*Menu.activeBorderWidth", 2)
         self.option_add("*Menu.activeBackground", "#d0d7e5")
@@ -3143,17 +3151,6 @@ class MomNMLApp(tk.Tk):
 
         # Float validator for numeric entry fields
         self.float_vcmd = (self.register(self._validate_float), "%P")
-
-        # --------------------------------------------------------
-        # HiDPI / display scaling — unified via shared/dpi_scaling.py.
-        # One scale factor from real DPI (see that module for the
-        # per-OS policy); no manual WIN font_scale=2.0 and no Linux
-        # resolution ladder.  enable_hidpi() must already have run
-        # (see main()) so Windows is DPI-aware.
-        # --------------------------------------------------------
-        self.ui = DpiScaling(self)          # reads DPI + scales named fonts
-        _set_app_ui(self.ui)                # expose to frames/dialogs via _pt()
-        self._font_scale = self.ui.scale    # retained for any references
 
         # Treeview row height is in PIXELS → scale via ui.px(); the font
         # is in POINTS → Tk's scaling enlarges it, so no manual factor.

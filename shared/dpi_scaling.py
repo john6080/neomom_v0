@@ -217,6 +217,10 @@ class DpiScaling:
         # mutate shared Tk font state -- they pass False.
         if apply_tk_scaling:
             self.scale_fonts()
+        if os.environ.get("NEOMOM_UI_DEBUG"):
+            print(f"[neomom dpi] scale={self.scale:.3f} source={self.source} "
+                  f"tk_dpi={self.dpi:.1f} real_dpi={self.real_dpi} "
+                  f"frozen={getattr(sys, 'frozen', False)}", file=sys.stderr)
 
     # -- detection ---------------------------------------------------
     def _detect_dpi(self, widget) -> float:
@@ -297,15 +301,26 @@ class DpiScaling:
         True DPI from the active output's EDID physical size, via
         `xrandr --query`. Best-effort: returns None if xrandr is
         missing, times out, or the line can't be parsed (e.g. Wayland
-        with no XWayland). xrandr is a system binary, not bundled, so
-        this works the same from a frozen PyInstaller build.
+        with no XWayland).
+
+        A PyInstaller-frozen app runs with LD_LIBRARY_PATH pointed at
+        its own bundled libraries; the system `xrandr` must NOT inherit
+        that or it can fail to load system libs. PyInstaller saves the
+        original in LD_LIBRARY_PATH_ORIG -- restore it (or drop the var)
+        for the child so xrandr runs against the system environment.
         """
         import re
         import subprocess
+        env = dict(os.environ)
+        orig = env.get("LD_LIBRARY_PATH_ORIG")
+        if orig is not None:
+            env["LD_LIBRARY_PATH"] = orig
+        elif getattr(sys, "frozen", False):
+            env.pop("LD_LIBRARY_PATH", None)
         try:
             out = subprocess.run(
                 ["xrandr", "--query"],
-                capture_output=True, text=True, timeout=2).stdout
+                capture_output=True, text=True, timeout=2, env=env).stdout
         except (OSError, subprocess.SubprocessError):
             return None
         for line in out.splitlines():
