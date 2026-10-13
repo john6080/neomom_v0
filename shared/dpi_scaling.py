@@ -41,15 +41,18 @@
 #
 # PLATFORM POLICY
 # ----------------------------------------------------------------
-#   Windows : make the process DPI-aware (above), then scale from the
-#             real DPI -- reliable once the process is aware.
+#   Windows : make the process per-monitor DPI-aware (above). Tk then
+#             renders fonts at the monitor DPI on its own, so we apply
+#             NO extra scaling by default (scale = 1.0) -- multiplying
+#             again double-scales (verified on a 4K Windows box: a
+#             dpi/96 default came up ~2x too big). Users nudge from
+#             there via the UI Scale menu / NEOMOM_UI_SCALE.
 #
 #   macOS   : Cocoa/Tk handle Retina transparently (points map to
-#             backing pixels at the OS backing scale), so we apply
-#             NO manual scaling by default (scale = 1.0) and let the
-#             OS do its job.  This path is conservative and has not
-#             yet been exercised on real hardware; the env override
-#             below is the escape hatch if a Mac ever needs nudging.
+#             backing pixels at the OS backing scale), so likewise we
+#             apply NO manual scaling by default (scale = 1.0). Not yet
+#             exercised on real Mac hardware; the UI Scale menu / env
+#             override are the escape hatches.
 #
 #   Linux   : HYBRID, because automatic DPI on X11 is unreliable --
 #             X routinely reports a nominal 96 dpi AND a fabricated
@@ -306,10 +309,15 @@ class DpiScaling:
         # macOS: let Cocoa handle Retina; do not double-scale.
         if self._system == "Darwin":
             return 1.0, "macos (OS-managed)"
-        # Windows: process is DPI-aware, so Tk's DPI is the truth.
+        # Windows: once the process is per-monitor DPI-aware, Tk already
+        # renders fonts at the monitor DPI. Multiplying again double-scales
+        # -- verified on a 4K Windows box, where dpi/96 -> 200% came up
+        # about 2x too big. So trust the OS, same as macOS; users nudge
+        # from there via the UI Scale menu (saved pref / NEOMOM_UI_SCALE).
         if self._system == "Windows":
-            return self._clamp(self.dpi / _BASE_DPI, lo, hi), "windows-dpi"
-        # Linux / other X11: the hybrid ladder.
+            return 1.0, "windows (OS-managed)"
+        # Linux / other X11: the hybrid ladder (Tk does NOT scale fonts
+        # here, so we must).
         return self._linux_scale(lo, hi)
 
     # -- Linux hybrid ladder ----------------------------------------
