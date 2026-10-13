@@ -185,21 +185,22 @@ GitHub users can click the **"Cite this repository"** button
 
 ## Licensing
 
-NeoMoM uses a two-tier licensing structure:
+NeoMoM uses a two-tier licensing structure. The full texts are at the
+repository root: `LICENSE-APACHE` and `LICENSE-MIT`.
 
 **NeoMoM Computational Engine (`engine/`) — Apache License 2.0**
 
 The engine is the original scientific and engineering contribution of
 John Shaeffer. You may use, modify, and redistribute it freely provided
 you preserve the copyright notice, include the license, and note any
-modifications. See `engine/LICENSE`.
+modifications. See `LICENSE-APACHE` (also copied to `engine/LICENSE`).
 
 **GUI Components — MIT License**
 
 The Python GUI applications are provided as working examples and reference
 implementations. You are encouraged to use them as starting points for
 your own antenna analysis tools. Preserve the copyright notice.
-See individual component `LICENSE` files.
+See `LICENSE-MIT` (also copied to each GUI component's `LICENSE`).
 
 ---
 
