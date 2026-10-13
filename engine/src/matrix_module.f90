@@ -1,3 +1,6 @@
+! SPDX-License-Identifier: Apache-2.0
+! Copyright (c) 2026 John Shaeffer (KZ4TS)
+
 module matrix_m
 
 !==============================================================================

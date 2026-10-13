@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 John Shaeffer (KZ4TS)
+
 # Zin_plots.py
 #
 # Purpose: Plot functions for impedance sweep datasets.

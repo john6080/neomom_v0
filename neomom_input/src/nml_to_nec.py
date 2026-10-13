@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 John Shaeffer (KZ4TS)
+
 """
 nml_to_nec.py  —  NeoMoM *.nml  →  NEC-5 input file translator
 ================================================================

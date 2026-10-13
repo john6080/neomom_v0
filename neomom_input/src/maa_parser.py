@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 John Shaeffer (KZ4TS)
+
 # ================================================================
 # MMANA-GAL *.maa Parser (ASCII-only, structure-based)
 # Extracts: title, frequency, nodes, wires, excitations(raw)

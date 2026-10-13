@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 John Shaeffer (KZ4TS)
+
 # plot_panel.py
 #
 # Purpose: All plot types for antenna pattern visualization.

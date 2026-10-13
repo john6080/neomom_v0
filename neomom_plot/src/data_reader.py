@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 John Shaeffer (KZ4TS)
+
 # data_reader.py
 #
 # Purpose: Parse antenna pattern CSV files.

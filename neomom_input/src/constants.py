@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 John Shaeffer (KZ4TS)
+
 # constants.py
 # Canonical schema + labels + defaults for NeoMoM Studio
 

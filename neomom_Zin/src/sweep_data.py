@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 John Shaeffer (KZ4TS)
+
 # sweep_data.py
 #
 # Purpose: Internal data model for impedance sweep datasets.

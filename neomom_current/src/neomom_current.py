@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 John Shaeffer (KZ4TS)
+
 """
 cur_viewer.py  —  NeoMoM current distribution visualizer
 =========================================================

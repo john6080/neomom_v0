@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 John Shaeffer (KZ4TS)
+
 # plots_neomom.py
 #
 # Purpose: Tkinter control panel for antenna pattern visualization.

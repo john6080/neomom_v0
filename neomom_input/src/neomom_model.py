@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 John Shaeffer (KZ4TS)
+
 # neomom_model.py
 # Structured data model for NeoMoM (Fortran-style architecture)
 

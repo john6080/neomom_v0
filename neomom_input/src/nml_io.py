@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 John Shaeffer (KZ4TS)
+
 from neomom_model import NeoMoMModel, Node, Wire, Excitation, FrequencyBlock
 
 NODE_COORD_DECIMALS = 6

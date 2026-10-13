@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 John Shaeffer (KZ4TS)
+
 # nec5_out_to_csv.py
 #
 # Purpose: Parse a NEC5.exe console-output (.out) file's per-frequency

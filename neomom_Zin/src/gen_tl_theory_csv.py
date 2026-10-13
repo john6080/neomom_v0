@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 John Shaeffer (KZ4TS)
+
 # gen_tl_theory_csv.py
 #
 # Purpose: Generate a closed-form transmission-line theory reference

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 John Shaeffer (KZ4TS)
+
 # display_config.py
 #
 # Matplotlib figure sizes, DPI and font sizes for the NeoMOM plot GUI,

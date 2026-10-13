@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 John Shaeffer (KZ4TS)
+
 # nec_out_reader.py
 #
 # Purpose: Parse a NEC5 .out file (RADIATION PATTERNS section + a few

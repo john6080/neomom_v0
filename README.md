@@ -186,7 +186,9 @@ GitHub users can click the **"Cite this repository"** button
 ## Licensing
 
 NeoMoM uses a two-tier licensing structure. The full texts are at the
-repository root: `LICENSE-APACHE` and `LICENSE-MIT`.
+repository root: `LICENSE-APACHE` and `LICENSE-MIT`. See
+[`LICENSING.md`](LICENSING.md) for the full policy, the per-directory
+breakdown, and the SPDX header convention.
 
 **NeoMoM Computational Engine (`engine/`) — Apache License 2.0**
 
