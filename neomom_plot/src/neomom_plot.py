@@ -987,14 +987,15 @@ class AntennaGUI:
         self.PADY_ITEM = 4
 
 
+        pt = self.ui.pt
         self.fonts = {
-            'hdr1':  ('TkDefaultFont', 13, 'bold'),
-            'hdr2':  ('TkDefaultFont', 12, 'bold'),
-            'hdr3':  ('TkDefaultFont', 10, 'bold'),
-            'ui':    ('TkDefaultFont', 11),
-            'meta1': ('TkDefaultFont', 13, 'bold'),
-            'meta2': ('TkDefaultFont', 12),
-            'meta3': ('TkDefaultFont', 11),         
+            'hdr1':  ('TkDefaultFont', pt(13), 'bold'),
+            'hdr2':  ('TkDefaultFont', pt(12), 'bold'),
+            'hdr3':  ('TkDefaultFont', pt(10), 'bold'),
+            'ui':    ('TkDefaultFont', pt(11)),
+            'meta1': ('TkDefaultFont', pt(13), 'bold'),
+            'meta2': ('TkDefaultFont', pt(12)),
+            'meta3': ('TkDefaultFont', pt(11)),
         }
 
         style = ttk.Style()

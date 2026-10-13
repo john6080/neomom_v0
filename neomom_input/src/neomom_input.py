@@ -34,6 +34,20 @@ def _bootstrap_shared_path():
 _bootstrap_shared_path()
 from dpi_scaling import enable_hidpi, DpiScaling
 
+
+# Display-scaling point-size helper, resolved once MomNMLApp sets its
+# DpiScaling (so the frame/dialog classes below can scale fonts too).
+_APP_UI = None
+
+
+def _set_app_ui(ui):
+    global _APP_UI
+    _APP_UI = ui
+
+
+def _pt(n):
+    return _APP_UI.pt(n) if _APP_UI is not None else n
+
 # ----------------------------------------------------------------------
 # Parsing helpers for this specific MoM namelist structure
 # ----------------------------------------------------------------------
@@ -1484,14 +1498,14 @@ class WiresFrame(ttk.Frame):
         self._radius_warn_frame.grid(row=2, column=0, sticky="ew", padx=8, pady=(2, 2))
 
         warn_icon = tk.Label(self._radius_warn_frame, text="\u2139", bg="#FFD700",
-                             font=("TkDefaultFont", 13, "bold"), fg="#7a5000")
+                             font=("TkDefaultFont", _pt(13), "bold"), fg="#7a5000")
         warn_icon.pack(side="left", padx=(6, 2), pady=4)
 
         self._radius_warn_label = tk.Label(
             self._radius_warn_frame,
             text="",   # filled in by refresh_radius_defaults()
             bg="#FFD700", fg="#3a2500",
-            font=("TkDefaultFont", 9),
+            font=("TkDefaultFont", _pt(9)),
             justify="left", anchor="w"
         )
         self._radius_warn_label.pack(side="left", padx=(0, 8), pady=4, fill="x", expand=True)
@@ -1499,7 +1513,7 @@ class WiresFrame(ttk.Frame):
         tk.Button(
             self._radius_warn_frame, text="\u2715", bg="#FFD700",
             relief="flat", bd=0, fg="#7a5000",
-            font=("TkDefaultFont", 10, "bold"),
+            font=("TkDefaultFont", _pt(10), "bold"),
             cursor="hand2",
             command=self._dismiss_radius_warning
         ).pack(side="right", padx=(0, 6), pady=4)
@@ -1531,11 +1545,11 @@ class WiresFrame(ttk.Frame):
         win.protocol("WM_DELETE_WINDOW", on_close)
 
         tk.Label(win, text="Standard AWG Wire Sizes",
-                font=("TkDefaultFont", 11, "bold")).pack(pady=(10, 4))
+                font=("TkDefaultFont", _pt(11), "bold")).pack(pady=(10, 4))
         tk.Label(win, text="(bare copper \u2014 insulated wire is slightly larger)",
-                font=("TkDefaultFont", 8), fg="#555555").pack(pady=(0, 8))
+                font=("TkDefaultFont", _pt(8)), fg="#555555").pack(pady=(0, 8))
         tk.Label(win, text="Radius field is METERS \u2014 divide mm by 1000.",
-                font=("TkDefaultFont", 8, "bold"), fg="#7a5000",
+                font=("TkDefaultFont", _pt(8), "bold"), fg="#7a5000",
                 wraplength=270, justify="center").pack(pady=(0, 6))
 
         table = ttk.Treeview(win, columns=("awg", "rad"),
@@ -1715,7 +1729,7 @@ class ExcitationsFrame(ttk.Frame):
         self._warn_frame.grid_remove()   # hidden by default
 
         warn_icon  = tk.Label(self._warn_frame, text="⚠", bg="#FFD700",
-                              font=("TkDefaultFont", 13, "bold"), fg="#7a5000")
+                              font=("TkDefaultFont", _pt(13), "bold"), fg="#7a5000")
         warn_icon.pack(side="left", padx=(6, 2), pady=4)
 
         warn_text = (
@@ -1725,13 +1739,13 @@ class ExcitationsFrame(ttk.Frame):
         )
         self._warn_label = tk.Label(self._warn_frame, text=warn_text,
                                     bg="#FFD700", fg="#3a2500",
-                                    font=("TkDefaultFont", 9),
+                                    font=("TkDefaultFont", _pt(9)),
                                     justify="left", anchor="w")
         self._warn_label.pack(side="left", padx=(0, 8), pady=4, fill="x", expand=True)
 
         close_btn = tk.Button(self._warn_frame, text="✕", bg="#FFD700",
                               relief="flat", bd=0, fg="#7a5000",
-                              font=("TkDefaultFont", 10, "bold"),
+                              font=("TkDefaultFont", _pt(10), "bold"),
                               cursor="hand2",
                               command=self._dismiss_warning)
         close_btn.pack(side="right", padx=(0, 6), pady=4)
@@ -2652,7 +2666,7 @@ class GlobalsFrame(ttk.Frame):
         self._zheight_warn_frame.grid_remove()   # hidden by default
 
         warn_icon = tk.Label(self._zheight_warn_frame, text="⚠", bg="#FFD700",
-                             font=("TkDefaultFont", 13, "bold"), fg="#7a5000")
+                             font=("TkDefaultFont", _pt(13), "bold"), fg="#7a5000")
         warn_icon.pack(side="left", padx=(6, 2), pady=4)
 
         self._zheight_warn_label = tk.Label(
@@ -2660,7 +2674,7 @@ class GlobalsFrame(ttk.Frame):
             text="zHeight = 0 with a non-free-space ground: nodes lie on the ground plane.\n"
                  "Set zHeight > 0 in the Nodes tab to raise the antenna above ground.",
             bg="#FFD700", fg="#3a2500",
-            font=("TkDefaultFont", 9),
+            font=("TkDefaultFont", _pt(9)),
             justify="left", anchor="w"
         )
         self._zheight_warn_label.pack(side="left", padx=(0, 8), pady=4, fill="x", expand=True)
@@ -2668,7 +2682,7 @@ class GlobalsFrame(ttk.Frame):
         close_btn = tk.Button(
             self._zheight_warn_frame, text="✕", bg="#FFD700",
             relief="flat", bd=0, fg="#7a5000",
-            font=("TkDefaultFont", 10, "bold"),
+            font=("TkDefaultFont", _pt(10), "bold"),
             cursor="hand2",
             command=self._dismiss_zheight_warning
         )
@@ -3097,7 +3111,7 @@ class MomNMLApp(tk.Tk):
         super().__init__()
         self._initial_file = initial_file
 
-        self.option_add("*Menu.font", ("TkDefaultFont", 10, "bold"))
+        self.option_add("*Menu.font", ("TkDefaultFont", _pt(10), "bold"))
         self.option_add("*Menu.activeBorderWidth", 2)
         self.option_add("*Menu.activeBackground", "#d0d7e5")
 
@@ -3112,7 +3126,7 @@ class MomNMLApp(tk.Tk):
         # Stronger tab appearance
 
         style.configure("TNotebook.Tab",
-                        font=("TkDefaultFont", 11, "bold"),
+                        font=("TkDefaultFont", _pt(11), "bold"),
                         padding=[20, 12],
                         foreground="#1A1A1A")
 
@@ -3137,14 +3151,15 @@ class MomNMLApp(tk.Tk):
         # resolution ladder.  enable_hidpi() must already have run
         # (see main()) so Windows is DPI-aware.
         # --------------------------------------------------------
-        self.ui = DpiScaling(self)          # reads DPI + applies tk scaling
+        self.ui = DpiScaling(self)          # reads DPI + scales named fonts
+        _set_app_ui(self.ui)                # expose to frames/dialogs via _pt()
         self._font_scale = self.ui.scale    # retained for any references
 
         # Treeview row height is in PIXELS → scale via ui.px(); the font
         # is in POINTS → Tk's scaling enlarges it, so no manual factor.
         style = ttk.Style(self)
         style.configure("Treeview", rowheight=self.ui.px(28))
-        tv_font = ("TkDefaultFont", 8)
+        tv_font = ("TkDefaultFont", _pt(8))
         style.configure("Treeview", font=tv_font)
         style.configure("Treeview.Heading",
                         font=(tv_font[0], tv_font[1] + 1, "bold"))
@@ -3160,7 +3175,7 @@ class MomNMLApp(tk.Tk):
         style.configure("Treeview.Row", background="#ffffff")
         style.configure("Treeview.Alternate", background="#f0f0f0")
 
-        style.configure("Hdr3.TLabel", font=("TkDefaultFont", 10, "bold"))
+        style.configure("Hdr3.TLabel", font=("TkDefaultFont", _pt(10), "bold"))
         style.configure("Panel.TFrame", background="#f7f7f7")
         style.configure("Panel.TLabel", background="#f7f7f7")
         style.configure("Panel.TEntry", fieldbackground="#ffffff")

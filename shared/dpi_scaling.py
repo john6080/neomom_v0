@@ -87,7 +87,7 @@
 #
 #   # after creating the root / inside your App(tk.Tk) __init__:
 #   from dpi_scaling import DpiScaling
-#   self.ui = DpiScaling(self)          # reads DPI, applies tk scaling
+#   self.ui = DpiScaling(self)          # reads DPI, scales named fonts
 #   style.configure("Treeview", rowheight=self.ui.px(28))
 #   self.geometry(self.ui.window_geometry(self, 0.6, 0.7,
 #                                         min_w=800, min_h=600))
@@ -169,8 +169,16 @@ class DpiScaling:
     Display-scaling facts derived from the REAL monitor DPI.
 
     Construct it with your Tk root (or any Tk widget) after the root
-    exists.  Unless apply_tk_scaling=False, constructing it also sets
-    Tk's point->pixel scaling so point-sized fonts render correctly.
+    exists.  Unless apply_tk_scaling=False, constructing it enlarges
+    Tk's standard named fonts by `scale` so the chrome renders at the
+    right physical size.
+
+    NOTE on `tk scaling`: on X11 Tk's `tk scaling` value does NOT
+    affect font point->pixel conversion at all (that uses the X
+    server's Xft.dpi), so setting it leaves default-font widgets tiny
+    on a HiDPI panel.  The reliable, cross-platform fix is to resize
+    the named fonts directly -- which is what scale_fonts() does, and
+    what pt() mirrors for explicit font sizes.
 
     Attributes
     ----------
@@ -181,11 +189,20 @@ class DpiScaling:
     Methods
     -------
     px(n)                 -- scale a raw-pixel dimension -> int
-    pt(points)            -- a point size (identity; see note)
+    pt(points)            -- scale a font POINT size -> int
+    scale_fonts()         -- enlarge Tk's standard named fonts in place
     window_geometry(...)  -- a centered "WxH+X+Y" string in real px
     report()              -- print a summary for tuning on a new box
     fig_dpi               -- matplotlib figure DPI for embedded plots
     """
+
+    # Tk's standard named fonts — resized together so that any widget
+    # using a default font scales, not just ones given an explicit font.
+    _NAMED_FONTS = (
+        "TkDefaultFont", "TkTextFont", "TkFixedFont", "TkMenuFont",
+        "TkHeadingFont", "TkCaptionFont", "TkSmallCaptionFont",
+        "TkIconFont", "TkTooltipFont",
+    )
 
     def __init__(self, widget, *, apply_tk_scaling=True,
                  min_scale=1.0, max_scale=4.0):
@@ -195,8 +212,11 @@ class DpiScaling:
         self.dpi = self._detect_dpi(widget)       # Tk's (often nominal) DPI
         self.real_dpi = None                       # physical, if we find it
         self.scale, self.source = self._decide_scale(min_scale, max_scale)
+        # `apply_tk_scaling` kept as the public flag name for callers that
+        # only want to READ the scale (e.g. matplotlib sizing) and must not
+        # mutate shared Tk font state -- they pass False.
         if apply_tk_scaling:
-            self.apply_tk_scaling()
+            self.scale_fonts()
 
     # -- detection ---------------------------------------------------
     def _detect_dpi(self, widget) -> float:
@@ -327,16 +347,35 @@ class DpiScaling:
         return v
 
     # -- apply to Tk -------------------------------------------------
-    def apply_tk_scaling(self):
+    def scale_fonts(self):
         """
-        Set Tk's point->pixel ratio so a 10pt font is physically 10pt.
-        Tk defines `scaling` as pixels-per-point = dpi / 72.  We drive
-        it from the scale factor (relative to the 96dpi baseline) so
-        the env override and the macOS policy are honoured too.
+        Enlarge Tk's standard named fonts by `scale`, in place.
+
+        This is the enlargement that actually works on X11, where
+        `tk scaling` does not touch fonts.  Every widget that uses a
+        default font (most of them) picks up the new size immediately,
+        because named fonts are live and shared.  Idempotent per root.
+        A no-op when scale == 1.0 (e.g. macOS, or a standard display).
         """
-        pixels_per_point = (self.scale * _BASE_DPI) / _POINTS_PER_INCH
+        if self.scale == 1.0:
+            return
+        if getattr(self._widget, "_neomom_fonts_scaled", False):
+            return
+        import tkinter.font as tkfont
+        for name in self._NAMED_FONTS:
+            try:
+                f = tkfont.nametofont(name, root=self._widget)
+            except Exception:
+                continue
+            size = f.cget("size")
+            if not size:
+                continue
+            # size > 0 is points, < 0 is pixels; scale the magnitude,
+            # keep the sign.
+            scaled = int(round(abs(size) * self.scale))
+            f.configure(size=scaled if size > 0 else -scaled)
         try:
-            self._tk.call("tk", "scaling", pixels_per_point)
+            self._widget._neomom_fonts_scaled = True
         except Exception:
             pass
 
@@ -345,16 +384,14 @@ class DpiScaling:
         """Scale a RAW-PIXEL dimension (row height, pad, canvas size)."""
         return int(round(n * self.scale))
 
-    def pt(self, points):
+    def pt(self, points) -> int:
         """
-        A font POINT size.  Returned unchanged on purpose: once
-        apply_tk_scaling() has run, Tk converts points to pixels at
-        the correct ratio itself, so point-sized fonts must NOT be
-        pre-multiplied (doing so is the double-scaling bug this
-        module removes).  Provided so call sites can read as
-        `font=("TkDefaultFont", ui.pt(10))` and document intent.
+        Scale a font POINT size.  Use at any call site that specifies
+        an explicit font size, e.g. `font=("TkDefaultFont", ui.pt(10))`.
+        Mirrors scale_fonts() (which handles the default-font widgets),
+        because on X11 nothing else enlarges fonts.
         """
-        return points
+        return max(1, int(round(points * self.scale)))
 
     @property
     def fig_dpi(self) -> int:
@@ -393,8 +430,7 @@ class DpiScaling:
         if self.real_dpi:
             print(f"  physical DPI    : {self.real_dpi:.1f}  (xrandr/EDID)")
         print(f"  scale factor    : {self.scale:.3f}  (source: {self.source})")
-        print(f"  tk scaling      : "
-              f"{(self.scale * _BASE_DPI) / _POINTS_PER_INCH:.3f} px/pt")
+        print(f"  named fonts     : x{self.scale:.2f} (via scale_fonts)")
         print(f"  matplotlib dpi  : {self.fig_dpi}")
         print(f"  env override    : {_ENV_OVERRIDE}="
               f"{os.environ.get(_ENV_OVERRIDE, '(unset)')}")

@@ -719,7 +719,7 @@ class CurViewerApp(tk.Tk):
         # Fonts are specified in POINTS; Tk's scaling (set by DpiScaling)
         # converts them to the correct pixel size.  Only pixel-valued
         # dimensions (padding, geometry) are scaled with ui.px().
-        ui_font = ("TkDefaultFont", 9)
+        ui_font = ("TkDefaultFont", self.ui.pt(9))
         style.configure(".", font=ui_font)
         style.configure("TNotebook.Tab",
                         font=(ui_font[0], ui_font[1], "bold"),

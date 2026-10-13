@@ -42,6 +42,20 @@ _bootstrap_shared_path()
 from dpi_scaling import enable_hidpi, DpiScaling
 
 
+# Display-scaling point-size helper, resolved once the app sets its
+# DpiScaling (so dialogs and other classes can scale fonts too).
+_APP_UI = None
+
+
+def _set_app_ui(ui):
+    global _APP_UI
+    _APP_UI = ui
+
+
+def _pt(n):
+    return _APP_UI.pt(n) if _APP_UI is not None else n
+
+
 # ------------------------------------------------------------------
 # Port-extension dialog -- shown when importing a VNA .s1p file
 # ------------------------------------------------------------------
@@ -76,7 +90,7 @@ class PortExtensionDialog(tk.Toplevel):
         pad = dict(padx=8, pady=4)
 
         ttk.Label(self, text=f'Importing: {filename}',
-                  font=('TkDefaultFont', 9, 'bold')).grid(
+                  font=('TkDefaultFont', _pt(9), 'bold')).grid(
             row=0, column=0, columnspan=3, sticky='w', **pad)
 
         ttk.Label(self, text=(
@@ -119,7 +133,7 @@ class PortExtensionDialog(tk.Toplevel):
         ttk.Entry(self, textvariable=self._loss_var, width=10).grid(
             row=5, column=1, sticky='w', **pad)
         ttk.Label(self, text='(0 = phase-only correction)',
-                  foreground='#888888', font=('TkDefaultFont', 8)).grid(
+                  foreground='#888888', font=('TkDefaultFont', _pt(8))).grid(
             row=5, column=2, sticky='w', **pad)
 
         ttk.Separator(self).grid(row=6, column=0, columnspan=3,
@@ -220,7 +234,8 @@ class NeoMoMZin(tk.Tk):
         # must already have run (see main()) so Windows is DPI-aware.
         # The figure is a fixed size in INCHES; the DPI below carries the
         # physical enlargement, so no per-resolution figsize tiers.
-        self.ui       = DpiScaling(self)    # real-DPI scale + tk scaling
+        self.ui       = DpiScaling(self)    # real-DPI scale + font scaling
+        _set_app_ui(self.ui)                # expose to dialogs via _pt()
         self._fig_size = (6.0, 5.0)         # base inches
         self._dpi      = self.ui.fig_dpi    # 96 * scale
 
@@ -265,7 +280,7 @@ class NeoMoMZin(tk.Tk):
         left.pack(side='left', fill='y', padx=(4, 0), pady=4)
         left.pack_propagate(False)
 
-        ttk.Label(left, text='Datasets', font=('TkDefaultFont', 9, 'bold')
+        ttk.Label(left, text='Datasets', font=('TkDefaultFont', _pt(9), 'bold')
                   ).pack(anchor='w', pady=(0, 4))
 
         self._ds_frame = ttk.Frame(left)
