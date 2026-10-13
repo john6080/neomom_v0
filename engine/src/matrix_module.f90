@@ -177,6 +177,9 @@ contains
       complex, allocatable :: work(:)
       character(*), parameter :: cSub = 'LU_Factor_MKL: '
 
+      iErr = 0   ! keep defined: the csytrf calls below are disabled (dormant
+                 ! MKL path); without this, the iErr checks read uninitialized.
+
       if (allocated(D%iPivots)) deallocate(D%iPivots)
 
       m   = size(D%zBlk, 1)
@@ -218,6 +221,9 @@ contains
 
       integer :: iErr, nR, nC
       character(*), parameter :: cSub = 'LU_Solve_MKL: '
+
+      iErr = 0   ! keep defined: the csytrs call below is disabled (dormant
+                 ! MKL path); without this, the iErr check reads uninitialized.
 
       nR = size(X, 1)
       nC = 1   ! single right-hand side; extend here for multi-port

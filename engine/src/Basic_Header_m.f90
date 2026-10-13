@@ -52,8 +52,18 @@ module basic_header_m
    public :: notice, warning, message
 
 !------------------ Precision control --------------------------
-!  wp is the single working precision kind used by all NeoMoM arrays.
-!  Change here to propagate through the entire codebase.
+!  wp is the working-precision kind for declarations written real(wp) /
+!  complex(wp).
+!
+!  CAVEAT: this does NOT (yet) propagate through the whole codebase. Several
+!  modules still declare default `real`/`complex` (e.g. zfill_m, zfill_nec_m,
+!  pattern_v2_m, Fresnel_Reflection_m, nodes_wires_segments_m, basis_builder_m,
+!  and parts of Antenna_system_m / mesh_m), so in practice the engine computes
+!  and stores in SINGLE precision regardless of wp. The #ifdef DOUBLE scaffold
+!  below is therefore aspirational: flipping to real64 first requires converting
+!  those bare `real`/`complex` declarations (and their literals) to real(wp) /
+!  complex(wp). (The LU factor+solve in matrix_m already runs in double
+!  precision internally — see that module.)
 
 !#ifdef DOUBLE
    ! integer, parameter :: wp = real64   ! double precision (~15 digits)

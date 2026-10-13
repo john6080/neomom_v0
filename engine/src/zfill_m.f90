@@ -6,6 +6,14 @@ module zfill_m
 !==============================================================================
 !  zfill_m — EFIE wire MOM Z-matrix fill (Galerkin, rooftop basis functions)
 !
+!  *** REFERENCE / ALTERNATE IMPLEMENTATION — NOT THE PRODUCTION PATH. ***
+!  The production Z-fill is zfill_nec_m (NEC_ZFILL_TYPE::fill_matrix_nec);
+!  mesh_m::matrix_fill calls that one. The zClaude%fill_matrix call to THIS
+!  module is intentionally left commented there. This file is kept on purpose
+!  for reference / kernel comparison. Note: it is still compiled by the
+!  wildcard build, so it must stay compilable if shared types/interfaces
+!  (HALF_TYPE, SEGMENT_TYPE, BASIS2_TYPE, ...) change.
+!
 !  Purpose:
 !   Compute the complex N×N impedance matrix Z where N = number of rooftop
 !   basis functions.  Called once per frequency by mesh_m::matrix_fill.

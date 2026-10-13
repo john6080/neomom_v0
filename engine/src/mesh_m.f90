@@ -159,8 +159,6 @@ contains
       ! Evaluate Fresnel coefficients at grazing angle for image-theory Z-fill
       zReflection_Coef = mesh%Reflection_Coef%FRC(0.0)
 
-      write (*, *) ' ETA0 =', ETA0   ! sanity: should print ~376.730 Ω
-
       ! --- ACTIVE path: zfill_nec_m NEC_ZFILL_TYPE ---
       ! Near-pair quadrature order is chosen automatically by select_nQ
       ! (zfill_nec_m), a seg_seg_distance-based graduated ladder -- no

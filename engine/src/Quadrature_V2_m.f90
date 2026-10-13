@@ -30,7 +30,7 @@ Module quadrature_v2_m
 !   iGAUSS   = 5 : Gauss (general, triangle legacy)
 !
 !  Precision note:
-!   dp = real32 (single) for stored weights and points.
+!   qp = real32 (single) for stored weights and points.
 !   GAULEG internally uses real(8) (double) for Newton iteration accuracy,
 !   then stores the converged roots at single precision.  This gives
 !   full-precision Legendre roots stored at working precision.
@@ -44,7 +44,9 @@ Module quadrature_v2_m
    public  GENERAL_QUAD_TYPE, Quad_GAUSS_Init
 
    integer, parameter :: i4b = int32
-   integer, parameter :: dp  = real32   ! quadrature storage precision
+   integer, parameter :: qp  = real32   ! quadrature storage precision (SINGLE;
+                                        ! named qp, not dp, to avoid implying
+                                        ! double precision)
 
 !  Quadrature type indices -- used as array selectors in zfill_m.f90
 !  to choose the appropriate integration rule for each segment pair.
@@ -84,8 +86,8 @@ Module quadrature_v2_m
 !------------------------------------------------------------------------------
    type GENERAL_QUAD_TYPE
       integer(i4b)          :: nQ       = 0      ! number of quadrature points
-      real(dp), allocatable :: vXi(:,:)          ! abscissae: (nQ,1) for GAUSS, (3,nQ) for TRI
-      real(dp), allocatable :: w(:)              ! weights, size(nQ)
+      real(qp), allocatable :: vXi(:,:)          ! abscissae: (nQ,1) for GAUSS, (3,nQ) for TRI
+      real(qp), allocatable :: w(:)              ! weights, size(nQ)
       character(4)          :: cType    = 'null' ! cGAUSS or cTRI
       character(4)          :: cQuality = 'null' ! cNEAR, cFAR, cSELF, cCENTROID, etc.
    contains
@@ -128,7 +130,7 @@ contains
       allocate (gQ%vXi(gQ%nQ, 1), gQ%W(gQ%nQ))
 
       ! Compute Legendre roots and weights on [0,1] via Newton iteration
-      call gq%gauleg(0.0_dp, 1.0_dp, gQ%vXi(:,1), gQ%w, gQ%nQ)
+      call gq%gauleg(0.0_qp, 1.0_qp, gQ%vXi(:,1), gQ%w, gQ%nQ)
 
    end subroutine Quad_GAUSS_Init
 
@@ -220,9 +222,9 @@ SUBROUTINE DQRULE(tq, IDEG, NQP, NCORD, PT, WT, iErr)
    integer(i4b), intent(in)  :: iDeg, nCord
    integer(i4b), intent(Out) :: nQp
    integer(i4b), intent(Out) :: iErr
-   real(dp),     intent(out) :: PT(:,:), WT(:)
+   real(qp),     intent(out) :: PT(:,:), WT(:)
 
-   real(dp)     :: sum
+   real(qp)     :: sum
    integer(i4b) :: i, j, LDEG, ipt, iRule, kount
 
    ! NQPDEG(d) = number of quadrature points for polynomial degree d
@@ -242,7 +244,7 @@ SUBROUTINE DQRULE(tq, IDEG, NQP, NCORD, PT, WT, iErr)
    !  Compact Dunavant table data: AW = weights, A1/A2/A3 = area coordinates.
    !  Each entry represents one symmetry class; KOUNTS(j) copies are generated.
 
-   real(dp), parameter :: aW(107) = (/                                             &
+   real(qp), parameter :: aW(107) = (/                                             &
       1.000000000000000d0,  0.333333333333333d0, -0.562500000000000d0,             &
       0.520833333333333d0,  0.223381589678011d0,  0.109951743655322d0,             &
       0.225000000000000d0,  0.132394152788506d0,  0.125939180544827d0,             &
@@ -280,7 +282,7 @@ SUBROUTINE DQRULE(tq, IDEG, NQP, NCORD, PT, WT, iErr)
       0.026805742283163d0,  0.018459993210822d0,  0.008476868534328d0,             &
       0.018292796770025d0,  0.006665632004165d0 /)
 
-   real(dp), parameter :: a1(107) = (/                                             &
+   real(qp), parameter :: a1(107) = (/                                             &
       0.333333333333333d0,  0.666666666666667d0,  0.333333333333333d0,             &
       0.600000000000000d0,  0.108103018168070d0,  0.816847572980459d0,             &
       0.333333333333333d0,  0.059715871789770d0,  0.797426985353087d0,             &
@@ -318,7 +320,7 @@ SUBROUTINE DQRULE(tq, IDEG, NQP, NCORD, PT, WT, iErr)
       0.135440871671036d0,  0.054423924290583d0,  0.012868560833637d0,             &
       0.067165782413524d0,  0.014663182224828d0 /)
 
-   real(dp), parameter :: a2(107) = (/                                             &
+   real(qp), parameter :: a2(107) = (/                                             &
       0.333333333333333d0,  0.166666666666667d0,  0.333333333333333d0,             &
       0.200000000000000d0,  0.445948490915965d0,  0.091576213509771d0,             &
       0.333333333333333d0,  0.470142064105115d0,  0.101286507323456d0,             &
@@ -356,7 +358,7 @@ SUBROUTINE DQRULE(tq, IDEG, NQP, NCORD, PT, WT, iErr)
       0.292221537796944d0,  0.319574885423190d0,  0.190704224192292d0,             &
       0.180483211648746d0,  0.080711313679564d0 /)
 
-   real(dp), parameter :: a3(107) = (/                                             &
+   real(qp), parameter :: a3(107) = (/                                             &
       0.333333333333333d0,  0.166666666666667d0,  0.333333333333333d0,             &
       0.200000000000000d0,  0.445948490915965d0,  0.091576213509771d0,             &
       0.333333333333333d0,  0.470142064105115d0,  0.101286507323456d0,             &
@@ -494,7 +496,7 @@ END subroutine DQRULE
 !  Precision:
 !   Internal variables (XM, XL, Z, P1..P3, PP) are real(8) to ensure
 !   Newton convergence to EPS = 3e-14.  Output X and W are stored as
-!   real(dp) = real32 (working precision of the calling code).
+!   real(qp) = real32 (working precision of the calling code).
 !
 !  For NeoMoM: called with N=16, X1=0.0, X2=1.0 to produce the 16-point
 !  rule used in zfill_m.f90 for NEAR-field segment pair integrations.
@@ -502,10 +504,10 @@ END subroutine DQRULE
    pure SUBROUTINE GAULEG(GQ, X1, X2, X, W, N)
       class(GENERAL_QUAD_TYPE), intent(in) :: GQ
       integer(i4b), intent(in)  :: N
-      real(dp),     intent(in)  :: X1, X2      ! integration interval [X1, X2]
-      real(dp),     intent(out) :: X(N), W(N)  ! abscissae and weights
+      real(qp),     intent(in)  :: X1, X2      ! integration interval [X1, X2]
+      real(qp),     intent(out) :: X(N), W(N)  ! abscissae and weights
 
-      real(dp), PARAMETER :: EPS = 3.D-14     ! Newton convergence tolerance (double)
+      real(qp), PARAMETER :: EPS = 3.D-14     ! Newton convergence tolerance (double)
 
       integer(i4b) :: M, I, J
       real(8)      :: XM, XL, PP, Z, Z1, P1, P2, P3   ! real(8) for Newton accuracy
