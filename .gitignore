@@ -72,6 +72,9 @@ neomom_Zin/src/*.csv
 neomom_input/src/*.csv
 neomom_plot/src/*.csv
 
+# Scratch / ad-hoc engine runs at the repo root (junk.nml and its outputs)
+/junk.*
+
 # ==============================================================
 # OS AND EDITOR NOISE
 # ==============================================================
