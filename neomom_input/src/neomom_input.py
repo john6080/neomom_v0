@@ -3328,7 +3328,8 @@ class MomNMLApp(tk.Tk):
         def line(s="", tag=None):
             txt.insert("end", s + "\n", tag if tag else ())
 
-        line("NeoMoM — Neo Method-of-Moments Antenna Suite", "title")
+        line("NeoMoM — a Method-of-Moments wire-antenna modeling suite",
+             "title")
         line("Author: John Shaeffer (KZ4TS) — North Fulton Amateur "
              "Radio League (NFARL)")
         line("Version 0.1.0", "dim")

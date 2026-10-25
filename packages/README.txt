@@ -1,5 +1,5 @@
 ================================================================================
-  NeoMoM Antenna Modeling Suite
+  NeoMoM — a Method-of-Moments wire-antenna modeling suite
   Version 0.1.0  |  July 2026
   Author: John Shaeffer (KZ4TS)  |  NFARL
   GitHub: https://github.com/john6080/neomom_v0
