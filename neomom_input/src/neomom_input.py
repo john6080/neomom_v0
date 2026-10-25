@@ -3289,18 +3289,112 @@ class MomNMLApp(tk.Tk):
         self.nodes_frame = NodesFrame(self.notebook, self.model)
         self.wires_frame = WiresFrame(self.notebook, self.model)
         self.excitations_frame = ExcitationsFrame(self.notebook, self.model)
+        self.about_frame = self._build_about()
 
         # Add tabs
         self.notebook.add(self.globals_frame, text="Globals")
         self.notebook.add(self.nodes_frame, text="Nodes")
         self.notebook.add(self.wires_frame, text="Wires")
         self.notebook.add(self.excitations_frame, text="Excitations")
+        self.notebook.add(self.about_frame, text="About")
 
         # ⭐ Safe to initialize model contents now
         self.new_file()
 
         # Preview is initialized in show_preview_window() called from __init__
-        
+
+
+    def _build_about(self):
+        """Read-only About tab: author, licensing (plain English), and the
+        freedom to modify NeoMoM long into the future."""
+        import tkinter as tk
+
+        frame = ttk.Frame(self.notebook)
+        box   = ttk.Frame(frame)
+        box.pack(fill="both", expand=True, padx=12, pady=12)
+
+        txt = tk.Text(box, wrap="word", relief="flat", borderwidth=0,
+                      padx=10, pady=10, cursor="arrow",
+                      font=("TkDefaultFont", _pt(10)))
+        sb  = ttk.Scrollbar(box, orient="vertical", command=txt.yview)
+        txt.configure(yscrollcommand=sb.set)
+        sb.pack(side="right", fill="y")
+        txt.pack(side="left", fill="both", expand=True)
+
+        txt.tag_configure("title", font=("TkDefaultFont", _pt(14), "bold"))
+        txt.tag_configure("h",     font=("TkDefaultFont", _pt(11), "bold"))
+        txt.tag_configure("dim",   foreground="#555555")
+
+        def line(s="", tag=None):
+            txt.insert("end", s + "\n", tag if tag else ())
+
+        line("NeoMoM — Neo Method-of-Moments Antenna Suite", "title")
+        line("Author: John Shaeffer (KZ4TS) — North Fulton Amateur "
+             "Radio League (NFARL)")
+        line("Version 0.1.0", "dim")
+        line()
+        line("NeoMoM is free and open-source software for amateur-radio "
+             "antenna modeling. You may use it, study how it works, modify "
+             "it, and share it — at no cost.")
+        line()
+        line("A give-back to amateur radio", "h")
+        line("It began with a Novice license in 1957, earned in high "
+             "school — the spark that launched a lifelong career in "
+             "electromagnetics. The author's work ranged from radar "
+             "cross-section reduction (stealth) to developing computational "
+             "electromagnetics Method-of-Moments codes for problems of "
+             "several million unknowns, with a PhD in Physics along the way, "
+             "and continues today through his company, Matrix Compression "
+             "Technologies, LLC. NeoMoM is offered as a give-back to the "
+             "amateur-radio community that started it all.")
+        line()
+        line("Licensing — two parts, both permissive", "h")
+        line("  • Computational engine (the Fortran Method-of-Moments "
+             "solver): Apache License 2.0")
+        line("  • Graphical applications (this editor and the plot, "
+             "impedance, and current viewers): MIT License")
+        line()
+        line("What these licenses mean for you", "h")
+        line("Both are “permissive” open-source licenses, not "
+             "copyleft like the GPL. In plain terms:")
+        line("  • Use NeoMoM for anything, including commercial work.")
+        line("  • Modify the source however you like and share your "
+             "changes.")
+        line("  • You are NOT required to publish your modifications "
+             "(unlike GPL-style licenses).")
+        line("  • Keep the original copyright and license notices. "
+             "Apache-2.0 also asks you to note significant changes and "
+             "includes an explicit patent grant.")
+        line("  • The software is provided “as is,” without "
+             "warranty.")
+        line()
+        line("You are encouraged to modify NeoMoM to suit your needs — "
+             "add features, adapt the GUIs as a starting point for your own "
+             "tools, or improve the engine.")
+        line()
+        line("Why this matters for the long term", "h")
+        line("Because the complete source code is published under these "
+             "permissive licenses, NeoMoM is not locked to any vendor, "
+             "binary, or operating-system version. Anyone can rebuild, fix, "
+             "and extend it — so the suite can keep working and evolving "
+             "long into the future, regardless of what happens to any single "
+             "maintainer or platform.")
+        line()
+        line("Source code and releases", "h")
+        line("  https://github.com/john6080/neomom_v0")
+        line()
+        line("Feedback and contact", "h")
+        line("  Report issues or ideas: "
+             "https://github.com/john6080/neomom_v0/issues")
+        line("  Or email: John Shaeffer, KZ4TS — "
+             "john_f_shaeffer@yahoo.com")
+        line()
+        line("Full license texts ship with the source: LICENSE-APACHE "
+             "(engine), LICENSE-MIT (GUIs), LICENSING.md (overview).", "dim")
+
+        txt.configure(state="disabled")   # read-only
+        return frame
+
 
     def load_file(self, path=None):
 
