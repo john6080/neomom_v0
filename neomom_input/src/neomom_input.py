@@ -3338,6 +3338,14 @@ class MomNMLApp(tk.Tk):
              "antenna modeling. You may use it, study how it works, modify "
              "it, and share it — at no cost.")
         line()
+        line("Scope", "h")
+        line("NeoMoM is aimed at learning and everyday wire-antenna "
+             "modeling — approachable, quick to set up, and validated "
+             "against NEC5. For exhaustive detail and edge cases, "
+             "full-feature codes like NEC and EZNEC remain the references; "
+             "think of NeoMoM as an easy on-ramp to antenna modeling by the "
+             "Method of Moments.")
+        line()
         line("A give-back to amateur radio", "h")
         line("It began with a Novice license in 1957, earned in high "
              "school — the spark that launched a lifelong career in "
@@ -3374,12 +3382,15 @@ class MomNMLApp(tk.Tk):
              "tools, or improve the engine.")
         line()
         line("Why this matters for the long term", "h")
-        line("Because the complete source code is published under these "
-             "permissive licenses, NeoMoM is not locked to any vendor, "
-             "binary, or operating-system version. Anyone can rebuild, fix, "
-             "and extend it — so the suite can keep working and evolving "
-             "long into the future, regardless of what happens to any single "
-             "maintainer or platform.")
+        line("Closed, binary-only antenna tools eventually stop working — "
+             "not because the physics changes, but because operating systems "
+             "and user interfaces move on and no one can rebuild them. "
+             "NeoMoM is published as complete source under permissive "
+             "licenses, so it never has to meet that fate: anyone can "
+             "recompile it for a new OS, modernize the interface, fix a bug, "
+             "or add a feature. The suite can stay current and usable long "
+             "into the future, independent of any single maintainer or "
+             "platform.")
         line()
         line("Source code and releases", "h")
         line("  https://github.com/john6080/neomom_v0")
