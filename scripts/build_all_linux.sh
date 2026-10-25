@@ -178,8 +178,15 @@ cp "$ZIN_DIST/neomom_Zin"      "$PACKAGE_DIR/"
 cp "$CUR_DIST/neomom_current"  "$PACKAGE_DIR/"
 
 if [[ -d "$MODELS_DIR" ]]; then
-    cp -r "$MODELS_DIR"/. "$PACKAGE_DIR/nec_reference_decks/"
-    ok "NEC reference decks copied from $MODELS_DIR"
+    # Copy only INPUT decks (.nec/.nml/.maa), preserving the subfolder
+    # layout. Skip generated run output (.csv/.cur/.txt/.NEX/.out) and
+    # copy/backup/original scratch so the reference folder stays clean.
+    ( cd "$MODELS_DIR" && find . -type f \
+        \( -iname '*.nec' -o -iname '*.nml' -o -iname '*.maa' \) \
+        -not -ipath '*/original/*' -not -iname '*copy*' \
+        -not -iname '*backup*' -not -iname '*original*' \
+        -exec cp --parents {} "$PACKAGE_DIR/nec_reference_decks/" \; )
+    ok "NEC reference decks copied (input decks only) from $MODELS_DIR"
 else
     echo "  WARNING: models dir not found, skipping: $MODELS_DIR"
 fi

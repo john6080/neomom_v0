@@ -149,8 +149,19 @@ Copy-Item $ZinExe    "$PackageDir\"
 Copy-Item $CurExe    "$PackageDir\"
 
 if (Test-Path $ModelsDir) {
-    Copy-Item "$ModelsDir\*" "$PackageDir\nec_reference_decks\" -Recurse
-    Ok "NEC reference decks copied from $ModelsDir"
+    # Copy only INPUT decks (.nec/.nml/.maa), preserving the subfolder
+    # layout. Skip generated run output (.csv/.cur/.txt/...) and
+    # copy/backup/original scratch so the reference folder stays clean.
+    $base = (Resolve-Path $ModelsDir).Path
+    Get-ChildItem $ModelsDir -Recurse -File -Include *.nec, *.nml, *.maa |
+        Where-Object { $_.FullName -notmatch '(?i)(copy|backup|original)' } |
+        ForEach-Object {
+            $rel  = $_.FullName.Substring($base.Length).TrimStart('\')
+            $dest = Join-Path "$PackageDir\nec_reference_decks" $rel
+            New-Item -ItemType Directory -Force -Path (Split-Path $dest -Parent) | Out-Null
+            Copy-Item $_.FullName $dest
+        }
+    Ok "NEC reference decks copied (input decks only) from $ModelsDir"
 } else {
     Write-Host "  WARNING: models dir not found, skipping: $ModelsDir" -ForegroundColor Yellow
 }
