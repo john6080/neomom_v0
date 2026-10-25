@@ -3264,9 +3264,9 @@ class MomNMLApp(tk.Tk):
         filemenu.add_command(label="Run Solver...", command=self.run_solver)
 
         filemenu.add_command(label="Quit", command=self.quit)
-        menubar.add_cascade(label="File", menu=filemenu)
+        menubar.add_cascade(label="  File  ", menu=filemenu)
         self.ui.add_scale_menu(menubar)
-        menubar.add_cascade(label="View", menu=view_menu)
+        menubar.add_cascade(label="  View  ", menu=view_menu)
 
         self.config(menu=menubar)
 

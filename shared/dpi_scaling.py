@@ -554,9 +554,12 @@ class DpiScaling:
                       "activeforeground": "#0b6e00"}
             submenu.add_command(label=mark + text,
                                 command=lambda v=val: choose(v), **kw)
-        menubar.add_cascade(label=f"{label}: "
-                            f"{'Auto' if saved is None else f'{eff_pct}%'}",
-                            menu=submenu)
+        # Pad the label with spaces so it doesn't run into the adjacent
+        # menubar items (Tk menubars offer no inter-item spacing option).
+        menubar.add_cascade(
+            label=f"  {label}: "
+                  f"{'Auto' if saved is None else f'{eff_pct}%'}  ",
+            menu=submenu)
         return submenu
 
     # -- diagnostics -------------------------------------------------
