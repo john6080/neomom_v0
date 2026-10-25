@@ -7,61 +7,83 @@ Version numbering follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [0.1.0] — 2026-07-27
+## [0.1.0] — 2026-10-25
 
-### Initial public release
+First public release.
 
-**NeoMoM Computational Engine (Fortran)**
-- Wire Method of Moments solver using RWG rooftop basis functions
-- Adaptive meshing: segments per wire recomputed at every frequency
-  to maintain user-specified segments per wavelength (default 40/λ)
-- Real ground via Fresnel reflection coefficients
-- PEC ground via image theory
-- Free-space operation
-- Frequency sweep: pattern sweep and VNA sweep modes
-- Command-line run control flags: `plot=`, `currents=`, `sweep=`
-- Output: frequency-tagged CSV pattern files, text summary, current
-  distribution files, and single-file Zin CSV for VNA sweeps
-- NEC-5 card deck export (`nml_to_nec.py`) with mesh at fmax
-- MMANA-GAL export (`nml_to_maa.py`)
+### Engine (Fortran Method of Moments)
+- Wire MoM solver using rooftop basis functions (RTWK/Gibson self-terms)
+- Adaptive meshing: segments/wire recomputed per frequency to hold a
+  user-specified segments-per-wavelength (default 40/λ)
+- Ground: real (Fresnel reflection), PEC (image theory), and free space
+- Frequency sweeps: pattern-sweep and VNA-sweep modes
+- `select_nQ` graduated Gauss-Legendre quadrature (4/16/64/128-point),
+  chosen from the true minimum segment-to-segment distance — resolves
+  closely-spaced antiparallel runs (e.g. a two-wire line) that a binary
+  near/far split under-integrated (see the quadrature rationale below)
+- Exports: NEC-5 card deck (`nml_to_nec.py`), MMANA-GAL (`nml_to_maa.py`)
+- Single-precision matrix fill with a double-precision LU solve
 
-**neomom_input (Python GUI)**
-- Graphical antenna geometry creation: nodes, wires, excitations
-- Live 3D geometry preview
-- Pattern sweep and VNA sweep mode selection with live point count
-- Ground type selection: free space, PEC, real
-- Export to NEC-5 card deck and MMANA-GAL formats
-- NEC deck includes full CM comment documentation of all cards
+### GUI applications
+- **neomom_input** — graphical node/wire/excitation editor, live 3D
+  geometry preview, NEC-5 / MMANA-GAL export, a geometry-proximity
+  validation warning, and an **About tab** (author, licensing, and the
+  freedom to modify)
+- **neomom_plot** — 2D polar and Cartesian cuts, 3D surface, heatmap,
+  cartopy geographic map overlay, optional NEC5 pattern overlay
+- **neomom_Zin** — R/X, G/B (with resonance detection), SWR vs frequency;
+  ham-band overlays; per-tab Y-axis range controls; multi-dataset overlay
+  of NeoMoM + EZNEC/NEC5; NEC5 `.out` → `_Zin.csv` conversion
+  (`nec5_out_to_csv.py`) for direct comparison
+- **neomom_current** — 3D magnitude, 3D phase, and 2D current-vs-position
 
-**neomom_plot (Python GUI)**
-- 2D polar patterns: elevation and azimuth cuts
-- Cartesian pattern plots
-- 3D radiation pattern surface
-- Pattern heatmap
-- Geographic map overlay with cartopy (world, CONUS, regional)
-- NEC5 pattern overlay for comparison
+### Cross-platform display scaling
+- Unified HiDPI / 4K support in one shared module: real-DPI detection with
+  a per-platform policy (Windows per-monitor-aware; Linux hybrid using
+  Xft.dpi / xrandr-EDID; macOS OS-managed), replacing four divergent
+  per-app scale ladders and a hand-edited scale constant
+- Persistent per-user **UI Scale** menu (Auto + 100%–300%), stored per
+  machine, with a `NEOMOM_UI_SCALE` environment override
 
-**neomom_Zin (Python GUI)**
-- Impedance (R, X) vs frequency
-- Admittance (G, B) vs frequency with resonance detection
-- SWR vs frequency with user-selectable Z0 reference
-- Multi-dataset overlay: NeoMoM and EZNEC/NEC5 results on same plot
-- Ham band overlays (all ITU Region 2 bands, 160m–23cm)
-- Auto-detects NeoMoM _Zin.csv and EZNEC .txt sweep file formats
+### Packaging & distribution
+- Self-contained one-file binaries per platform (no Python or external
+  libraries to install)
+- Platform zips bundle the README quick start, HTML quick-start guides,
+  six ready-to-open example antennas, a set of NEC reference decks, and
+  the license texts
 
-**neomom_current (Python GUI)**
-- 3D current magnitude visualization
-- 3D current phase visualization
-- 2D current vs position plots
+### Licensing
+- Dual, permissive: engine **Apache-2.0**, GUIs **MIT**; SPDX headers on
+  every source file; `LICENSE-APACHE`, `LICENSE-MIT`, and `LICENSING.md`
 
-**Platform support**
+### Fixed
+- Engine: a node-merge tolerance based on the wavelength-relative target
+  segment length (rather than the shortest segment actually realized by
+  the mesh) could collapse a short stub wire to zero length at low
+  frequency, producing NaN input impedance via a self-term divide-by-zero.
+  Tolerance is now based on the true shortest realized segment.
+- `nml_to_nec.py`: NEC-5 export failed on compact single-line `.nml` blocks
+  with more than one `key = value` pair per line.
+- neomom_input: the 3D geometry preview scaled differently on Windows vs
+  Linux (an oversized ground-plane surface dragged axis autoscale); axis
+  limits are now pinned to the actual antenna geometry.
+- neomom_Zin: setting a custom Y-axis range shrank the whole plot, because
+  the ham-band overlay read the axis limits before the custom range applied.
+
+### Validated
+- Engine Z-matrix fill cross-checked against NEC-5/EZNEC for a center-fed
+  dipole and a folded dipole (patterns agree to <0.05 dB RMS; resistance to
+  <1%; reactance carries a consistent, bounded ~7–11% offset traced to
+  NeoMoM's whole-rooftop delta-gap excitation convention vs NEC-5's narrower
+  segment-end convention) and for an open-circuit two-wire transmission line
+  across a range of conductor spacings (agreement degrades below ~2× wire
+  diameter separation, consistent with the known thin-wire modeling limit
+  documented in Burke's NEC-5 validation manual, not a NeoMoM-specific defect).
+
+### Platform support
 - Linux (primary development platform)
-- Windows (tested on Windows 10/11 with 4K display)
+- Windows (tested on Windows 10/11 with a 4K display)
 - macOS: planned
-
----
-
-## [Unreleased]
 
 ### Engine near-field quadrature: history and rationale
 
@@ -116,55 +138,12 @@ NEC-5 worse, not better, on a well-conditioned dipole) — RTWK/Gibson,
 the original choice, remains correct and stays the default.
 
 A separate, unrelated robustness bug was found and fixed during this
-work: see "NaN input impedance" under Fixed below.
+work: see "NaN input impedance" under Fixed above.
 
-### Added
-- `select_nQ` in the engine's NEC-style Z-fill (`zfill_nec_m_15.f90`): a
-  graduated Gauss-Legendre quadrature ladder (4/16/64/128-point) chosen
-  from the true minimum axis-to-axis distance between segment pairs, not
-  centroid distance. Replaces the old centroid-based `classify_near`
-  (`C1_lenMult`/`C2_lambda`), which under-resolved long, closely-spaced
-  antiparallel runs (e.g. a two-wire transmission line) and required
-  manual per-case threshold tuning. See "Engine near-field quadrature:
-  history and rationale" above for the full story.
-- Active geometry warning in neomom_input's Validate menu for conductors
-  closer than ~2x wire diameter (e.g. folded dipoles, hairpin matches,
-  closely-run ladder line) — thin-wire MoM isn't reliable there for
-  either NeoMoM or NEC5, per Burke's NEC-5 validation manual.
-- Per-tab Y-axis range controls in neomom_Zin (R/X, G/B, and SWR plots).
-- `nec5_out_to_csv.py`: parses NEC5 console `.out` sweep output into the
-  same `_Zin.csv` format NeoMoM produces, for direct overlay/comparison
-  in neomom_Zin.
+---
 
-### Fixed
-- Engine: a node-merge tolerance based on the wavelength-relative target
-  segment length (rather than the shortest segment actually realized by
-  the mesh) could merge away a short stub wire's node at low frequency
-  or coarse `NBASISPERLAMBDA`, collapsing a segment to zero length and
-  producing NaN input impedance via a divide-by-zero in the self-term
-  formula. Tolerance is now based on the true shortest realized segment.
-- `nml_to_nec.py`: NEC-5 export failed on compact single-line `.nml`
-  blocks with more than one `key = value` pair per line (the namelist
-  parser only recognized the first assignment per line).
-- neomom_input: 3D geometry preview scaled differently on Windows vs.
-  Linux due to an oversized ground-plane surface dragging axis
-  autoscale; axis limits are now pinned to the actual antenna geometry.
-- neomom_Zin: setting a custom Y-axis range shrank the whole plot,
-  because the ham-band overlay read the axis limits before the custom
-  range was applied.
+## [Planned]
 
-### Validated
-- Engine Z-matrix fill cross-checked against NEC-5/EZNEC for a center-fed
-  dipole and a folded dipole (patterns agree to <0.05 dB RMS; resistance
-  agrees to <1%; reactance carries a consistent, bounded ~7-11% offset
-  traced to NeoMoM's whole-rooftop delta-gap excitation convention vs.
-  NEC-5's narrower segment-end convention) and for an open-circuit
-  two-wire transmission line across a range of conductor spacings
-  (agreement degrades below ~2x wire diameter separation, consistent
-  with the known thin-wire modeling limit documented in Burke's NEC-5
-  validation manual, not a NeoMoM-specific defect).
-
-### Planned
 - Smith chart tab in neomom_Zin
 - L/λ and f/f_res x-axis options in neomom_Zin
 - Sommerfeld ground model option in engine
