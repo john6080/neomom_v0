@@ -140,7 +140,7 @@ Step "Harvesting package"
 if (Test-Path $PackageDir) { Remove-Item $PackageDir -Recurse -Force }
 
 New-Item -ItemType Directory -Force -Path "$PackageDir"        | Out-Null
-New-Item -ItemType Directory -Force -Path "$PackageDir\models" | Out-Null
+New-Item -ItemType Directory -Force -Path "$PackageDir\nec_reference_decks" | Out-Null
 
 Copy-Item $EngineExe "$PackageDir\"
 Copy-Item $InputExe  "$PackageDir\"
@@ -149,8 +149,8 @@ Copy-Item $ZinExe    "$PackageDir\"
 Copy-Item $CurExe    "$PackageDir\"
 
 if (Test-Path $ModelsDir) {
-    Copy-Item "$ModelsDir\*" "$PackageDir\models\" -Recurse
-    Ok "Models copied from $ModelsDir"
+    Copy-Item "$ModelsDir\*" "$PackageDir\nec_reference_decks\" -Recurse
+    Ok "NEC reference decks copied from $ModelsDir"
 } else {
     Write-Host "  WARNING: models dir not found, skipping: $ModelsDir" -ForegroundColor Yellow
 }

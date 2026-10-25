@@ -169,7 +169,7 @@ step "Harvesting package"
 rm -rf "$PACKAGE_DIR"
 mkdir -p \
     "$PACKAGE_DIR" \
-    "$PACKAGE_DIR/models"
+    "$PACKAGE_DIR/nec_reference_decks"
 
 cp "$ENGINE_EXE"               "$PACKAGE_DIR/"
 cp "$INPUT_DIST/neomom_input"  "$PACKAGE_DIR/"
@@ -178,8 +178,8 @@ cp "$ZIN_DIST/neomom_Zin"      "$PACKAGE_DIR/"
 cp "$CUR_DIST/neomom_current"  "$PACKAGE_DIR/"
 
 if [[ -d "$MODELS_DIR" ]]; then
-    cp -r "$MODELS_DIR"/. "$PACKAGE_DIR/models/"
-    ok "Models copied from $MODELS_DIR"
+    cp -r "$MODELS_DIR"/. "$PACKAGE_DIR/nec_reference_decks/"
+    ok "NEC reference decks copied from $MODELS_DIR"
 else
     echo "  WARNING: models dir not found, skipping: $MODELS_DIR"
 fi
