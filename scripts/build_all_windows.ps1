@@ -155,6 +155,29 @@ if (Test-Path $ModelsDir) {
     Write-Host "  WARNING: models dir not found, skipping: $ModelsDir" -ForegroundColor Yellow
 }
 
+# Documentation, licenses, and example inputs
+Copy-Item (Join-Path $ProjectRoot "packages\README.txt") "$PackageDir\" -ErrorAction SilentlyContinue
+
+$QuickStart = Join-Path $ProjectRoot "quick_start\quick_start_v5"
+if (Test-Path $QuickStart) {
+    New-Item -ItemType Directory -Force -Path "$PackageDir\quick_start" | Out-Null
+    Copy-Item "$QuickStart\*" "$PackageDir\quick_start\" -Recurse
+    Ok "Quick-start docs copied"
+} else {
+    Write-Host "  WARNING: quick_start\quick_start_v5 not found" -ForegroundColor Yellow
+}
+
+foreach ($lic in @("LICENSE-APACHE", "LICENSE-MIT", "LICENSING.md")) {
+    Copy-Item (Join-Path $ProjectRoot $lic) "$PackageDir\" -ErrorAction SilentlyContinue
+}
+
+$ExamplesDir = Join-Path $ProjectRoot "examples"
+if (Test-Path $ExamplesDir) {
+    New-Item -ItemType Directory -Force -Path "$PackageDir\examples" | Out-Null
+    Copy-Item "$ExamplesDir\*.nml" "$PackageDir\examples\"
+    Ok "Example inputs copied"
+}
+
 Ok "Package tree assembled: $PackageDir"
 
 # --------------------------------------------------------------

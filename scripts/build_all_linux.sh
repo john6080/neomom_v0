@@ -184,6 +184,28 @@ else
     echo "  WARNING: models dir not found, skipping: $MODELS_DIR"
 fi
 
+# Documentation, licenses, and example inputs
+cp "$PROJECT_ROOT/packages/README.txt" "$PACKAGE_DIR/" && ok "README copied" \
+    || echo "  WARNING: packages/README.txt not found"
+
+if [[ -d "$PROJECT_ROOT/quick_start/quick_start_v5" ]]; then
+    mkdir -p "$PACKAGE_DIR/quick_start"
+    cp -r "$PROJECT_ROOT/quick_start/quick_start_v5/." "$PACKAGE_DIR/quick_start/"
+    ok "Quick-start docs copied"
+else
+    echo "  WARNING: quick_start/quick_start_v5 not found"
+fi
+
+for lic in LICENSE-APACHE LICENSE-MIT LICENSING.md; do
+    cp "$PROJECT_ROOT/$lic" "$PACKAGE_DIR/" && ok "$lic copied" \
+        || echo "  WARNING: $lic not found"
+done
+
+if [[ -d "$PROJECT_ROOT/examples" ]]; then
+    mkdir -p "$PACKAGE_DIR/examples"
+    cp "$PROJECT_ROOT/examples/"*.nml "$PACKAGE_DIR/examples/" && ok "Example inputs copied"
+fi
+
 ok "Package tree assembled: $PACKAGE_DIR"
 
 # --------------------------------------------------------------
