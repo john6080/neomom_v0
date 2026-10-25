@@ -135,7 +135,8 @@ Your feedback is valuable.  Please report:
   - Workflow steps that were confusing
   - Results that looked unexpected
 
-Contact: john shaeffer,  john@shaeffer.com
+Report issues at: https://github.com/john6080/neomom_v0/issues
+Or email:         John Shaeffer, KZ4TS  <john_f_shaeffer@yahoo.com>
 
 
 ================================================================================
